@@ -29,6 +29,7 @@ static char incoming_call_str[3][8] = {"IDLE", "RINGING", "OFFHOOK"};
 static char mfts_str[4][8] = {"NONE", "FOLDER", "FLAT", "CURVED"};
 int mfts_lpwg = 0;
 int mfts_lpwg_on = 0;
+static int lpwg_status = 0; 
 
 static ssize_t show_platform_data(struct device *dev, char *buf)
 {
@@ -165,6 +166,11 @@ static ssize_t store_lpwg_data(struct device *dev,
 	return count;
 }
 
+static ssize_t show_lpwg_notify(struct device *dev, char *buf)
+{
+	return sprintf(buf, "%d\n", lpwg_status);
+}
+
 static ssize_t store_lpwg_notify(struct device *dev,
 		const char *buf, size_t count)
 {
@@ -197,33 +203,11 @@ static ssize_t store_lpwg_notify(struct device *dev,
 	if (ts->driver->lpwg) {
 		mutex_lock(&ts->lock);
 		ts->driver->lpwg(ts->dev, code, param);
+        lpwg_status = (param[0]) ? 1 : 0; 
 		mutex_unlock(&ts->lock);
 	}
 
 	return count;
-}
-
-/* Sysfs - tap_to_wake (Low Power Wake-up Gesture Compatibility device)
- *
- * write
- * 0 : DISABLE
- * 1 : ENABLE
- */
-static ssize_t store_tap_to_wake(struct device *dev, const char *buf, size_t count)
-{
-    struct touch_core_data *ts = to_touch_core(dev);
-    int status = 0;
-    
-    sscanf(buf, "%d", &status);
-    
-    if (ts->driver->lpwg) {
-        mutex_lock(&ts->lock);
-        TOUCH_I("%s : TAP2WAKE: %s\n", __func__, (status) ? "Enabled" : "Disabled");
-        ts->driver->lpwg(ts->dev, 3, status);
-        mutex_unlock(&ts->lock);
-    }
-   
-    return count;
 }
 
 static ssize_t show_lockscreen_state(struct device *dev, char *buf)
@@ -742,8 +726,7 @@ static ssize_t show_module_id(struct device *dev, char *buf)
 static TOUCH_ATTR(platform_data, show_platform_data, NULL);
 static TOUCH_ATTR(fw_upgrade, show_upgrade, store_upgrade);
 static TOUCH_ATTR(lpwg_data, show_lpwg_data, store_lpwg_data);
-static TOUCH_ATTR(lpwg_notify, NULL, store_lpwg_notify);
-static TOUCH_ATTR(tap_to_wake, NULL, store_tap_to_wake);
+static TOUCH_ATTR(lpwg_notify, show_lpwg_notify, store_lpwg_notify);
 static TOUCH_ATTR(keyguard,
 	show_lockscreen_state, store_lockscreen_state);
 static TOUCH_ATTR(ime_status, show_ime_state, store_ime_state);
@@ -772,7 +755,6 @@ static struct attribute *touch_attribute_list[] = {
 	&touch_attr_fw_upgrade.attr,
 	&touch_attr_lpwg_data.attr,
 	&touch_attr_lpwg_notify.attr,
-    &touch_attr_tap_to_wake.attr,
 	&touch_attr_keyguard.attr,
 	&touch_attr_ime_status.attr,
 	&touch_attr_quick_cover_status.attr,
