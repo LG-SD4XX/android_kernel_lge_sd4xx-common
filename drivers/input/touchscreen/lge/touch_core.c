@@ -618,7 +618,6 @@ static void touch_send_uevent(struct touch_core_data *ts, int type)
 		input_report_key(ts->input, KEY_WAKEUP, 0);
 		TOUCH_I("Simulate power button release");
 		input_sync(ts->input);
-		}
 	}
 }
 
