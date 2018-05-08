@@ -1406,7 +1406,7 @@ static void hso_serial_set_termios(struct tty_struct *tty, struct ktermios *old)
 	spin_lock_irqsave(&serial->serial_lock, flags);
 	if (serial->port.count)
 		_hso_serial_set_termios(tty, old);
-	else
+	else if (old)
 		tty->termios = *old;
 	spin_unlock_irqrestore(&serial->serial_lock, flags);
 
@@ -2462,8 +2462,10 @@ static void hso_create_rfkill(struct hso_device *hso_dev,
 	char *rfkn;
 
 	rfkn = kzalloc(20, GFP_KERNEL);
-	if (!rfkn)
+	if (!rfkn) {
 		dev_err(dev, "%s - Out of memory\n", __func__);
+		return;
+	}
 
 	snprintf(rfkn, 20, "hso-%d",
 		 interface->altsetting->desc.bInterfaceNumber);

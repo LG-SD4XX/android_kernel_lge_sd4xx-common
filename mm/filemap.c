@@ -36,6 +36,7 @@
 #include <linux/cleancache.h>
 #include <linux/rmap.h>
 #include "internal.h"
+#include "../fs/sreadahead_prof.h"
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/filemap.h>
@@ -1812,7 +1813,11 @@ static void do_sync_mmap_readahead(struct vm_area_struct *vma,
 	/*
 	 * mmap read-around
 	 */
+#ifdef CONFIG_READAHEAD_MMAP_SIZE_ENABLE
+	ra_pages = CONFIG_READAHEAD_MMAP_PAGE_CNT;
+#else
 	ra_pages = max_sane_readahead(ra->ra_pages);
+#endif
 	ra->start = max_t(long, 0, offset - ra_pages / 2);
 	ra->size = ra_pages;
 	ra->async_size = ra_pages / 4;
@@ -1865,6 +1870,7 @@ static void do_async_mmap_readahead(struct vm_area_struct *vma,
  *
  * We never return with VM_FAULT_RETRY and a bit from VM_FAULT_ERROR set.
  */
+
 int filemap_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 {
 	int error;
@@ -1886,6 +1892,14 @@ int filemap_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	 */
 	page = find_get_page(mapping, offset);
 	if (likely(page) && !(vmf->flags & FAULT_FLAG_TRIED)) {
+#ifdef CONFIG_MARK_MMAP_HOT_PAGE_ENABLE
+		if(vma->vm_flags & VM_HOTPAGE) {
+			if(!PageHotpage(page)) {
+				SetPageHotpage(page);
+			}
+			hotpage_accessed(page);
+		}
+#endif
 		/*
 		 * We found the page, so try async readahead before
 		 * waiting for the lock.
@@ -1895,6 +1909,15 @@ int filemap_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 		/* No page in the page cache at all */
 		do_sync_mmap_readahead(vma, ra, file, offset);
 		count_vm_event(PGMAJFAULT);
+		/* LGE_CHANGE_S
+		*
+		* Profile files related to pgmajfault during 1st booting
+		* in order to use the data as readahead args
+		*
+		* matia.kim@lge.com 20130612
+		*/
+		sreadahead_prof(file, 0, 0);
+		/* LGE_CHANGE_E */
 		mem_cgroup_count_vm_event(vma->vm_mm, PGMAJFAULT);
 		ret = VM_FAULT_MAJOR;
 retry_find:

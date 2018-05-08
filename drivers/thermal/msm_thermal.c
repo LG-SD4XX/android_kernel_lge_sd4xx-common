@@ -50,6 +50,14 @@
 #include <linux/uaccess.h>
 #include <linux/uio_driver.h>
 
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+#include <soc/qcom/lge/lge_handle_panic.h>
+#endif
+
+#ifdef CONFIG_LGE_PM_CABLE_DETECTION
+#include <soc/qcom/lge/lge_cable_detection.h>
+#endif
+
 #define CREATE_TRACE_POINTS
 #define TRACE_MSM_THERMAL
 #include <trace/trace_thermal.h>
@@ -2708,6 +2716,10 @@ static void msm_thermal_bite(int zone_id, long temp)
 	int tsens_id = 0;
 	int ret = 0;
 
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+	lge_set_restart_reason(LGE_RB_MAGIC | LGE_ERR_TSENS);
+#endif
+
 	ret = zone_id_to_tsen_id(zone_id, &tsens_id);
 	if (ret < 0) {
 		pr_err("Zone:%d reached temperature:%ld. Err = %d System reset\n",
@@ -3421,6 +3433,9 @@ static void check_temp(struct work_struct *work)
 		check_freq_table();
 
 	do_vdd_restriction();
+#ifdef CONFIG_LGE_PM_CABLE_DETECTION
+	if (!lge_is_factory_cable())
+#endif
 	do_freq_control(temp);
 
 reschedule:

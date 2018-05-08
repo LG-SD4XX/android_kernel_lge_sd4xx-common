@@ -51,6 +51,9 @@ static const struct trace_print_flags pageflag_names[] = {
 #ifdef CONFIG_ZCACHE
 	{1UL << PG_was_active,		"was_active"	},
 #endif
+#ifdef CONFIG_MARK_MMAP_HOT_PAGE_ENABLE
+	{1UL << PG_hotpage,           "PG_hotpage"  },
+#endif
 };
 
 static void dump_flags(unsigned long flags,

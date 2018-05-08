@@ -1273,7 +1273,7 @@ int msm_vidc_smmu_fault_handler(struct iommu_domain *domain,
 		list_for_each_entry(buf, &inst->scratchbufs.list, list)
 			dprintk(VIDC_ERR, "type: %d addr: %pa size: %zu\n",
 				buf->buffer_type, &buf->handle->device_addr,
-				buf->handle->size);
+				buf->handle->size); //LGE_CHANGE, porting for recording by QCT, 2015-12-17, seungmin.hong@lge.com
 		mutex_unlock(&inst->scratchbufs.lock);
 
 		mutex_lock(&inst->persistbufs.lock);
@@ -1281,7 +1281,7 @@ int msm_vidc_smmu_fault_handler(struct iommu_domain *domain,
 		list_for_each_entry(buf, &inst->persistbufs.list, list)
 			dprintk(VIDC_ERR, "type: %d addr: %pa size: %zu\n",
 				buf->buffer_type, &buf->handle->device_addr,
-				buf->handle->size);
+				buf->handle->size); //LGE_CHANGE, porting for recording by QCT, 2015-12-17, seungmin.hong@lge.com
 		mutex_unlock(&inst->persistbufs.lock);
 
 		mutex_lock(&inst->outputbufs.lock);
@@ -1289,7 +1289,7 @@ int msm_vidc_smmu_fault_handler(struct iommu_domain *domain,
 		list_for_each_entry(buf, &inst->outputbufs.list, list)
 			dprintk(VIDC_ERR, "type: %d addr: %pa size: %zu\n",
 				buf->buffer_type, &buf->handle->device_addr,
-				buf->handle->size);
+				buf->handle->size); //LGE_CHANGE, porting for recording by QCT, 2015-12-17, seungmin.hong@lge.com
 		mutex_unlock(&inst->outputbufs.lock);
 	}
 	core->smmu_fault_handled = true;
@@ -1302,7 +1302,6 @@ int msm_vidc_smmu_fault_handler(struct iommu_domain *domain,
 	 */
 	return -ENOSYS;
 }
-
 static int msm_vidc_populate_context_bank(struct device *dev,
 		struct msm_vidc_core *core)
 {

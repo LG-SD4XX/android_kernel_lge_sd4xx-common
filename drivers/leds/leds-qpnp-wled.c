@@ -441,7 +441,14 @@ static int qpnp_wled_set_level(struct qpnp_wled *wled, int level)
 
 	return 0;
 }
-
+#ifdef CONFIG_LGE_PM_SMBCHG_STEP_CHG
+static bool curr_wled_state = true;
+bool get_cur_main_lcd_state(void)
+{
+	return curr_wled_state;
+}
+EXPORT_SYMBOL(get_cur_main_lcd_state);
+#endif
 static int qpnp_wled_module_en(struct qpnp_wled *wled,
 				u16 base_addr, bool state)
 {
@@ -478,6 +485,9 @@ static int qpnp_wled_module_en(struct qpnp_wled *wled,
 			return rc;
 	}
 
+#ifdef CONFIG_LGE_PM_SMBCHG_STEP_CHG
+	curr_wled_state = state;
+#endif
 	return 0;
 }
 
@@ -1748,6 +1758,9 @@ static int qpnp_wled_probe(struct spmi_device *spmi)
 	wled->cdev.brightness_get = qpnp_wled_get;
 
 	wled->cdev.max_brightness = WLED_MAX_LEVEL_4095;
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	wled->prev_state = true; // because of continuous splash screen
+#endif
 
 	rc = led_classdev_register(&spmi->dev, &wled->cdev);
 	if (rc) {

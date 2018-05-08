@@ -60,6 +60,9 @@
 
 #include "atags.h"
 
+unsigned int elf_hwcap2 __read_mostly;
+EXPORT_SYMBOL(elf_hwcap2);
+
 
 #if defined(CONFIG_FPE_NWFPE) || defined(CONFIG_FPE_FASTFPE)
 char fpe_type[8];
@@ -101,9 +104,6 @@ EXPORT_SYMBOL(system_serial_high);
 
 unsigned int elf_hwcap __read_mostly;
 EXPORT_SYMBOL(elf_hwcap);
-
-unsigned int elf_hwcap2 __read_mostly;
-EXPORT_SYMBOL(elf_hwcap2);
 
 char* (*arch_read_hardware_id)(void);
 EXPORT_SYMBOL(arch_read_hardware_id);

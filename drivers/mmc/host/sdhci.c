@@ -16,6 +16,8 @@
 #include <linux/delay.h>
 #include <linux/highmem.h>
 #include <linux/io.h>
+#include <linux/blkdev.h>
+#include <linux/bio.h>
 #include <linux/module.h>
 #include <linux/dma-mapping.h>
 #include <linux/slab.h>
@@ -34,6 +36,7 @@
 #include <trace/events/mmc.h>
 
 #include "sdhci.h"
+#include "sdhci-msm.h"
 #include "cmdq_hci.h"
 
 #define DRIVER_NAME "sdhci"
@@ -41,12 +44,13 @@
 #define DBG(f, x...) \
 	pr_debug(DRIVER_NAME " [%s()]: " f, __func__,## x)
 
-#if defined(CONFIG_LEDS_CLASS) || (defined(CONFIG_LEDS_CLASS_MODULE) && \
-	defined(CONFIG_MMC_SDHCI_MODULE))
+#if (defined(CONFIG_LEDS_CLASS) || (defined(CONFIG_LEDS_CLASS_MODULE) && \
+	defined(CONFIG_MMC_SDHCI_MODULE))) && !defined(CONFIG_MACH_LGE)
 #define SDHCI_USE_LEDS_CLASS
 #endif
 
 #define MAX_TUNING_LOOP 40
+#define MAX_FILE_NAME 128
 
 #define ADMA_SIZE	((128 * 2 + 1) * 4)
 
@@ -103,8 +107,82 @@ static void sdhci_dump_state(struct sdhci_host *host)
 		mmc->parent->power.disable_depth);
 }
 
+/* To find Inode -> dentry -> file_name! */
+static struct inode *bio_get_inode(const struct bio *bio)
+{
+	if (!bio)
+		return NULL;
+
+	if (!bio_has_data((struct bio *)bio))
+		return NULL;
+
+	if (!bio->bi_io_vec)
+		return NULL;
+	if (!bio->bi_io_vec->bv_page)
+		return NULL;
+
+	if (PageAnon(bio->bi_io_vec->bv_page)) {
+		struct inode *inode;
+
+		/* Using direct-io (O_DIRECT) without page cache */
+		inode = dio_bio_get_inode((struct bio *)bio);
+		pr_debug("inode on direct-io, inode = 0x%p.\n", inode);
+
+		return inode;
+	}
+
+	if (!bio->bi_io_vec->bv_page->mapping)
+		return NULL;
+
+	if (!bio->bi_io_vec->bv_page->mapping->host)
+		return NULL;
+
+	return bio->bi_io_vec->bv_page->mapping->host;
+}
+
+
 static void sdhci_dumpregs(struct sdhci_host *host)
 {
+	char file_name[MAX_FILE_NAME];
+	struct mmc_host *mmc;
+	struct mmc_async_req *areq;
+	struct mmc_request *mrq;
+	struct request *req;
+	struct bio *bio;
+	struct inode *inode;
+	struct dentry *dentry;
+
+	mmc = host->mmc;
+	areq = mmc->areq;
+	if(!areq)
+		goto regdump;
+
+	mrq = areq->mrq;
+	if(!mrq)
+		goto regdump;
+
+	req = mrq->req;
+	if(!req)
+		goto regdump;
+
+	bio = req->bio;
+	if(!bio)
+		goto regdump;
+
+	inode = bio_get_inode(bio);
+	if(!inode)
+		goto regdump;
+
+	dentry = d_find_alias(inode);
+	if (dentry) {
+		spin_lock(&dentry->d_lock);
+		strcpy(file_name,(const char *)dentry->d_name.name);
+		pr_info(DRIVER_NAME ":Timeout file_name is %s\n",file_name);
+		spin_unlock(&dentry->d_lock);
+		dput(dentry);
+	}
+
+regdump:
 	pr_info(DRIVER_NAME ": =========== REGISTER DUMP (%s)===========\n",
 		mmc_hostname(host->mmc));
 
@@ -342,7 +420,7 @@ static void sdhci_reinit(struct sdhci_host *host)
 	}
 	sdhci_enable_card_detection(host);
 }
-
+#if !defined(SDHCI_USE_LEDS_CLASS) && !defined(CONFIG_MACH_LGE)
 static void sdhci_activate_led(struct sdhci_host *host)
 {
 	u8 ctrl;
@@ -360,7 +438,7 @@ static void sdhci_deactivate_led(struct sdhci_host *host)
 	ctrl &= ~SDHCI_CTRL_LED;
 	sdhci_writeb(host, ctrl, SDHCI_HOST_CONTROL);
 }
-
+#endif
 #ifdef SDHCI_USE_LEDS_CLASS
 static void sdhci_led_control(struct led_classdev *led,
 	enum led_brightness brightness)
@@ -1713,7 +1791,7 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 
 	WARN_ON(host->mrq != NULL);
 
-#ifndef SDHCI_USE_LEDS_CLASS
+#if !defined(SDHCI_USE_LEDS_CLASS) && !defined(CONFIG_MACH_LGE)
 	if (!(host->quirks2 & SDHCI_QUIRK2_BROKEN_LED_CONTROL))
 		sdhci_activate_led(host);
 #endif
@@ -2376,6 +2454,8 @@ static int sdhci_enhanced_strobe(struct mmc_host *mmc)
 static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 {
 	struct sdhci_host *host = mmc_priv(mmc);
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_msm_host *msm_host = pltfm_host->priv;
 	u16 ctrl;
 	int tuning_loop_counter = MAX_TUNING_LOOP;
 	int err = 0;
@@ -2563,6 +2643,9 @@ out:
 	spin_unlock_irqrestore(&host->lock, flags);
 	sdhci_runtime_pm_put(host);
 
+	if(msm_host->pdata->vreg_data->vdd_data->is_always_on == true)
+		msm_host->pdata->vreg_data->vdd_data->is_always_on=false;
+
 	return err;
 }
 
@@ -2731,7 +2814,7 @@ static void sdhci_tasklet_finish(unsigned long param)
 	host->data = NULL;
 	host->auto_cmd_err_sts = 0;
 
-#ifndef SDHCI_USE_LEDS_CLASS
+#if !defined(SDHCI_USE_LEDS_CLASS) && !defined(CONFIG_MACH_LGE)
 	if (!(host->quirks2 & SDHCI_QUIRK2_BROKEN_LED_CONTROL))
 		sdhci_deactivate_led(host);
 #endif

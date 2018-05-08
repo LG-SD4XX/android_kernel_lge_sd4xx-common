@@ -1178,7 +1178,7 @@ static int __rb_allocate_pages(int nr_pages, struct list_head *pages, int cpu)
 		 * not destabilized.
 		 */
 		bpage = kzalloc_node(ALIGN(sizeof(*bpage), cache_line_size()),
-				    GFP_KERNEL | __GFP_NORETRY,
+				    GFP_KERNEL,
 				    cpu_to_node(cpu));
 		if (!bpage)
 			goto free_pages;
@@ -1186,7 +1186,7 @@ static int __rb_allocate_pages(int nr_pages, struct list_head *pages, int cpu)
 		list_add(&bpage->list, pages);
 
 		page = alloc_pages_node(cpu_to_node(cpu),
-					GFP_KERNEL | __GFP_NORETRY, 0);
+					GFP_KERNEL, 0);
 		if (!page)
 			goto free_pages;
 		bpage->page = page_address(page);
@@ -1693,14 +1693,13 @@ int ring_buffer_resize(struct ring_buffer *buffer, unsigned long size,
 	    !cpumask_test_cpu(cpu_id, buffer->cpumask))
 		return size;
 
-	size = DIV_ROUND_UP(size, BUF_PAGE_SIZE);
-	size *= BUF_PAGE_SIZE;
+	nr_pages = DIV_ROUND_UP(size, BUF_PAGE_SIZE);
 
 	/* we need a minimum of two pages */
-	if (size < BUF_PAGE_SIZE * 2)
-		size = BUF_PAGE_SIZE * 2;
+	if (nr_pages < 2)
+		nr_pages = 2;
 
-	nr_pages = DIV_ROUND_UP(size, BUF_PAGE_SIZE);
+	size = nr_pages * BUF_PAGE_SIZE;
 
 	/*
 	 * Don't succeed if resizing is disabled, as a reader might be

@@ -607,7 +607,11 @@ static int cluster_select(struct lpm_cluster *cluster, bool from_idle)
 
 		best_level = i;
 
+#if defined(CONFIG_ARCH_MSM8940)
+		if (from_idle && sleep_us <= pwr_params->max_residency)
+#else
 		if (sleep_us <= pwr_params->max_residency)
+#endif
 			break;
 	}
 

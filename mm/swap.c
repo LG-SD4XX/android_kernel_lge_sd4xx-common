@@ -618,6 +618,26 @@ void mark_page_accessed(struct page *page)
 }
 EXPORT_SYMBOL(mark_page_accessed);
 
+#ifdef CONFIG_FAST_ACTIVE_LAZY_SHRINK
+void hotpage_accessed(struct page *page)
+{
+	if(unlikely(!PageHotpage(page)))
+		return;
+
+	if(!PageActive(page) && !PageUnevictable(page)) {
+		if (PageLRU(page))
+			activate_page(page);
+		else
+			__lru_cache_activate_page(page);
+	}
+
+	if (!PageReferenced(page)) {
+		SetPageReferenced(page);
+	}
+}
+EXPORT_SYMBOL(hotpage_accessed);
+#endif
+
 static void __lru_cache_add(struct page *page)
 {
 	struct pagevec *pvec = &get_cpu_var(lru_add_pvec);

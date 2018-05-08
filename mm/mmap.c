@@ -1292,6 +1292,10 @@ unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
 
 	*populate = 0;
 
+#ifdef CONFIG_SDCARD_FS_ANDROID_M
+	while (file && (file->f_mode & FMODE_NOMAPPABLE))
+		file = file->f_op->get_lower_file(file);
+#endif
 #ifdef CONFIG_MSM_APP_SETTINGS
 	if (use_app_setting)
 		apply_app_setting_bit(file);
@@ -1561,6 +1565,25 @@ static inline int accountable_mapping(struct file *file, vm_flags_t vm_flags)
 
 	return (vm_flags & (VM_NORESERVE | VM_SHARED | VM_WRITE)) == VM_WRITE;
 }
+#ifdef CONFIG_MARK_MMAP_HOT_PAGE_ENABLE
+#define BOOT_OAT_FILE_NAME "boot.oat"
+#define	BOOT_OAT_FILE_SIZE 8
+static inline int strncmp_ex(const char *cs, const char *ct, size_t count)
+{
+	unsigned char c1, c2;
+
+	while (count) {
+		c1 = *cs++;
+		c2 = *ct++;
+		if (c1 != c2)
+			return c1 < c2 ? -1 : 1;
+		if (!c1)
+			break;
+		count--;
+	}
+	return 0;
+}
+#endif
 
 unsigned long mmap_region(struct file *file, unsigned long addr,
 		unsigned long len, vm_flags_t vm_flags, unsigned long pgoff)
@@ -1634,6 +1657,16 @@ munmap_back:
 	vma->vm_pgoff = pgoff;
 	INIT_LIST_HEAD(&vma->anon_vma_chain);
 
+#ifdef CONFIG_MARK_MMAP_HOT_PAGE_ENABLE
+	// To reduce application entry time...
+	if (file && file->f_path.dentry != NULL) {
+		if(strncmp_ex(BOOT_OAT_FILE_NAME, file->f_path.dentry->d_name.name, BOOT_OAT_FILE_SIZE) == 0) {
+			vma->vm_flags = (vm_flags & ~(VM_RAND_READ | VM_SEQ_READ)) | VM_HOTPAGE;
+			if(IS_ENABLED(CONFIG_FAST_ACTIVE_LAZY_SHRINK_DEBUG))
+				printk("Hotpage binding : %s\n", file->f_path.dentry->d_name.name);
+		}
+	}
+#endif
 	if (file) {
 		if (vm_flags & VM_DENYWRITE) {
 			error = deny_write_access(file);

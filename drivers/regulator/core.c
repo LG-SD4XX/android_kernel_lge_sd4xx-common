@@ -1830,6 +1830,27 @@ static void _regulator_enable_delay(unsigned int delay)
 		udelay(us);
 }
 
+#if IS_ENABLED(CONFIG_LGE_MIPI_DSI_LGD_K7J_FHD_VIDEO_INCELL_LCD_PANEL)
+int lge_ttw_mode_ctrl(struct regulator *regulator, int enable)
+{
+	struct regulator_dev *rdev = regulator->rdev;
+	int ret = 0;
+
+	if (regulator->always_on)
+		return 0;
+
+	mutex_lock(&rdev->mutex);
+	if (rdev->desc->ops->ctrl_ttw_mode)
+		ret = rdev->desc->ops->ctrl_ttw_mode(rdev, enable);
+		if (ret)
+			pr_err("%s: failed to ctrl ttw mode \n", __func__);
+	mutex_unlock(&rdev->mutex);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(lge_ttw_mode_ctrl);
+#endif
+
 static int _regulator_do_enable(struct regulator_dev *rdev)
 {
 	int ret, delay;

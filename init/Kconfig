@@ -817,7 +817,7 @@ config IKCONFIG_PROC
 config LOG_BUF_SHIFT
 	int "Kernel log buffer size (16 => 64KB, 17 => 128KB)"
 	range 12 21
-	default 17
+	default 19
 	depends on PRINTK
 	help
 	  Select the minimal kernel log buffer size as a power of 2.
@@ -1190,6 +1190,12 @@ config SCHED_QHMP
 	  small task classification for task packing, mostly_idle
 	  packing knobs and energy-aware task placements and load
 	  balancing.
+
+config LGE_BMH
+	bool "LGE BMH(Big core Migration Holdback Feature"
+	depends on SCHED_HMP
+	help
+	  This options enables the LGE BMH feature.
 
 config CHECKPOINT_RESTORE
 	bool "Checkpoint/restore support" if EXPERT

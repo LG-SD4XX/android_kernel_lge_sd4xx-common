@@ -288,6 +288,45 @@ void global_dirty_limits(unsigned long *pbackground, unsigned long *pdirty)
 	trace_global_dirty_state(background, dirty);
 }
 
+#ifdef CONFIG_VARIABLE_DIRTY_RATIO
+/**
+ * global_dirty_limits_for_external_storage - background-writeback and dirty-throttling thresholds
+ *
+ * Calculate the dirty thresholds based on sysctl parameters
+ * - vm.dirty_background_ratio  or  vm.dirty_background_bytes
+ * - vm.dirty_ratio             or  vm.dirty_bytes
+ * The dirty limits will be lifted by 1/4 for PF_LESS_THROTTLE (ie. nfsd) and
+ * real-time tasks.
+ */
+static void global_dirty_limits_for_external_storage(unsigned long *pbackground, unsigned long *pdirty) {
+	const unsigned long available_memory = global_dirtyable_memory();
+	unsigned long background;
+	unsigned long dirty;
+	struct task_struct *tsk;
+
+	if (vm_dirty_bytes)
+		dirty = DIV_ROUND_UP(vm_dirty_bytes, PAGE_SIZE);
+	else
+		dirty = ((vm_dirty_ratio+30) * available_memory) / 100;
+
+	if (dirty_background_bytes)
+		background = DIV_ROUND_UP(dirty_background_bytes, PAGE_SIZE);
+	else
+		background = (dirty_background_ratio * available_memory) / 100;
+
+	if (background >= dirty)
+		background = dirty / 2;
+	tsk = current;
+	if (tsk->flags & PF_LESS_THROTTLE || rt_task(tsk)) {
+		background += background / 4;
+		dirty += dirty / 4;
+	}
+	*pbackground = background;
+	*pdirty = dirty;
+	trace_global_dirty_state(background, dirty);
+}
+#endif
+
 /**
  * zone_dirty_limit - maximum number of dirty pages allowed in a zone
  * @zone: the zone
@@ -503,6 +542,30 @@ int bdi_set_max_ratio(struct backing_dev_info *bdi, unsigned max_ratio)
 	return ret;
 }
 EXPORT_SYMBOL(bdi_set_max_ratio);
+
+#ifdef CONFIG_CHECK_SYNC_TIME
+/*
+ * "check_and_sync" is changed to "bg_sync" during suspend syncing filesystems.
+ * Although below codes related with "check_and_sync" have to be deleted together,
+ * We can't eliminate this codes because "max_sync_count" variable is using
+ * on another performance patch in 8937 n branch. (90559ec731b80801630051f8db5be5a0c651fb0f)
+ * When the variable will be not using anymore, we would erase this.
+ */
+int bdi_set_max_sync_count(struct backing_dev_info *bdi, unsigned max_sync_count)
+{
+	int ret = 0;
+
+	if (max_sync_count > 256)
+		return -EINVAL;
+
+	spin_lock_bh(&bdi_lock);
+	bdi->max_sync_count = max_sync_count;
+	spin_unlock_bh(&bdi_lock);
+
+	return ret;
+}
+EXPORT_SYMBOL(bdi_set_max_sync_count);
+#endif
 
 static unsigned long dirty_freerun_ceiling(unsigned long thresh,
 					   unsigned long bg_thresh)
@@ -1376,7 +1439,19 @@ static void balance_dirty_pages(struct address_space *mapping,
 					global_page_state(NR_UNSTABLE_NFS);
 		nr_dirty = nr_reclaimable + global_page_state(NR_WRITEBACK);
 
+#ifdef CONFIG_VARIABLE_DIRTY_RATIO
+		/*
+		 * sdcard has lower speed than emmc
+		 * when write to sdcard, useless io_schedule_timeout excuted
+		 * If we change dirty_ratio, we can fix this.
+		 */
+		if(!bdi->max_sync_count)
+			global_dirty_limits(&background_thresh, &dirty_thresh);
+		else
+			global_dirty_limits_for_external_storage(&background_thresh, &dirty_thresh);
+#else
 		global_dirty_limits(&background_thresh, &dirty_thresh);
+#endif
 
 		if (unlikely(strictlimit)) {
 			bdi_dirty_limits(bdi, dirty_thresh, background_thresh,

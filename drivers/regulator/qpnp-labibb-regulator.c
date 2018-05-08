@@ -26,6 +26,9 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/of_regulator.h>
 #include <linux/qpnp/qpnp-revid.h>
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+#include <soc/qcom/lge/board_lge.h>
+#endif
 
 #define QPNP_LABIBB_REGULATOR_DRIVER_NAME	"qcom,qpnp-labibb-regulator"
 
@@ -1076,8 +1079,26 @@ static int qpnp_labibb_ttw_enter_ibb_pmi8996(struct qpnp_labibb *labibb)
 	int rc;
 	u8 val;
 
-	val = IBB_BYPASS_PWRDN_DLY2_BIT | IBB_FAST_STARTUP;
-	rc = qpnp_labibb_write(labibb, labibb->ibb_base + REG_IBB_SPARE_CTL,
+	val = 0x03;
+	rc = qpnp_labibb_write(labibb, labibb->ibb_base +
+				REG_IBB_SOFT_START_CTL, &val, 1);
+	if (rc) {
+		pr_err("qpnp_labibb_write register %x failed rc = %d\n",
+			REG_IBB_SOFT_START_CTL, rc);
+		return rc;
+	}
+
+	val = IBB_MODULE_RDY_EN;
+	rc = qpnp_labibb_write(labibb, labibb->ibb_base + REG_IBB_MODULE_RDY,
+		&val, 1);
+	if (rc) {
+		pr_err("qpnp_labibb_write register %x failed rc = %d\n",
+				REG_IBB_MODULE_RDY, rc);
+		return rc;
+	}
+
+	val = 0;
+	rc = qpnp_labibb_write(labibb, labibb->ibb_base + REG_IBB_PD_CTL,
 				&val, 1);
 	if (rc)
 		pr_err("qpnp_labibb_write register %x failed rc = %d\n",
@@ -1112,6 +1133,56 @@ static int qpnp_labibb_ttw_enter_ibb_pmi8950(struct qpnp_labibb *labibb)
 	if (rc)
 		pr_err("qpnp_labibb_write register %x failed rc = %d\n",
 				REG_IBB_MODULE_RDY, rc);
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+#if IS_ENABLED(CONFIG_MACH_MSM8937_PH2_GLOBAL_COM) || IS_ENABLED(CONFIG_MACH_MSM8937_PH2_CMO_CN) || IS_ENABLED(CONFIG_MACH_MSM8937_PH2N_GLOBAL_CA)
+		val = 0;
+		if(lge_get_panel_type() == PH2_JDI) {
+			val = IBB_PD_CTL_EN;
+		}
+		rc = qpnp_labibb_write(labibb, labibb->ibb_base + REG_IBB_PD_CTL,
+					&val, 1);
+		if (rc) {
+			pr_err("qpnp_labibb_read register %x failed rc = %d\n",
+				REG_IBB_PD_CTL, rc);
+			return rc;
+		}
+
+		val = 0;
+		if(lge_get_panel_type() == PH2_JDI) {
+			val |= (1 << IBB_PWRUP_PWRDN_CTL_1_DLY1_SHIFT);
+
+//			if (labibb->mode != QPNP_LABIBB_STANDALONE_MODE) build error
+					val |= (IBB_PWRUP_PWRDN_CTL_1_EN_DLY1 |
+					IBB_PWRUP_PWRDN_CTL_1_LAB_VREG_OK |
+					PWRUP_PWRDN_CTL_1_DISCHARGE_EN);
+		}
+
+		rc = qpnp_labibb_sec_write(labibb, labibb->ibb_base,
+					REG_IBB_PWRUP_PWRDN_CTL_1, &val, 1);
+		if (rc) {
+			pr_err("qpnp_labibb_write register %x failed rc = %d\n",
+				REG_IBB_PWRUP_PWRDN_CTL_1, rc);
+			return rc;
+		}
+#elif IS_ENABLED(CONFIG_LGE_MIPI_DSI_LGD_K7J_FHD_VIDEO_INCELL_LCD_PANEL)
+		val = 0;
+		val |= (1 << IBB_PWRUP_PWRDN_CTL_1_DLY1_SHIFT);
+
+//		if (labibb->mode != QPNP_LABIBB_STANDALONE_MODE) build error
+				val |= (IBB_PWRUP_PWRDN_CTL_1_EN_DLY1 |
+				IBB_PWRUP_PWRDN_CTL_1_LAB_VREG_OK |
+				PWRUP_PWRDN_CTL_1_DISCHARGE_EN);
+
+		rc = qpnp_labibb_sec_write(labibb, labibb->ibb_base,
+					REG_IBB_PWRUP_PWRDN_CTL_1, &val, 1);
+		if (rc) {
+			pr_err("qpnp_labibb_write register %x failed rc = %d\n",
+				REG_IBB_PWRUP_PWRDN_CTL_1, rc);
+			return rc;
+		}
+#endif
+#endif
 
 	return rc;
 }
@@ -1172,6 +1243,13 @@ static int qpnp_labibb_regulator_ttw_mode_enter(struct qpnp_labibb *labibb)
 		}
 	} else {
 		val = LAB_PD_CTL_DISABLE_PD;
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+#if IS_ENABLED(CONFIG_MACH_MSM8937_PH2_GLOBAL_COM) || IS_ENABLED(CONFIG_MACH_MSM8937_PH2_CMO_CN) || IS_ENABLED(CONFIG_MACH_MSM8937_PH2N_GLOBAL_CA)
+		if(lge_get_panel_type() == PH2_JDI) {
+			val = LAB_PD_CTL_STRONG_PULL;
+		}
+#endif
+#endif
 		rc = qpnp_labibb_write(labibb, labibb->lab_base +
 				REG_LAB_PD_CTL, &val, 1);
 		if (rc) {
@@ -1183,6 +1261,15 @@ static int qpnp_labibb_regulator_ttw_mode_enter(struct qpnp_labibb *labibb)
 		val = LAB_SPARE_DISABLE_SCP_BIT;
 		if (labibb->pmic_rev_id->pmic_subtype != PMI8950)
 			val |= LAB_SPARE_TOUCH_WAKE_BIT;
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+#if IS_ENABLED(CONFIG_MACH_MSM8937_PH2_GLOBAL_COM) || IS_ENABLED(CONFIG_MACH_MSM8937_PH2_CMO_CN) || IS_ENABLED(CONFIG_MACH_MSM8937_PH2N_GLOBAL_CA)
+		if(lge_get_panel_type() == PH2_JDI) {
+			val = LAB_SPARE_TOUCH_WAKE_BIT;
+		}
+#elif IS_ENABLED(CONFIG_LGE_MIPI_DSI_LGD_K7J_FHD_VIDEO_INCELL_LCD_PANEL)
+		val = LAB_SPARE_TOUCH_WAKE_BIT;
+#endif
+#endif
 		rc = qpnp_labibb_write(labibb, labibb->lab_base +
 				REG_LAB_SPARE_CTL, &val, 1);
 		if (rc) {
@@ -1226,6 +1313,7 @@ static int qpnp_labibb_regulator_ttw_mode_enter(struct qpnp_labibb *labibb)
 		return rc;
 	}
 	labibb->in_ttw_mode = true;
+	pr_info("%s: Done \n", __func__);
 	return 0;
 }
 
@@ -1303,8 +1391,28 @@ static int qpnp_labibb_regulator_ttw_mode_exit(struct qpnp_labibb *labibb)
 	}
 
 	labibb->in_ttw_mode = false;
+	pr_info("%s: Done \n", __func__);
 	return rc;
 }
+
+#if IS_ENABLED(CONFIG_LGE_MIPI_DSI_LGD_K7J_FHD_VIDEO_INCELL_LCD_PANEL)
+static int lge_qpnp_ttw_mode_ctrl(struct regulator_dev *rdev, int enable)
+{
+	int rc = 0;
+
+	struct qpnp_labibb *labibb  = rdev_get_drvdata(rdev);
+
+	if(enable) {
+		labibb->ttw_en = true;
+		pr_info("%s : ttw mode enabled [%d] \n", __func__, labibb->ttw_en);
+	} else {
+		labibb->ttw_en = false;
+		pr_info("%s : ttw mode disabled [%d] \n", __func__, labibb->ttw_en);
+	}
+
+	return rc;
+}
+#endif
 
 static int qpnp_labibb_regulator_enable(struct qpnp_labibb *labibb)
 {
@@ -1678,6 +1786,9 @@ static struct regulator_ops qpnp_lab_ops = {
 	.is_enabled		= qpnp_lab_regulator_is_enabled,
 	.set_voltage		= qpnp_lab_regulator_set_voltage,
 	.get_voltage		= qpnp_lab_regulator_get_voltage,
+#if IS_ENABLED(CONFIG_LGE_MIPI_DSI_LGD_K7J_FHD_VIDEO_INCELL_LCD_PANEL)
+	.ctrl_ttw_mode		= lge_qpnp_ttw_mode_ctrl,
+#endif
 };
 
 static int register_qpnp_lab_regulator(struct qpnp_labibb *labibb,
@@ -2360,6 +2471,9 @@ static struct regulator_ops qpnp_ibb_ops = {
 	.is_enabled		= qpnp_ibb_regulator_is_enabled,
 	.set_voltage		= qpnp_ibb_regulator_set_voltage,
 	.get_voltage		= qpnp_ibb_regulator_get_voltage,
+#if IS_ENABLED(CONFIG_LGE_MIPI_DSI_LGD_K7J_FHD_VIDEO_INCELL_LCD_PANEL)
+	.ctrl_ttw_mode		= lge_qpnp_ttw_mode_ctrl,
+#endif
 };
 
 static int register_qpnp_ibb_regulator(struct qpnp_labibb *labibb,
@@ -2786,6 +2900,14 @@ static int qpnp_labibb_regulator_probe(struct spmi_device *spmi)
 		pr_err("Invalid mode for TTW\n");
 		return -EINVAL;
 	}
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+#if IS_ENABLED(CONFIG_MACH_MSM8937_PH2_GLOBAL_COM) || IS_ENABLED(CONFIG_MACH_MSM8937_PH2_CMO_CN) || IS_ENABLED(CONFIG_MACH_MSM8937_PH2N_GLOBAL_CA)
+	if(lge_get_panel_type() == PH2_JDI) {
+		labibb->ttw_en = true;
+	}
+#endif
+#endif
 
 	labibb->ttw_force_lab_on = of_property_read_bool(
 		labibb->dev->of_node, "qcom,labibb-ttw-force-lab-on");

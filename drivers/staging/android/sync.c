@@ -26,6 +26,7 @@
 #include <linux/uaccess.h>
 #include <linux/anon_inodes.h>
 #include <linux/sync.h>
+#include <linux/spinlock.h>
 
 #define CREATE_TRACE_POINTS
 #include "trace/sync.h"

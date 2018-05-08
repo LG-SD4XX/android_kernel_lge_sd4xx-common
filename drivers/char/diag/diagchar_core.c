@@ -47,6 +47,10 @@
 #include <linux/compat.h>
 #endif
 
+#ifdef CONFIG_LGE_DIAG_BYPASS
+#include "lg_diag_bypass.h"
+#endif
+
 MODULE_DESCRIPTION("Diag Char Driver");
 MODULE_LICENSE("GPL v2");
 MODULE_VERSION("1.0");
@@ -698,6 +702,11 @@ struct diag_cmd_reg_entry_t *diag_cmd_search(
 						continue;
 					}
 				}
+#ifdef CONFIG_LGE_DIAG_CMD_FORWARD_MODEM
+				if ((entry->cmd_code == 0x5D) && (item->proc != PERIPHERAL_MODEM)) {
+					continue;
+				}
+#endif
 				return &item->entry;
 			}
 		}
@@ -2950,6 +2959,11 @@ static ssize_t diagchar_write(struct file *file, const char __user *buf,
 	int err = 0;
 	int pkt_type = 0;
 	int payload_len = 0;
+
+#ifdef CONFIG_LGE_DM_APP
+    char *buf_cmp;
+#endif
+
 	const char __user *payload_buf = NULL;
 
 	/*
@@ -2969,7 +2983,20 @@ static ssize_t diagchar_write(struct file *file, const char __user *buf,
 		return -EIO;
 	}
 
+#ifdef CONFIG_LGE_DM_APP
+    if (driver->logging_mode == DM_APP_MODE) {
+        /* only diag cmd #250 for supporting testmode tool */
+        buf_cmp = (char *)buf + 4;
+        if (*(buf_cmp) != 0xFA)
+            return 0;
+    }
+#endif
+
+#ifdef CONFIG_LGE_DIAG_BYPASS
+	if (driver->logging_mode == DIAG_USB_MODE && !driver->usb_connected && !lge_bypass_status()) {
+#else
 	if (driver->logging_mode == DIAG_USB_MODE && !driver->usb_connected) {
+#endif
 		if (!((pkt_type == DCI_DATA_TYPE) ||
 		    (pkt_type == DCI_PKT_TYPE) ||
 		    (pkt_type & DATA_TYPE_DCI_LOG) ||

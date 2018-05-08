@@ -625,6 +625,10 @@ static int aac_in_open(struct inode *inode, struct file *file)
 			pr_err("%s:session id %d: NT Open failed rc=%d\n",
 				__func__, audio->ac->session, rc);
 			rc = -ENODEV;
+#if 1
+			dump_stack();
+			BUG();
+#endif
 			goto fail;
 		}
 		audio->buf_cfg.meta_info_enable = 0x01;

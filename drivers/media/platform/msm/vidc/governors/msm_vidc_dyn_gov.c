@@ -60,8 +60,8 @@ const unsigned long NOMINAL_BW_MBPS = 6000 /* ideally 320 Mhz */,
 	SVS_BW_MBPS = 2000 /* ideally 100 Mhz */;
 
 /* converts Mbps to bps (the "b" part can be bits or bytes based on context) */
-#define kbps(__mbps) ((__mbps) * 1000)
-#define bps(__mbps) (kbps(__mbps) * 1000)
+#define kbps(__mbps) ((__mbps) * 1000) //LGE_CHANGE, porting for recording by QCT, 2015-12-17, seungmin.hong@lge.com
+#define bps(__mbps) (kbps(__mbps) * 1000) //LGE_CHANGE, porting for recording by QCT, 2015-12-17, seungmin.hong@lge.com
 
 #define GENERATE_SCENARIO_PROFILE(__average, __worst) {                        \
 	[SCENARIO_AVERAGE] = (__average),                                      \
@@ -200,7 +200,7 @@ static fp_t __compression_ratio(struct lut const *entry, int bpp,
 struct dump {
 	char *key;
 	char *format;
-	size_t val;
+	size_t val; //LGE_CHANGE, porting for recording by QCT, 2015-12-17, seungmin.hong@lge.com
 };
 
 static void __dump(struct dump dump[], int len)
@@ -223,6 +223,7 @@ static void __dump(struct dump dump[], int len)
 				snprintf(formatted_line, sizeof(formatted_line),
 						format_line, dump[c].val);
 			} else {
+/*LGE_CHANGE_S, porting for recording by QCT, 2015-12-17, seungmin.hong@lge.com*/
 				size_t integer_part, fractional_part;
 
 				integer_part = fp_int(dump[c].val);
@@ -232,8 +233,7 @@ static void __dump(struct dump dump[], int len)
 						dump[c].key, integer_part,
 						fractional_part,
 						fp_frac_base());
-
-
+/*LGE_CHANGE_E, porting for recording by QCT, 2015-12-17, seungmin.hong@lge.com*/
 			}
 		}
 

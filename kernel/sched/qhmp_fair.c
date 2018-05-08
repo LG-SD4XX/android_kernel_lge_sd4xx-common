@@ -2604,6 +2604,16 @@ done:
 	sched_downmigrate = down_migrate;
 }
 
+#ifdef CONFIG_LGE_BMH
+#define BMHB_MAX_CS_IP (200)
+#define BMHB_MIN_CS (1*1024)
+static unsigned int __read_mostly sched_bmhb_cs = 0;
+unsigned int __read_mostly sysctl_sched_bmhb_cs = 0;
+static unsigned int __read_mostly sched_bmhb_load;
+unsigned int __read_mostly sysctl_sched_bmhb_load_pct = 70;
+static int bmhb_stat = 0;
+#endif
+
 void set_hmp_defaults(void)
 {
 	sched_spill_load =
@@ -2613,6 +2623,11 @@ void set_hmp_defaults(void)
 		pct_to_real(sysctl_sched_small_task_pct);
 
 	update_up_down_migrate();
+
+#ifdef CONFIG_LGE_BMH
+	sched_bmhb_load =
+		pct_to_real(sysctl_sched_bmhb_load_pct);
+#endif
 
 #ifdef CONFIG_SCHED_FREQ_INPUT
 	sched_heavy_task =
@@ -3328,6 +3343,17 @@ static int select_best_cpu(struct task_struct *p, int target, int reason,
 						i), i),
 				     cpu_temp(i));
 
+#ifdef CONFIG_LGE_BMH
+		if (bmhb_stat && !reason &&
+			cpu_rq(i)->capacity > task_rq(p)->capacity) {
+				continue;
+		} else {
+		    tload =  scale_load_to_cpu(task_load(p), i);
+			if (skip_cpu(trq, rq, i, tload, reason))
+				continue;
+		}
+#endif
+
 		if (skip_freq_domain(trq, rq, reason)) {
 			cpumask_andnot(&search_cpus, &search_cpus,
 						&rq->freq_domain_cpumask);
@@ -3883,7 +3909,22 @@ int sched_hmp_proc_update_handler(struct ctl_table *table, int write,
 	int ret;
 	unsigned int old_val;
 	unsigned int *data = (unsigned int *)table->data;
-	int update_min_nice = 0;
+	int update_task_count = 0;
+
+	if (!sched_enable_hmp)
+		return 0;
+
+	/*
+	 * The policy mutex is acquired with cpu_hotplug.lock
+	 * held from cpu_up()->cpufreq_governor_interactive()->
+	 * sched_set_window(). So enforce the same order here.
+	 */
+	if (write && (data == &sysctl_sched_upmigrate_pct ||
+	    data == &sysctl_sched_small_task_pct ||
+	    data == (unsigned int *)&sysctl_sched_upmigrate_min_nice)) {
+		update_task_count = 1;
+		get_online_cpus();
+	}
 
 	mutex_lock(&policy_mutex);
 
@@ -3902,13 +3943,25 @@ int sched_hmp_proc_update_handler(struct ctl_table *table, int write,
 		goto done;
 	}
 
+#ifdef CONFIG_LGE_BMH
+	if (data == &sysctl_sched_bmhb_cs)
+	{
+	   if(*data > BMHB_MAX_CS_IP) {
+		*data = old_val;
+		 ret = -EINVAL;
+	   } else {
+	     sched_bmhb_cs = 1024 * sysctl_sched_bmhb_cs / 100;
+	   }
+	   goto done;
+	}
+#endif
+
 	if (data == (unsigned int *)&sysctl_sched_upmigrate_min_nice) {
 		if ((*(int *)data) < -20 || (*(int *)data) > 19) {
 			*data = old_val;
 			ret = -EINVAL;
 			goto done;
 		}
-		update_min_nice = 1;
 	} else {
 		/* all tunables other than min_nice are in percentage */
 		if (sysctl_sched_downmigrate_pct >
@@ -3927,21 +3980,17 @@ int sched_hmp_proc_update_handler(struct ctl_table *table, int write,
 	 * includes taking runqueue lock of all online cpus and re-initiatizing
 	 * their big/small counter values based on changed criteria.
 	 */
-	if ((data == &sysctl_sched_upmigrate_pct ||
-	     data == &sysctl_sched_small_task_pct || update_min_nice)) {
-		get_online_cpus();
+	if (update_task_count)
 		pre_big_small_task_count_change(cpu_online_mask);
-	}
 
 	set_hmp_defaults();
 
-	if ((data == &sysctl_sched_upmigrate_pct ||
-	     data == &sysctl_sched_small_task_pct || update_min_nice)) {
+	if (update_task_count)
 		post_big_small_task_count_change(cpu_online_mask);
-		put_online_cpus();
-	}
 
 done:
+	if (update_task_count)
+		put_online_cpus();
 	mutex_unlock(&policy_mutex);
 	return ret;
 }
@@ -4072,11 +4121,21 @@ static inline int migration_needed(struct rq *rq, struct task_struct *p)
 	if (sched_cpu_high_irqload(cpu_of(rq)))
 		return IRQLOAD_MIGRATION;
 
+#ifdef CONFIG_LGE_BMH
+    if ((nice > sched_upmigrate_min_nice || upmigrate_discouraged(p) || bmhb_stat) &&
+			 rq->capacity > min_capacity)
+#else
 	if ((nice > sched_upmigrate_min_nice || upmigrate_discouraged(p)) &&
 			 rq->capacity > min_capacity)
 		return DOWN_MIGRATION;
+#endif
+		return DOWN_MIGRATION;
 
+#ifdef CONFIG_LGE_BMH
+    if (!bmhb_stat && !task_will_fit(p, cpu_of(rq)))
+#else
 	if (!task_will_fit(p, cpu_of(rq)))
+#endif
 		return UP_MIGRATION;
 
 	if (sysctl_sched_enable_power_aware &&
@@ -8013,6 +8072,33 @@ static inline void init_sd_lb_stats(struct sd_lb_stats *sds)
 }
 
 #ifdef CONFIG_SCHED_HMP
+#ifdef CONFIG_LGE_BMH
+static int
+check_and_update_bmhb_stat(struct cpumask *cpus, u64 tload)
+{
+	int nr_cpus = 0;
+	int stat = 0;
+	struct cpumask online_cpus;
+
+	if (capacity_scale > sched_bmhb_cs || capacity_scale < BMHB_MIN_CS) {
+		goto update_stat;
+	}
+
+	cpumask_and(&online_cpus, cpus, cpu_online_mask);
+
+	nr_cpus = cpumask_weight(&online_cpus);
+
+	if (tload < (u64)nr_cpus * (u64)sched_bmhb_load)
+		stat = 1;
+
+update_stat:
+	if (bmhb_stat != stat) {
+		bmhb_stat = stat;
+		//pr_info("bmhb stat: %d\n", stat);
+	}
+	return stat;
+}
+#endif
 
 static int
 bail_inter_cluster_balance(struct lb_env *env, struct sd_lb_stats *sds)
@@ -8021,6 +8107,11 @@ bail_inter_cluster_balance(struct lb_env *env, struct sd_lb_stats *sds)
 
 	if (group_rq_capacity(sds->local) <= group_rq_capacity(sds->busiest))
 		return 0;
+
+#ifdef CONFIG_LGE_BMH
+	if (check_and_update_bmhb_stat(sched_group_cpus(sds->busiest), sds->busiest_stat.group_cpu_load))
+		return 1;
+#endif
 
 	if (sds->busiest_stat.sum_nr_big_tasks)
 		return 0;

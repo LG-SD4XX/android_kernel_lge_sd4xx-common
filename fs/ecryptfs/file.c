@@ -93,6 +93,9 @@ ecryptfs_filldir(void *dirent, const char *lower_name, int lower_namelen,
 		printk(KERN_ERR "%s: Error attempting to decode and decrypt "
 		       "filename [%s]; rc = [%d]\n", __func__, lower_name,
 		       rc);
+		printk(KERN_ERR " [CCAudit] %s: Error attempting to decode and decrypt "
+		       "filename [%s]; rc = [%d]\n", __func__, lower_name,
+		       rc);
 		goto out;
 	}
 	buf->caller->pos = buf->ctx.pos;
@@ -178,6 +181,19 @@ out:
 	return rc;
 }
 
+static int ecryptfs_mmap(struct file *file, struct vm_area_struct *vma)
+{
+    struct file *lower_file = ecryptfs_file_to_lower(file);
+    /*
+     * Don't allow mmap on top of file systems that don't support it
+     * natively.  If FILESYSTEM_MAX_STACK_DEPTH > 2 or ecryptfs
+     * allows recursive mounting, this will need to be extended.
+     */
+    if (!lower_file->f_op->mmap)
+        return -ENODEV;
+    return generic_file_mmap(file, vma);
+}
+
 /**
  * ecryptfs_open
  * @inode: inode speciying file to open
@@ -205,6 +221,8 @@ static int ecryptfs_open(struct inode *inode, struct file *file)
 	if (!file_info) {
 		ecryptfs_printk(KERN_ERR,
 				"Error attempting to allocate memory\n");
+		ecryptfs_printk(KERN_ERR,
+				" [CCAudit] Error attempting to allocate memory\n");
 		rc = -ENOMEM;
 		goto out;
 	}
@@ -220,6 +238,10 @@ static int ecryptfs_open(struct inode *inode, struct file *file)
 	rc = ecryptfs_get_lower_file(ecryptfs_dentry, inode);
 	if (rc) {
 		printk(KERN_ERR "%s: Error attempting to initialize "
+			"the lower file for the dentry with name "
+			"[%pd]; rc = [%d]\n", __func__,
+			ecryptfs_dentry, rc);
+		printk(KERN_ERR " [CCAudit] %s: Error attempting to initialize "
 			"the lower file for the dentry with name "
 			"[%pd]; rc = [%d]\n", __func__,
 			ecryptfs_dentry, rc);
@@ -254,10 +276,12 @@ static int ecryptfs_open(struct inode *inode, struct file *file)
 
 		ret = vfs_fsync(file, false);
 
-		if (ret)
+		if (ret) {
 			ecryptfs_printk(KERN_ERR,
 				"failed to sync file ret = %d.\n", ret);
-
+			ecryptfs_printk(KERN_ERR,
+				" [CCAudit] failed to sync file ret = %d.\n", ret);
+		}
 		get_events()->open_cb(ecryptfs_inode_to_lower(inode),
 			crypt_stat);
 
@@ -398,7 +422,7 @@ const struct file_operations ecryptfs_main_fops = {
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = ecryptfs_compat_ioctl,
 #endif
-	.mmap = generic_file_mmap,
+	.mmap = ecryptfs_mmap,
 	.open = ecryptfs_open,
 	.flush = ecryptfs_flush,
 	.release = ecryptfs_release,

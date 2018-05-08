@@ -528,6 +528,22 @@ static struct ctl_table kern_table[] = {
 	},
 #endif
 #endif
+#ifdef CONFIG_LGE_BMH
+    {
+		.procname	= "sched_bmhb_cs",
+		.data		= &sysctl_sched_bmhb_cs,
+		.maxlen		= sizeof(unsigned int),
+		.mode		= 0644,
+		.proc_handler	= sched_hmp_proc_update_handler,
+	},
+	{
+		.procname	= "sched_bmhb_load",
+		.data		= &sysctl_sched_bmhb_load_pct,
+		.maxlen		= sizeof(unsigned int),
+		.mode		= 0644,
+		.proc_handler	= sched_hmp_proc_update_handler,
+	},
+#endif
 	{
 		.procname	= "sched_boost",
 		.data		= &sysctl_sched_boost,
