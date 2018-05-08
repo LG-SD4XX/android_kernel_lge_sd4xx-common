@@ -1,0 +1,13 @@
+config MACH_LGE
+	bool "Machine LGE"
+	help
+	  Support for machine LGE.
+
+menu "LGE Board Selection"
+
+config MACH_MSM8937_PH2N_GSM_US
+	bool "MSM8937 PH2N_GSM_US"
+	depends on ARCH_MSM8916
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8937 PH2N_GSM_US devices (TMO/MPCS).
