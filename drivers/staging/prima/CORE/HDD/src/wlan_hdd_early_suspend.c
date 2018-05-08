@@ -106,6 +106,25 @@ extern tVOS_CON_MODE hdd_get_conparam ( void );
 static struct timer_list ssr_timer;
 static bool ssr_timer_started;
 
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+void inline check_and_set_suspend_resume_mcbc_filter(hdd_context_t *pHddCtx)
+{
+    hddLog(VOS_TRACE_LEVEL_INFO,
+       FL("offload: sus_res_mcbc_filter_valid: %d sus_res_mcbc_filter: %d configuredMcBcFilter: %d"),
+       pHddCtx->sus_res_mcastbcast_filter_valid,
+       pHddCtx->sus_res_mcastbcast_filter,
+       pHddCtx->configuredMcastBcastFilter);
+    if ( VOS_FALSE == pHddCtx->sus_res_mcastbcast_filter_valid)
+    {
+       pHddCtx->sus_res_mcastbcast_filter =
+           pHddCtx->configuredMcastBcastFilter;
+       pHddCtx->sus_res_mcastbcast_filter_valid = VOS_TRUE;
+       hddLog(VOS_TRACE_LEVEL_INFO,
+           FL("offload: saving sus_res_mcastbcast_filter = %d"),
+           pHddCtx->sus_res_mcastbcast_filter);
+    }
+}
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
 
 #ifdef FEATURE_WLAN_DIAG_SUPPORT
 /**
@@ -504,6 +523,8 @@ void __hdd_ipv6_notifier_work_queue(struct work_struct *work)
         return;
     }
 
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+#if 0
     if ( VOS_FALSE == pHddCtx->sus_res_mcastbcast_filter_valid)
     {
         pHddCtx->sus_res_mcastbcast_filter =
@@ -512,11 +533,17 @@ void __hdd_ipv6_notifier_work_queue(struct work_struct *work)
                         pHddCtx->sus_res_mcastbcast_filter);
         pHddCtx->sus_res_mcastbcast_filter_valid = VOS_TRUE;
     }
+#endif
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
 
     if ((eConnectionState_Associated ==
                 (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.connState)
         && (pHddCtx->hdd_wlan_suspended))
     {
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+        check_and_set_suspend_resume_mcbc_filter(pHddCtx);
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+
         // This invocation being part of the IPv6 registration callback,
         // set the newly generated ip address to f/w in suspend mode.
 #ifdef WLAN_NS_OFFLOAD
@@ -657,7 +684,7 @@ void hdd_conf_hostoffload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
 
                     if (!VOS_IS_STATUS_SUCCESS(vstatus))
                     {
-                        hddLog(VOS_TRACE_LEVEL_INFO,
+                        hddLog(VOS_TRACE_LEVEL_ERROR,
                                 "Failed to enable ARPOFfloadFeature %d",
                                 vstatus);
                     }
@@ -709,6 +736,13 @@ void hdd_conf_hostoffload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
             {
                 hdd_conf_ns_offload(pAdapter, fenable);
             }
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+            else
+            {
+                hddLog(VOS_TRACE_LEVEL_INFO,
+                    FL("ns offload ini is disabled"));
+            }
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
 #endif
         }
     }
@@ -816,7 +850,6 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, int fenable)
         in6_dev = __in6_dev_get(pAdapter->dev);
         if (NULL != in6_dev)
         {
-            read_lock_bh(&in6_dev->lock);
             list_for_each(p, &in6_dev->addr_list)
             {
                 if (i >= slot_index)
@@ -857,7 +890,6 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, int fenable)
                     i++;
                 }
             }
-            read_unlock_bh(&in6_dev->lock);
 
             vos_mem_zero(&offLoadRequest, sizeof(offLoadRequest));
             for (i =0; i < slot_index; i++)
@@ -922,6 +954,11 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, int fenable)
                     hdd_wlan_offload_event(
                                   SIR_OFFLOAD_NS_AND_MCAST_FILTER_ENABLE,
                                   SIR_OFFLOAD_ENABLE);
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+                    hddLog(VOS_TRACE_LEVEL_INFO,
+                        FL("offload: NS filter programmed %d"),
+                        offLoadRequest.enableOrDisable);
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
                     vos_mem_copy(&offLoadRequest.params.hostIpv6Addr,
                                 &offLoadRequest.nsOffloadInfo.targetIPv6Addr[0],
                                 sizeof(tANI_U8)*SIR_MAC_IPV6_ADDR_LEN);
@@ -1011,7 +1048,8 @@ void __hdd_ipv4_notifier_work_queue(struct work_struct *work)
     {
         return;
     }
-
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+#if 0
     if ( VOS_FALSE == pHddCtx->sus_res_mcastbcast_filter_valid)
     {
         pHddCtx->sus_res_mcastbcast_filter =
@@ -1020,6 +1058,8 @@ void __hdd_ipv4_notifier_work_queue(struct work_struct *work)
                         pHddCtx->sus_res_mcastbcast_filter);
         pHddCtx->sus_res_mcastbcast_filter_valid = VOS_TRUE;
     }
+#endif
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
 
     if ((eConnectionState_Associated ==
                 (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.connState)
@@ -1028,7 +1068,22 @@ void __hdd_ipv4_notifier_work_queue(struct work_struct *work)
         // This invocation being part of the IPv4 registration callback,
         // we are passing second parameter as 2 to avoid registration
         // of IPv4 notifier again.
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+#if 0
         hdd_conf_arp_offload(pAdapter, 2);
+#else
+        check_and_set_suspend_resume_mcbc_filter(pHddCtx);
+        if (pHddCtx->cfg_ini->fhostArpOffload)
+        {
+            hdd_conf_arp_offload(pAdapter, 2);
+        }
+        else
+        {
+            hddLog(VOS_TRACE_LEVEL_INFO,
+                    FL("offload: arp offload ini is disabled in host"));
+        }
+#endif
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
     }
     EXIT();
 }
@@ -1325,13 +1380,164 @@ void hdd_conf_mcastbcast_filter(hdd_context_t* pHddCtx, v_BOOL_t setfilter)
         vos_mem_free(wlanRxpFilterParam);
 }
 
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+/*
+ * Enable/Disable McAddrList cfg item in fwr.
+ */
+eHalStatus hdd_set_mc_list_cfg_item(hdd_context_t* pHddCtx,
+                bool value)
+{
+    eHalStatus ret_val;
+
+    if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_ENABLE_MC_ADDR_LIST,
+        value, NULL, eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
+    {
+       ret_val = eHAL_STATUS_FAILURE;
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+#if 0
+       hddLog(LOGE, "Could not pass on WNI_CFG_ENABLE_MC_ADDR_LIST to CCM");
+#else
+       hddLog(LOGE,
+           FL("offload: can't pass WNI_CFG_ENABLE_MC_ADDR_LIST to CCM"));
+#endif
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+       return ret_val;
+    }
+
+    ret_val = sme_update_cfg_int_param(pHddCtx->hHal,
+                  WNI_CFG_ENABLE_MC_ADDR_LIST);
+    if (!HAL_STATUS_SUCCESS(ret_val))
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+               FL("Failed to toggle MC_ADDR_LIST_INI %d "),
+               ret_val);
+        return ret_val;
+    }
+    /* cache the value configured in fwr */
+    pHddCtx->mc_list_cfg_in_fwr = value;
+
+    return eHAL_STATUS_SUCCESS;
+}
+
+bool is_mc_list_cfg_disable_required(hdd_context_t* pHddCtx)
+{
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+    hddLog(VOS_TRACE_LEVEL_INFO,
+        FL("offload: fEnableMCList %d sus_res_mcbc_filter %d mc_list_in_fwr %d"),
+        pHddCtx->cfg_ini->fEnableMCAddrList,
+        pHddCtx->sus_res_mcastbcast_filter,
+        pHddCtx->mc_list_cfg_in_fwr);
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+
+    /*
+     * If MCAddrList is enabled in ini and MCBC filter is set to
+     * Either Filter None or Filter all BC then, Fwr need to push
+     * all MC to host. This can be achieved by disabling cfg MCAddrList
+     * in fwr. As in driver load, firmware have this value to 1 we
+     * need to set it to 0. Same needs to be reverted on resume.
+     */
+    if (pHddCtx->cfg_ini->fEnableMCAddrList &&
+         WDA_IS_MCAST_FLT_ENABLE_IN_FW &&
+         ((VOS_TRUE == pHddCtx->sus_res_mcastbcast_filter_valid)&&
+            ((HDD_MCASTBCASTFILTER_FILTER_NONE ==
+                 pHddCtx->sus_res_mcastbcast_filter) ||
+              (HDD_MCASTBCASTFILTER_FILTER_ALL_BROADCAST ==
+                 pHddCtx->sus_res_mcastbcast_filter)))
+       )
+    {
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+        hddLog(VOS_TRACE_LEVEL_INFO,
+            FL("offload: cfg ini need to disable in fwr"));
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+        return true;
+    }
+    else
+    {
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+        hddLog(VOS_TRACE_LEVEL_INFO,
+            FL("offload: cfg ini need to disable in fwr"));
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+        return false;
+    }
+}
+
+/**
+ * hdd_mc_addr_list_cfg_config() - To set mc list cfg configuration in fwr
+ * @pHddCtx: hdd context handle
+ * @action: true to disable MCAddrList  in fwr to get all MC pkt to host
+ *          false to set ini value of MCAddrList in fwr if it was toggled
+ * Return: none
+ *
+ * Ensure Below API is invoked always post modification
+ * of sus_res_mcastbcast_filter.
+ */
+void hdd_mc_addr_list_cfg_config(hdd_context_t* pHddCtx, bool action)
+{
+    if (action)
+    {
+        /* check host need to disable mc list ini in fwr */
+        if (is_mc_list_cfg_disable_required(pHddCtx))
+        {
+            /*
+             * Yes Host should disable the mc list in fwr
+             * But Ensure host might already disable it
+             * This can happen when user issue set/clear MCBC
+             * ioctl with 2 to 0 or vice versa.
+             */
+            if (pHddCtx->cfg_ini->fEnableMCAddrList ==
+                   pHddCtx->mc_list_cfg_in_fwr)
+            {
+                hdd_set_mc_list_cfg_item(pHddCtx,
+                    !pHddCtx->cfg_ini->fEnableMCAddrList);
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+                hddLog(VOS_TRACE_LEVEL_INFO,
+                    FL("offload: setting mc_list_cfg_in_fwr: %d"),
+                    !pHddCtx->cfg_ini->fEnableMCAddrList);
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+            }
+        }
+        else
+        {
+           /* Host toggled mc list ini in fwr previosuly, set to ini value */
+           if (pHddCtx->cfg_ini->fEnableMCAddrList !=
+                  pHddCtx->mc_list_cfg_in_fwr)
+           {
+               hdd_set_mc_list_cfg_item(pHddCtx,
+                   pHddCtx->cfg_ini->fEnableMCAddrList);
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+                hddLog(VOS_TRACE_LEVEL_INFO,
+                    FL("offload: setting mc_list_cfg_in_fwr: %d"),
+                    pHddCtx->cfg_ini->fEnableMCAddrList);
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+           }
+        }
+    }
+    else
+    {
+       /* Host toggled mc list ini in fwr previosuly, set to ini value */
+       if (pHddCtx->cfg_ini->fEnableMCAddrList !=
+              pHddCtx->mc_list_cfg_in_fwr)
+       {
+           hdd_set_mc_list_cfg_item(pHddCtx,
+               pHddCtx->cfg_ini->fEnableMCAddrList);
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+           hddLog(VOS_TRACE_LEVEL_INFO,
+               FL("offload: setting mc_list_cfg_in_fwr: %d"),
+               pHddCtx->cfg_ini->fEnableMCAddrList);
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+       }
+    }
+}
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+
 static void hdd_conf_suspend_ind(hdd_context_t* pHddCtx,
                                  hdd_adapter_t *pAdapter)
 {
     eHalStatus halStatus = eHAL_STATUS_FAILURE;
     tpSirWlanSuspendParam wlanSuspendParam =
-      vos_mem_malloc(sizeof(tSirWlanSuspendParam));
-
+    vos_mem_malloc(sizeof(tSirWlanSuspendParam));
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+#if 0
     if (VOS_FALSE == pHddCtx->sus_res_mcastbcast_filter_valid) {
         pHddCtx->sus_res_mcastbcast_filter =
             pHddCtx->configuredMcastBcastFilter;
@@ -1341,7 +1547,10 @@ static void hdd_conf_suspend_ind(hdd_context_t* pHddCtx,
                pHddCtx->configuredMcastBcastFilter);
 
     }
-
+#else
+    check_and_set_suspend_resume_mcbc_filter(pHddCtx);
+#endif
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
 
     if(NULL == wlanSuspendParam)
     {
@@ -1379,6 +1588,11 @@ static void hdd_conf_suspend_ind(hdd_context_t* pHddCtx,
 
         wlanSuspendParam->configuredMcstBcstFilterSetting =
             pHddCtx->configuredMcastBcastFilter;
+
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+        /* mc add list cfg item configuration in fwr */
+        hdd_mc_addr_list_cfg_config(pHddCtx, true);
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
     }
 
     halStatus = sme_ConfigureSuspendInd(pHddCtx->hHal, wlanSuspendParam);
@@ -1424,6 +1638,11 @@ static void hdd_conf_resume_ind(hdd_adapter_t *pAdapter)
     }
 
     pHddCtx->hdd_mcastbcast_filter_set = FALSE;
+
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+    /* mc add list cfg item configuration in fwr */
+    hdd_mc_addr_list_cfg_config(pHddCtx, false);
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
 
     if (VOS_TRUE == pHddCtx->sus_res_mcastbcast_filter_valid) {
         pHddCtx->configuredMcastBcastFilter =
@@ -1550,7 +1769,70 @@ void hdd_suspend_wlan(void)
 
    return;
 }
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+/**
+ * @brief hdd_ReConfigSuspendDataClearedDuringRoaming() - Reconfigure the
+ * suspend related data which was cleared during roaming in FWR.
+ */
+void hdd_ReConfigSuspendDataClearedDuringRoaming(hdd_context_t *pHddCtx)
 
+{
+    VOS_STATUS vstatus = VOS_STATUS_E_FAILURE;
+    hdd_adapter_t *pAdapter;
+    hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
+
+    ENTER();
+
+    spin_lock(&pHddCtx->filter_lock);
+    check_and_set_suspend_resume_mcbc_filter(pHddCtx);
+    spin_unlock(&pHddCtx->filter_lock);
+
+    hdd_conf_mcastbcast_filter(pHddCtx, TRUE);
+    if(pHddCtx->hdd_mcastbcast_filter_set != TRUE)
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("Not able to set mcast/bcast filter "));
+
+    vstatus = hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
+    //No need to configure GTK Offload from here because it might possible
+    //cfg80211_set_rekey_data might not yet came, anyway GTK offload will
+    //be handled as part of cfg80211_set_rekey_data processing.
+    while ( NULL != pAdapterNode && VOS_STATUS_SUCCESS == vstatus )
+    {
+        pAdapter = pAdapterNode->pAdapter;
+        if( pAdapter &&
+        (( pAdapter->device_mode == WLAN_HDD_INFRA_STATION)  ||
+          (pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)))
+        {
+            if (pHddCtx->cfg_ini->fhostArpOffload)
+            {
+                //Configure ARPOFFLOAD
+                vstatus = hdd_conf_arp_offload(pAdapter, TRUE);
+                if (!VOS_IS_STATUS_SUCCESS(vstatus))
+                {
+                    hddLog(VOS_TRACE_LEVEL_INFO,
+                        FL("Failed to disable ARPOffload Feature %d"), vstatus);
+                }
+            }
+#ifdef WLAN_NS_OFFLOAD
+            //Configure NSOFFLOAD
+            if (pHddCtx->cfg_ini->fhostNSOffload)
+            {
+                hdd_conf_ns_offload(pAdapter, TRUE);
+            }
+#endif
+#ifdef WLAN_FEATURE_PACKET_FILTERING
+            /* During suspend, configure MC Addr list filter to the firmware
+             * function takes care of checking necessary conditions before
+             * configuring.
+             */
+            wlan_hdd_set_mc_addr_list(pAdapter, TRUE);
+#endif
+        }
+        vstatus = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
+        pAdapterNode = pNext;
+    }
+    EXIT();
+}
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
 static void hdd_PowerStateChangedCB
 (
    v_PVOID_t callbackContext,
@@ -1571,6 +1853,8 @@ static void hdd_PowerStateChangedCB
    spin_lock(&pHddCtx->filter_lock);
    if ((newState == BMPS) &&  pHddCtx->hdd_wlan_suspended)
    {
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+#if 0
       spin_unlock(&pHddCtx->filter_lock);
       if (VOS_FALSE == pHddCtx->sus_res_mcastbcast_filter_valid)
       {
@@ -1585,7 +1869,11 @@ static void hdd_PowerStateChangedCB
                  "offload: calling hdd_conf_mcastbcast_filter");
 
       }
-
+#else
+      check_and_set_suspend_resume_mcbc_filter(pHddCtx);
+      spin_unlock(&pHddCtx->filter_lock);
+#endif
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
       hdd_conf_mcastbcast_filter(pHddCtx, TRUE);
       if(pHddCtx->hdd_mcastbcast_filter_set != TRUE)
          hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Not able to set mcast/bcast filter ", __func__);
@@ -1968,6 +2256,7 @@ VOS_STATUS hdd_wlan_shutdown(void)
       return VOS_STATUS_E_FAILURE;
    }
 
+   vos_set_snoc_high_freq_voting(false);
    //Stop the traffic monitor timer
    if ((pHddCtx->cfg_ini->dynSplitscan)&& (VOS_TIMER_STATE_RUNNING ==
                         vos_timer_getCurrentState(&pHddCtx->tx_rx_trafficTmr)))
@@ -2307,9 +2596,7 @@ VOS_STATUS hdd_wlan_re_init(void)
 
     /* Restart all adapters */
    hdd_start_all_adapters(pHddCtx);
-   pHddCtx->last_scan_reject_session_id = 0;
-   pHddCtx->last_scan_reject_reason = 0xFF;
-   pHddCtx->last_scan_reject_timestamp = 0;
+   pHddCtx->con_scan_abort_cnt = 0;
    pHddCtx->hdd_mcastbcast_filter_set = FALSE;
    pHddCtx->btCoexModeSet = FALSE;
    hdd_register_mcast_bcast_filter(pHddCtx);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2017 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -803,6 +803,79 @@ eHalStatus sme_process_set_max_tx_power(tpAniSirGlobal pMac,
    return eHAL_STATUS_SUCCESS;
 }
 
+/**
+ * sme_process_set_max_tx_power_per_band() - Set the Maximum Transmit Power
+ * specific to band dynamically
+ * @mac_ctx: mac context
+ * @command: cmd param containing band, and power in db
+ *
+ * Set the maximum transmit power dynamically per band
+ *
+ * Return: eHalStatus
+ */
+eHalStatus sme_process_set_max_tx_power_per_band(tpAniSirGlobal mac_ctx,
+                  tSmeCmd *command)
+{
+    vos_msg_t msg;
+    tMaxTxPowerPerBandParams *max_tx_params_per_band;
+
+    max_tx_params_per_band =
+        vos_mem_malloc(sizeof(*max_tx_params_per_band));
+    if (max_tx_params_per_band == NULL) {
+        smsLog(mac_ctx, LOGE,
+               FL("fail to allocate memory"));
+        return eHAL_STATUS_FAILURE;
+    }
+
+    max_tx_params_per_band->bandInfo =
+           command->u.set_tx_max_pwr_per_band.band;
+    max_tx_params_per_band->power =
+           command->u.set_tx_max_pwr_per_band.power;
+
+    msg.type = WDA_SET_MAX_TX_POWER_PER_BAND_REQ;
+    msg.reserved = 0;
+    msg.bodyptr = max_tx_params_per_band;
+
+    if (VOS_STATUS_SUCCESS !=
+            vos_mq_post_message(VOS_MODULE_ID_WDA, &msg)) {
+        smsLog(mac_ctx, LOGE,
+               FL("Unable to post message to WDA"));
+        vos_mem_free(max_tx_params_per_band);
+        return eHAL_STATUS_FAILURE;
+    }
+    return eHAL_STATUS_SUCCESS;
+}
+
+
+/**
+ * sme_process_update_channel_list() - Update channel list
+ * @mac_ctx: mac context
+ * @command: cmd param containing band, and power in db
+ *
+ * Return: eHalStatus
+ */
+eHalStatus sme_process_update_channel_list(tpAniSirGlobal mac_ctx,
+                  tSmeCmd *command)
+{
+    vos_msg_t msg;
+
+    msg.type = WDA_UPDATE_CHAN_LIST_REQ;
+    msg.reserved = 0;
+    msg.bodyptr = command->u.chan_list;
+
+    MTRACE(vos_trace(VOS_MODULE_ID_SME,
+                 TRACE_CODE_SME_TX_WDA_MSG, NO_SESSION, msg.type));
+
+    if (VOS_STATUS_SUCCESS !=
+            vos_mq_post_message(VOS_MODULE_ID_WDA, &msg)) {
+        smsLog(mac_ctx, LOGE,
+               FL("Unable to post message to WDA"));
+        vos_mem_free(command->u.chan_list);
+        return eHAL_STATUS_FAILURE;
+    }
+    return eHAL_STATUS_SUCCESS;
+}
+
 static void smeProcessNanReq(tpAniSirGlobal pMac, tSmeCmd *pCommand )
 {
     tSirMsgQ msgQ;
@@ -1085,6 +1158,36 @@ sme_process_cmd:
                             {
                                csrReleaseCommand(pMac, pCommand);
                             }
+//LGE_S, neo-wifi@lge.com, (2017.3.7) Fix WCNSS Crash for protecting cmd buffer overflow, Case 02831221
+                            pMac->max_power_cmd_pending = false;
+//LGE_E, neo-wifi@lge.com, (2017.3.7) Fix WCNSS Crash for protecting cmd buffer overflow, Case 02831221
+                            break;
+                        case eSmeCommandSetMaxTxPowerPerBand:
+                            csrLLUnlock(&pMac->sme.smeCmdActiveList);
+                            sme_process_set_max_tx_power_per_band(pMac,
+                                                                     pCommand);
+                            /* We need to re-run the command */
+                            fContinue = eANI_BOOLEAN_TRUE;
+                            /* No Rsp expected, free cmd from active list */
+                            if (csrLLRemoveEntry(&pMac->sme.smeCmdActiveList,
+                                        &pCommand->Link, LL_ACCESS_LOCK)) {
+                               csrReleaseCommand(pMac, pCommand);
+                            }
+//LGE_S, neo-wifi@lge.com, (2017.3.7) Fix WCNSS Crash for protecting cmd buffer overflow, Case 02831221
+                            pMac->max_power_cmd_pending = false;
+//LGE_E, neo-wifi@lge.com, (2017.3.7) Fix WCNSS Crash for protecting cmd buffer overflow, Case 02831221
+                            break;
+
+                        case eSmeCommandUpdateChannelList:
+                            csrLLUnlock(&pMac->sme.smeCmdActiveList);
+                            sme_process_update_channel_list(pMac, pCommand);
+                            if (csrLLRemoveEntry(&pMac->sme.smeCmdActiveList,
+                                        &pCommand->Link, LL_ACCESS_LOCK)) {
+                               csrReleaseCommand(pMac, pCommand);
+                            }
+                            smsLog(pMac, LOG1,
+                                   FL("eSmeCommandUpdateChannelList processed"));
+                            fContinue = eANI_BOOLEAN_TRUE;
                             break;
 
 #ifdef FEATURE_OEM_DATA_SUPPORT
@@ -6030,7 +6133,8 @@ eHalStatus sme_DHCPStartInd( tHalHandle hHal,
             sme_ReleaseGlobalLock( &pMac->sme );
             return eHAL_STATUS_FAILURE;
         }
-
+        //V.E Certification Patch (Case : 02716791)
+        pSession->dhcp_done = false;
         pMsg = (tAniDHCPInd*)vos_mem_malloc(sizeof(tAniDHCPInd));
         if (NULL == pMsg)
         {
@@ -6098,7 +6202,8 @@ eHalStatus sme_DHCPStopInd( tHalHandle hHal,
             sme_ReleaseGlobalLock( &pMac->sme );
             return eHAL_STATUS_FAILURE;
         }
-
+        //V.E Certification Patch (Case : 02716791)
+        pSession->dhcp_done = true;
         pMsg = (tAniDHCPInd*)vos_mem_malloc(sizeof(tAniDHCPInd));
         if (NULL == pMsg)
         {
@@ -8218,6 +8323,70 @@ eHalStatus sme_ConfigureRxpFilter( tHalHandle hHal,
     }
     return(status);
 }
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+/* ---------------------------------------------------------------------------
+ 
+  \fn    sme_update_hal_int_param
+
+  \brief
+    SME will pass this request to lower mac to indicate that the host needs to
+    update the cfg item
+
+  \param
+
+    hHal - The handle returned by macOpen.
+
+    cfg_id- cfg param id
+
+
+  \return eHalStatus
+
+
+--------------------------------------------------------------------------- */
+eHalStatus sme_update_cfg_int_param(tHalHandle hHal,
+               tANI_U32 cfg_id)
+{
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
+    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+    vos_msg_t vosMessage;
+    tpSirUpdateCfgIntParam updateCfgIntParam =
+        vos_mem_malloc(sizeof(tSirUpdateCfgIntParam));
+
+    if (updateCfgIntParam == NULL)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+            "%s: vos_mem_alloc  for updateCfgIntParam", __func__);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    updateCfgIntParam->cfgId = cfg_id;
+    /*
+     * This API expect user must have updated cfg item using cfg API's.
+     * Hence it just need the cfg param id not the cfg value.
+     */
+    status = sme_AcquireGlobalLock(&pMac->sme);
+    if (eHAL_STATUS_SUCCESS == status)
+    {
+        /* serialize the req through MC thread */
+        vosMessage.bodyptr = updateCfgIntParam;
+        vosMessage.type    = WDA_UPDATE_CFG_INT_PARAM;
+        vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
+        if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+        {
+           status = eHAL_STATUS_FAILURE;
+           vos_mem_free(updateCfgIntParam);
+        }
+        sme_ReleaseGlobalLock(&pMac->sme);
+    }
+    else
+    {
+        status = eHAL_STATUS_FAILURE;
+        vos_mem_free(updateCfgIntParam);
+    }
+    return(status);
+}
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
 
 /* ---------------------------------------------------------------------------
 
@@ -9499,6 +9668,13 @@ eHalStatus sme_SetMaxTxPower(tHalHandle hHal, tSirMacAddr bssid,
    eHalStatus status = eHAL_STATUS_SUCCESS;
    tSmeCmd *set_max_tx_pwr;
 
+//LGE_S, neo-wifi@lge.com, (2017.3.7) Fix WCNSS Crash for protecting cmd buffer overflow, Case 02831221
+    if (pMac->max_power_cmd_pending) {
+        smsLog(pMac, LOG1, FL("set max tx power already in progress"));
+        return eHAL_STATUS_RESOURCES;
+    }
+//LGE_E, neo-wifi@lge.com, (2017.3.7) Fix WCNSS Crash for protecting cmd buffer overflow, Case 02831221
+
    MTRACE(vos_trace(VOS_MODULE_ID_SME,
        TRACE_CODE_SME_RX_HDD_SET_MAXTXPOW, NO_SESSION, 0));
    smsLog(pMac, LOG1,
@@ -9517,11 +9693,18 @@ eHalStatus sme_SetMaxTxPower(tHalHandle hHal, tSirMacAddr bssid,
            vos_mem_copy(set_max_tx_pwr->u.set_tx_max_pwr.self_sta_mac_addr,
                  self_mac_addr, SIR_MAC_ADDR_LENGTH);
            set_max_tx_pwr->u.set_tx_max_pwr.power = db;
+//LGE_S, neo-wifi@lge.com, (2017.3.7) Fix WCNSS Crash for protecting cmd buffer overflow, Case 02831221
+           pMac->max_power_cmd_pending = true;
+//LGE_E, neo-wifi@lge.com, (2017.3.7) Fix WCNSS Crash for cmd buffer protecting overflow, Case 02831221
+
            status = csrQueueSmeCommand(pMac, set_max_tx_pwr, eANI_BOOLEAN_TRUE);
            if ( !HAL_STATUS_SUCCESS( status ) )
            {
                smsLog( pMac, LOGE, FL("fail to send msg status = %d"), status );
                csrReleaseCommandScan(pMac, set_max_tx_pwr);
+//LGE_S, neo-wifi@lge.com, (2017.3.7) Fix WCNSS Crash for protecting cmd buffer overflow, Case 02831221
+               pMac->max_power_cmd_pending = false;
+//LGE_E, neo-wifi@lge.com, (2017.3.7) Fix WCNSS Crash for protecting cmd buffer overflow, Case 02831221
            }
        }
        else
@@ -9534,51 +9717,65 @@ eHalStatus sme_SetMaxTxPower(tHalHandle hHal, tSirMacAddr bssid,
    return (status);
 }
 
-/* ---------------------------------------------------------------------------
-
-    \fn sme_SetMaxTxPowerPerBand
-
-    \brief Set the Maximum Transmit Power specific to band dynamically.
-    Note: this setting will not persist over reboots.
-
-    \param band
-    \param power to set in dB
-    \- return eHalStatus
-
-  ----------------------------------------------------------------------------*/
-eHalStatus sme_SetMaxTxPowerPerBand(eCsrBand band, v_S7_t dB)
+/**
+ * sme_SetMaxTxPowerPerBand() - Set the Maximum Transmit Power
+ * specific to band dynamically
+ * @band: Band for which power needs to be applied
+ * @dB: power to set in dB
+ * @hal: HAL handle
+ *
+ * Set the maximum transmit power dynamically per band
+ *
+ * Return: eHalStatus
+ */
+eHalStatus sme_SetMaxTxPowerPerBand(eCsrBand band, v_S7_t dB,
+                  tHalHandle hal)
 {
     vos_msg_t msg;
-    tpMaxTxPowerPerBandParams pMaxTxPowerPerBandParams = NULL;
+    eHalStatus status;
+    tSmeCmd *set_max_tx_pwr_per_band;
+    tpAniSirGlobal mac_ctx = PMAC_STRUCT(hal);
 
-    pMaxTxPowerPerBandParams = vos_mem_malloc(sizeof(tMaxTxPowerPerBandParams));
-    if (NULL == pMaxTxPowerPerBandParams)
-    {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
-                  "%s:Not able to allocate memory for pMaxTxPowerPerBandParams",
-                  __func__);
-        return eHAL_STATUS_FAILURE;
+//LGE_S, neo-wifi@lge.com, (2017.3.7) Fix WCNSS Crash for protecting cmd buffer overflow, Case 02831221
+    if (mac_ctx->max_power_cmd_pending) {
+        smsLog(mac_ctx, LOG1, FL("set max tx power already in progress"));
+        return eHAL_STATUS_RESOURCES;
     }
+//LGE_E, neo-wifi@lge.com, (2017.3.7) Fix WCNSS Crash for protecting cmd buffer overflow, Case 02831221
 
-    pMaxTxPowerPerBandParams->power = dB;
-    pMaxTxPowerPerBandParams->bandInfo = band;
+   smsLog(mac_ctx, LOG1,
+          FL("band : %d power %d dB"),
+          band, dB);
 
-    msg.type = WDA_SET_MAX_TX_POWER_PER_BAND_REQ;
-    msg.reserved = 0;
-    msg.bodyptr = pMaxTxPowerPerBandParams;
+   MTRACE(vos_trace(VOS_MODULE_ID_SME,
+          TRACE_CODE_SME_TX_WDA_MSG, NO_SESSION, msg.type));
 
-    MTRACE(vos_trace(VOS_MODULE_ID_SME,
-                 TRACE_CODE_SME_TX_WDA_MSG, NO_SESSION, msg.type));
-    if (VOS_STATUS_SUCCESS != vos_mq_post_message(VOS_MODULE_ID_WDA, &msg))
-    {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
-                  "%s:Not able to post WDA_SET_MAX_TX_POWER_PER_BAND_REQ",
-                  __func__);
-        vos_mem_free(pMaxTxPowerPerBandParams);
-        return eHAL_STATUS_FAILURE;
+    status = sme_AcquireGlobalLock(&mac_ctx->sme);
+    if (HAL_STATUS_SUCCESS(status)) {
+       set_max_tx_pwr_per_band = csrGetCommandBuffer(mac_ctx);
+       if (set_max_tx_pwr_per_band) {
+           set_max_tx_pwr_per_band->command = eSmeCommandSetMaxTxPowerPerBand;
+           set_max_tx_pwr_per_band->u.set_tx_max_pwr_per_band.band = band;
+           set_max_tx_pwr_per_band->u.set_tx_max_pwr_per_band.power = dB;
+//LGE_S, neo-wifi@lge.com, (2017.3.7) Fix WCNSS Crash for protecting cmd buffer overflow, Case 02831221
+           mac_ctx->max_power_cmd_pending = true;
+//LGE_E, neo-wifi@lge.com, (2017.3.7) Fix WCNSS Crash for protecting cmd buffer overflow, Case 02831221
+           status = csrQueueSmeCommand(mac_ctx, set_max_tx_pwr_per_band,
+                                                           eANI_BOOLEAN_TRUE);
+           if (!HAL_STATUS_SUCCESS(status)) {
+               smsLog(mac_ctx, LOGE, FL("fail to send msg status = %d"), status);
+               csrReleaseCommand(mac_ctx, set_max_tx_pwr_per_band);
+//LGE_S, neo-wifi@lge.com, (2017.3.7) Fix WCNSS Crash for protecting cmd buffer overflow, Case 02831221
+               mac_ctx->max_power_cmd_pending = false;
+//LGE_E, neo-wifi@lge.com, (2017.3.7) Fix WCNSS Crash for protecting cmd buffer overflow, Case 02831221
+           }
+       } else {
+           smsLog(mac_ctx, LOGE, FL("can not obtain a common buffer"));
+           status = eHAL_STATUS_RESOURCES;
+       }
+       sme_ReleaseGlobalLock(&mac_ctx->sme);
     }
-
-    return eHAL_STATUS_SUCCESS;
+    return status;
 }
 
 /* ---------------------------------------------------------------------------

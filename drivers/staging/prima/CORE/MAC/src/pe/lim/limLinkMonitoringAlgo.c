@@ -305,16 +305,13 @@ limTriggerSTAdeletion(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession pse
      }
 
      if ((pStaDs->mlmStaContext.mlmState == eLIM_MLM_WT_DEL_STA_RSP_STATE) ||
-        (pStaDs->mlmStaContext.mlmState == eLIM_MLM_WT_DEL_BSS_RSP_STATE)||
-        pStaDs->sta_deletion_in_progress) {
+         (pStaDs->mlmStaContext.mlmState == eLIM_MLM_WT_DEL_BSS_RSP_STATE)) {
          /* Already in the process of deleting context for the peer */
-        limLog(pMac, LOG1,
-            FL("Deletion is in progress (%d) for peer:%p in mlmState %d"),
-            pStaDs->sta_deletion_in_progress, pStaDs->staAddr,
-            pStaDs->mlmStaContext.mlmState);
+         PELOGE(limLog(pMac, LOGE,
+                 FL("Deletion is in progress for peer:%pM"), pStaDs->staAddr);)
          return;
      }
-     pStaDs->sta_deletion_in_progress = true;
+
      pStaDs->mlmStaContext.disassocReason =
               eSIR_MAC_DISASSOC_DUE_TO_INACTIVITY_REASON;
      pStaDs->mlmStaContext.cleanupTrigger = eLIM_LINK_MONITORING_DISASSOC;

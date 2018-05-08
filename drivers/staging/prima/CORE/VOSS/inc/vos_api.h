@@ -182,8 +182,7 @@ enum log_event_indicator {
  * @WLAN_LOG_REASON_EXIT_IMPS_BMPS_FAIL: Exit IMPS/BMPS rsp failure
  * @WLAN_LOG_REASON_HDD_TIME_OUT: Wait for event Timeout in HDD layer
  * @WLAN_LOG_REASON_MGMT_FRAME_TIMEOUT:Management frame timedout
- * @WLAN_LOG_REASON_SME_OUT_OF_CMD_BUFL sme out of cmd buffer
- * @WLAN_LOG_REASON_SCAN_NOT_ALLOWED: scan not allowed due to connection states
+   @WLAN_LOG_REASON_SME_OUT_OF_CMD_BUFL sme out of cmd buffer
  * This enum contains the different reason codes for bug report
  */
 enum log_event_host_reason_code {
@@ -205,7 +204,6 @@ enum log_event_host_reason_code {
 	WLAN_LOG_REASON_HDD_TIME_OUT,
 	WLAN_LOG_REASON_MGMT_FRAME_TIMEOUT,
 	WLAN_LOG_REASON_SME_OUT_OF_CMD_BUF,
-	WLAN_LOG_REASON_SCAN_NOT_ALLOWED,
 };
 
 /*------------------------------------------------------------------------- 
@@ -512,5 +510,5 @@ void vos_updatePktStatsInfo(void * pktStat);
 bool vos_is_wlan_logging_enabled(void);
 
 v_BOOL_t vos_is_probe_rsp_offload_enabled(void);
-
+void vos_set_snoc_high_freq_voting(bool enable);
 #endif // if !defined __VOS_NVITEM_H

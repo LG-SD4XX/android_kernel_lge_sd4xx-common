@@ -107,6 +107,12 @@ int wlan_hdd_ipv4_changed(struct notifier_block *nb,
                            unsigned long data, void *arg);
 int wlan_hdd_ipv6_changed(struct notifier_block *nb,
                            unsigned long data, void *arg);
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+eHalStatus hdd_set_mc_list_cfg_item(hdd_context_t* pHddCtx,
+                bool value);
+bool is_mc_list_cfg_disable_required(hdd_context_t* pHddCtx);
+void hdd_mc_addr_list_cfg_config(hdd_context_t* pHddCtx, bool action);
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
 
 /**
  * enum suspend_resume_state - Suspend resume state
@@ -135,5 +141,8 @@ void hdd_wlan_suspend_resume_event(uint8_t state)
 }
 #endif /* FEATURE_WLAN_DIAG_SUPPORT */
 
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+void hdd_ReConfigSuspendDataClearedDuringRoaming(hdd_context_t* pHddCtx);
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
 
 #endif // if !defined __WLAN_QCT_DRIVER_H

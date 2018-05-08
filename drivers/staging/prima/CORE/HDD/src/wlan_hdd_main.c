@@ -8222,9 +8222,7 @@ void hdd_deinit_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter, tANI_U
          hdd_cleanup_actionframe(pHddCtx, pAdapter);
 
          hdd_unregister_hostapd(pAdapter, rtnl_held);
-         /* set con_mode to STA only when no SAP concurrency mode */
-         if (!(hdd_get_concurrency_mode() & (VOS_SAP | VOS_P2P_GO)))
-             hdd_set_conparam(0);
+         hdd_set_conparam( 0 );
          break;
       }
 
@@ -9509,6 +9507,7 @@ void hdd_dump_concurrency_info(hdd_context_t *pHddCtx)
    v_U8_t staChannel = 0, p2pChannel = 0, apChannel = 0;
    const char *p2pMode = "DEV";
    const char *ccMode = "Standalone";
+   int n;
 
    status =  hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
    while ( NULL != pAdapterNode && VOS_STATUS_SUCCESS == status )
@@ -9556,14 +9555,14 @@ void hdd_dump_concurrency_info(hdd_context_t *pHddCtx)
    if (staChannel > 0 && (apChannel > 0 || p2pChannel > 0)) {
        ccMode = (p2pChannel==staChannel||apChannel==staChannel) ? "SCC" : "MCC";
    }
-   hddLog(VOS_TRACE_LEVEL_INFO, "wlan(%d) " MAC_ADDRESS_STR " %s",
+   n = pr_info("wlan(%d) " MAC_ADDRESS_STR " %s",
                 staChannel, MAC_ADDR_ARRAY(staBssid), ccMode);
    if (p2pChannel > 0) {
-       hddLog(VOS_TRACE_LEVEL_ERROR, "p2p-%s(%d) " MAC_ADDRESS_STR,
+       n +=  pr_info("p2p-%s(%d) " MAC_ADDRESS_STR,
                      p2pMode, p2pChannel, MAC_ADDR_ARRAY(p2pBssid));
    }
    if (apChannel > 0) {
-       hddLog(VOS_TRACE_LEVEL_ERROR, "AP(%d) " MAC_ADDRESS_STR,
+       n += pr_info("AP(%d) " MAC_ADDRESS_STR,
                      apChannel, MAC_ADDR_ARRAY(apBssid));
    }
 
@@ -10400,6 +10399,8 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
                  vos_timer_getCurrentState(&pHddCtx->tdls_source_timer)) {
        vos_timer_stop(&pHddCtx->tdls_source_timer);
    }
+
+   vos_set_snoc_high_freq_voting(false);
 
    vos_timer_destroy(&pHddCtx->tdls_source_timer);
 
@@ -11520,9 +11521,7 @@ int hdd_wlan_startup(struct device *dev )
    ((VosContextType*)(pVosContext))->pHDDContext = (v_VOID_t*)pHddCtx;
 
    pHddCtx->parent_dev = dev;
-   pHddCtx->last_scan_reject_session_id = 0;
-   pHddCtx->last_scan_reject_reason = 0xFF;
-   pHddCtx->last_scan_reject_timestamp = 0;
+   pHddCtx->con_scan_abort_cnt = 0;
 
    init_completion(&pHddCtx->full_pwr_comp_var);
    init_completion(&pHddCtx->standby_comp_var);
@@ -12297,12 +12296,13 @@ int hdd_wlan_startup(struct device *dev )
    // Initialize the restart logic
    wlan_hdd_restart_init(pHddCtx);
 
+// LGE-START, 2016.11.18, neo-wifi@lge.com, Apply QCT CR1086969 : Initialize thread stuck timer after driver loading is done
    if (pHddCtx->cfg_ini->fIsLogpEnabled) {
        vos_wdthread_init_timer_work(vos_process_wd_timer);
        /* Initialize the timer to detect thread stuck issues */
-       vos_thread_stuck_timer_init(
-                &((VosContextType*)pVosContext)->vosWatchdog);
+       vos_thread_stuck_timer_init(&((VosContextType*)pVosContext)->vosWatchdog);
    }
+// LGE-END, 2016.11.18, neo-wifi@lge.com, Apply QCT CR1086969 : Initialize thread stuck timer after driver loading is done
 
    //Register the traffic monitor timer now
    if ( pHddCtx->cfg_ini->dynSplitscan)

@@ -1706,6 +1706,9 @@ VOS_STATUS hdd_wmm_init ( hdd_adapter_t *pAdapter )
    hddWmmDscpToUpMap[24] = SME_QOS_WMM_UP_EE;
    hddWmmDscpToUpMap[32] = SME_QOS_WMM_UP_CL;
    hddWmmDscpToUpMap[40] = SME_QOS_WMM_UP_VI;
+   #ifdef WLAN_MATCH_DSCP_VO
+   hddWmmDscpToUpMap[46] = SME_QOS_WMM_UP_VO;
+   #endif
    hddWmmDscpToUpMap[48] = SME_QOS_WMM_UP_VO;
    hddWmmDscpToUpMap[56] = SME_QOS_WMM_UP_NC;
    return VOS_STATUS_SUCCESS;
@@ -2120,7 +2123,7 @@ v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb
    }
    /*Get the Station ID*/
    STAId = hdd_sta_id_find_from_mac_addr(pAdapter, pDestMacAddress);
-   if (STAId == HDD_WLAN_INVALID_STA_ID || STAId >= WLAN_MAX_STA_COUNT) {
+   if (STAId == HDD_WLAN_INVALID_STA_ID) {
        VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_INFO,
                  "%s: Failed to find right station", __func__);
        goto done;

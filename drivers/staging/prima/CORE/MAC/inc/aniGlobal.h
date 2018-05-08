@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, 2016 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, 2017 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1086,6 +1086,7 @@ typedef struct sAniSirGlobal
     v_U32_t PERroamTimeout;
     v_U32_t currentBssScore;
 #endif
+    bool max_power_cmd_pending; //Fix cmd buffer overflow, Case 02831221
 } tAniSirGlobal;
 
 #ifdef FEATURE_WLAN_TDLS

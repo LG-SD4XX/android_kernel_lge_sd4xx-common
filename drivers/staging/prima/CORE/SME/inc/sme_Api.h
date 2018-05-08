@@ -2743,15 +2743,19 @@ eHalStatus sme_p2pGetResultFilter(tHalHandle hHal, tANI_U8 HDDSessionId,
 eHalStatus sme_SetMaxTxPower(tHalHandle hHal, tSirMacAddr pBssid, 
                              tSirMacAddr pSelfMacAddress, v_S7_t dB);
 
-/* ---------------------------------------------------------------------------
-    \fn sme_SetMaxTxPowerPerBand
-    \brief  Used to set the Maximum Transmit Power for
-    specific band dynamically. Note: this setting will not persist over reboots
-    \param band
-    \param power to set in dB
-    \- return eHalStatus
-    -------------------------------------------------------------------------*/
-eHalStatus sme_SetMaxTxPowerPerBand(eCsrBand band, v_S7_t db);
+/**
+ * sme_SetMaxTxPowerPerBand() - Set the Maximum Transmit Power
+ * specific to band dynamically
+ * @band: Band for which power needs to be applied
+ * @dB: power to set in dB
+ * @hal: HAL handle
+ *
+ * Set the maximum transmit power dynamically per band
+ *
+ * Return: eHalStatus
+ */
+eHalStatus sme_SetMaxTxPowerPerBand(eCsrBand band, v_S7_t dB,
+                 tHalHandle hal);
 
 /* ---------------------------------------------------------------------------
 
@@ -3960,4 +3964,7 @@ eHalStatus sme_remove_bssid_from_scan_list(tHalHandle hal,
 	tSirMacAddr bssid);
 void sme_set_mgmt_frm_via_wq5(tHalHandle hHal,
         tANI_BOOLEAN sendMgmtPktViaWQ5);
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+eHalStatus sme_update_cfg_int_param(tHalHandle hHal, tANI_U32 cfg_id);
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
 #endif //#if !defined( __SME_API_H )

@@ -764,6 +764,9 @@ typedef struct sSirMbMsgP2p
 #define SIR_HAL_PER_ROAM_SCAN_TRIGGER_REQ  (SIR_HAL_ITC_MSG_TYPES_BEGIN + 288)
 #define SIR_HAL_PER_ROAM_SCAN_TRIGGER_RSP  (SIR_HAL_ITC_MSG_TYPES_BEGIN + 289)
 #endif
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+#define SIR_HAL_UPDATE_CFG_INT_PARAM       (SIR_HAL_ITC_MSG_TYPES_BEGIN + 290)
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
 #define SIR_HAL_MSG_TYPES_END              (SIR_HAL_MSG_TYPES_BEGIN + 0x1FF)
 
 // CFG message types

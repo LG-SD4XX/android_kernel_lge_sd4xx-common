@@ -669,8 +669,7 @@ static void hdd_SendAssociationEvent(struct net_device *dev,tCsrRoamInfo *pCsrRo
              }
         }
 #endif
-        hddLog(VOS_TRACE_LEVEL_INFO, MAC_ADDRESS_STR " connected to "
-                MAC_ADDRESS_STR,
+        pr_info("wlan: " MAC_ADDRESS_STR " connected to " MAC_ADDRESS_STR "\n",
                 MAC_ADDR_ARRAY(pAdapter->macAddressCurrent.bytes),
                 MAC_ADDR_ARRAY(wrqu.ap_addr.sa_data));
         hdd_SendUpdateBeaconIEsEvent(pAdapter, pCsrRoamInfo);
@@ -700,14 +699,12 @@ static void hdd_SendAssociationEvent(struct net_device *dev,tCsrRoamInfo *pCsrRo
         memcpy(wrqu.ap_addr.sa_data, pHddStaCtx->conn_info.bssId, ETH_ALEN);
         type = WLAN_STA_ASSOC_DONE_IND;
 
-        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                 "wlan: new IBSS connection to " MAC_ADDRESS_STR,
+        pr_info("wlan: new IBSS connection to " MAC_ADDRESS_STR"\n",
                  MAC_ADDR_ARRAY(pHddStaCtx->conn_info.bssId));
     }
     else /* Not Associated */
     {
-        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                 "wlan: disconnected");
+        pr_info("wlan: disconnected\n");
         type = WLAN_STA_DISASSOC_DONE_IND;
         memset(wrqu.ap_addr.sa_data,'\0',ETH_ALEN);
 
@@ -1030,8 +1027,15 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
      * initiated disconnect will be handled by diconnect handler call
      * to cfg80211_disconnected
      */
+
+// LGE_CHANGE_S, neo-wifi@lge.com, remove disconnect mesg which locally generated from driver
+#if 0	 
     if ((eConnectionState_Disconnecting == pHddStaCtx->conn_info.connState) ||
         (eConnectionState_NotConnected == pHddStaCtx->conn_info.connState))
+#else
+    if (eConnectionState_Disconnecting == pHddStaCtx->conn_info.connState)
+#endif
+// LGE_CHANGE_E, neo-wifi@lge.com, remove disconnect mesg which locally generated from driver
     {
        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                    FL(" HDD has initiated a disconnect, no need to send"
@@ -1950,12 +1954,13 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
 
         hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
         if (pRoamInfo)
-            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                    "wlan: connection failed with " MAC_ADDRESS_STR " result:%d and Status:%d",
-                    MAC_ADDR_ARRAY(pRoamInfo->bssid), roamResult, roamStatus);
+            pr_info("wlan: connection failed with " MAC_ADDRESS_STR
+                    " result:%d and Status:%d\n",
+                    MAC_ADDR_ARRAY(pRoamInfo->bssid),
+                    roamResult, roamStatus);
         else
-            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                   "wlan: connection failed with " MAC_ADDRESS_STR " result:%d and Status:%d",
+            pr_info("wlan: connection failed with " MAC_ADDRESS_STR
+                    " reason:%d and Status:%d\n",
                     MAC_ADDR_ARRAY(pWextState->req_bssId),
                     roamResult, roamStatus);
 
@@ -2441,79 +2446,7 @@ static eHalStatus roamIbssConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo 
 
    return( eHAL_STATUS_SUCCESS );
 }
-/**============================================================================
- *
-  @brief hdd_ReConfigSuspendDataClearedDuringRoaming() - Reconfigure the
-  suspend related data which was cleared during roaming in FWR.
 
-  ===========================================================================*/
-static void hdd_ReConfigSuspendDataClearedDuringRoaming(hdd_context_t *pHddCtx)
-{
-    VOS_STATUS vstatus = VOS_STATUS_E_FAILURE;
-    hdd_adapter_t *pAdapter;
-    hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
-    ENTER();
-
-    spin_lock(&pHddCtx->filter_lock);
-    if (VOS_FALSE == pHddCtx->sus_res_mcastbcast_filter_valid)
-    {
-        pHddCtx->sus_res_mcastbcast_filter =
-            pHddCtx->configuredMcastBcastFilter;
-        pHddCtx->sus_res_mcastbcast_filter_valid = VOS_TRUE;
-        hddLog(VOS_TRACE_LEVEL_INFO, FL("offload: callback to associated"));
-        hddLog(VOS_TRACE_LEVEL_INFO,
-            FL("saving configuredMcastBcastFilter = %d"),
-            pHddCtx->configuredMcastBcastFilter);
-        hddLog(VOS_TRACE_LEVEL_INFO,
-            FL("offload: calling hdd_conf_mcastbcast_filter"));
-    }
-    spin_unlock(&pHddCtx->filter_lock);
-
-    hdd_conf_mcastbcast_filter(pHddCtx, TRUE);
-    if(pHddCtx->hdd_mcastbcast_filter_set != TRUE)
-        hddLog(VOS_TRACE_LEVEL_ERROR, FL("Not able to set mcast/bcast filter "));
-
-    vstatus = hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
-    //No need to configure GTK Offload from here because it might possible
-    //cfg80211_set_rekey_data might not yet came, anyway GTK offload will
-    //be handled as part of cfg80211_set_rekey_data processing.
-    while ( NULL != pAdapterNode && VOS_STATUS_SUCCESS == vstatus )
-    {
-        pAdapter = pAdapterNode->pAdapter;
-        if( pAdapter &&
-        (( pAdapter->device_mode == WLAN_HDD_INFRA_STATION)  ||
-          (pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)))
-        {
-            if (pHddCtx->cfg_ini->fhostArpOffload)
-            {
-                //Configure ARPOFFLOAD
-                vstatus = hdd_conf_arp_offload(pAdapter, TRUE);
-                if (!VOS_IS_STATUS_SUCCESS(vstatus))
-                {
-                    hddLog(VOS_TRACE_LEVEL_INFO,
-                        FL("Failed to disable ARPOffload Feature %d"), vstatus);
-                }
-            }
-#ifdef WLAN_NS_OFFLOAD
-            //Configure NSOFFLOAD
-            if (pHddCtx->cfg_ini->fhostNSOffload)
-            {
-                hdd_conf_ns_offload(pAdapter, TRUE);
-            }
-#endif
-#ifdef WLAN_FEATURE_PACKET_FILTERING
-            /* During suspend, configure MC Addr list filter to the firmware
-             * function takes care of checking necessary conditions before
-             * configuring.
-             */
-            wlan_hdd_set_mc_addr_list(pAdapter, TRUE);
-#endif
-        }
-        vstatus = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
-        pAdapterNode = pNext;
-    }
-    EXIT();
-}
 
 /**============================================================================
  *
@@ -2730,10 +2663,10 @@ static eHalStatus roamRoamConnectStatusUpdateHandler( hdd_adapter_t *pAdapter, t
       case eCSR_ROAM_RESULT_IBSS_NEW_PEER:
       {
          hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
-         struct station_info staInfo;
+         struct station_info *stainfo;
 
-         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                   "IBSS New Peer indication from SME with peerMac " MAC_ADDRESS_STR " BSSID: " MAC_ADDRESS_STR " and stationID= %d",
+         pr_info ( "IBSS New Peer indication from SME "
+                    "with peerMac " MAC_ADDRESS_STR " BSSID: " MAC_ADDRESS_STR " and stationID= %d",
                     MAC_ADDR_ARRAY(pRoamInfo->peerMac),
                     MAC_ADDR_ARRAY(pHddStaCtx->conn_info.bssId),
                     pRoamInfo->staId );
@@ -2764,13 +2697,20 @@ static eHalStatus roamRoamConnectStatusUpdateHandler( hdd_adapter_t *pAdapter, t
             break;
          }
          pHddStaCtx->ibss_sta_generation++;
-         memset(&staInfo, 0, sizeof(staInfo));
-         staInfo.filled = 0;
-         staInfo.generation = pHddStaCtx->ibss_sta_generation;
+         stainfo = vos_mem_malloc(sizeof(*stainfo));
+         if (stainfo == NULL) {
+             VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                       "memory allocation for station_info failed");
+             return eHAL_STATUS_FAILED_ALLOC;
+         }
+         memset(stainfo, 0, sizeof(*stainfo));
+         stainfo->filled = 0;
+         stainfo->generation = pHddStaCtx->ibss_sta_generation;
 
          cfg80211_new_sta(pAdapter->dev,
-                      (const u8 *)pRoamInfo->peerMac,
-                      &staInfo, GFP_KERNEL);
+                          (const u8 *)pRoamInfo->peerMac,
+                          stainfo, GFP_KERNEL);
+         vos_mem_free(stainfo);
 
          if ( eCSR_ENCRYPT_TYPE_WEP40_STATICKEY == pHddStaCtx->ibss_enc_key.encType
             ||eCSR_ENCRYPT_TYPE_WEP104_STATICKEY == pHddStaCtx->ibss_enc_key.encType

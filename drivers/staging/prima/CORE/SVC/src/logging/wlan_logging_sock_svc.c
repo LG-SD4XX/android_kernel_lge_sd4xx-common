@@ -280,7 +280,7 @@ static int wlan_send_sock_msg_to_app(tAniHdr *wmsg, int radio,
 	tAniNlHdr *wnl = NULL;
 	struct sk_buff *skb;
 	struct nlmsghdr *nlh;
-	int wmsg_length = ntohs(wmsg->length);
+	int wmsg_length = wmsg->length;
 	static int nlmsg_seq;
 
 	if (radio < 0 || radio > ANI_MAX_RADIOS) {
@@ -290,7 +290,6 @@ static int wlan_send_sock_msg_to_app(tAniHdr *wmsg, int radio,
 	}
 
 	payload_len = wmsg_length + sizeof(wnl->radio) + sizeof(tAniHdr);
-
 	tot_msg_len = NLMSG_SPACE(payload_len);
 	skb = dev_alloc_skb(tot_msg_len);
 	if (skb == NULL) {
@@ -1156,6 +1155,9 @@ static int wlan_logging_thread(void *Arg)
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0))
 	daemonize("wlan_logging_thread");
 #endif
+// LGE_CHANGE_S, 20161129, neo-wifi@lge.com : Debug patch for Wi-Fi driver loading failure, QCT Case 02707530
+    printk("%s Enter gwlan_logging.exit %d\n", __func__, gwlan_logging.exit);
+// LGE_CHANGE_E, 20161129, neo-wifi@lge.com : Debug patch for Wi-Fi driver loading failure, QCT Case 02707530
 	while (!gwlan_logging.exit) {
 		ret_wait_status = wait_event_interruptible(
 		  gwlan_logging.wait_queue,
@@ -1178,6 +1180,9 @@ static int wlan_logging_thread(void *Arg)
 		}
 
 		if (gwlan_logging.exit) {
+// LGE_CHANGE_S, 20161129, neo-wifi@lge.com : Debug patch for Wi-Fi driver loading failure, QCT Case 02707530
+            pr_err("%s: gwlan_logging.exit", __func__);
+// LGE_CHANGE_E, 20161129, neo-wifi@lge.com : Debug patch for Wi-Fi driver loading failure, QCT Case 02707530
 		    break;
 		}
 
@@ -1264,6 +1269,9 @@ static int wlan_logging_thread(void *Arg)
 	}
 
 	complete_and_exit(&gwlan_logging.shutdown_comp, 0);
+// LGE_CHANGE_S, 20161129, neo-wifi@lge.com : Debug patch for Wi-Fi driver loading failure, QCT Case 02707530
+    printk("%s Exit %d\n", __func__, gwlan_logging.exit);
+// LGE_CHANGE_E, 20161129, neo-wifi@lge.com : Debug patch for Wi-Fi driver loading failure, QCT Case 02707530
 
 	return 0;
 }
@@ -1276,7 +1284,7 @@ static int wlan_logging_proc_sock_rx_msg(struct sk_buff *skb)
 	tAniNlHdr *wnl;
 	int radio;
 	int type;
-	int ret, len;
+	int ret;
 	unsigned long flags;
 
         if (TRUE == vos_isUnloadInProgress())
@@ -1295,12 +1303,10 @@ static int wlan_logging_proc_sock_rx_msg(struct sk_buff *skb)
 		return -EINVAL;
 	}
 
-	len = ntohs(wnl->wmsg.length) + sizeof(tAniNlHdr);
-
-	if (len > skb_headlen(skb))
+	if (wnl->wmsg.length > skb->data_len)
 	{
-		pr_err("%s: invalid length, msgLen:%x skb len:%x headLen: %d data_len: %d",
-		       __func__, len, skb->len, skb_headlen(skb), skb->data_len);
+		pr_err("%s: invalid length msgLen:%x skb data_len:%x \n",
+		       __func__, wnl->wmsg.length, skb->data_len);
 		return -EINVAL;
 	}
 
@@ -1498,8 +1504,10 @@ err:
 	gwlan_logging.thread = kthread_create(wlan_logging_thread, NULL,
 					"wlan_logging_thread");
 	if (IS_ERR(gwlan_logging.thread)) {
-		pr_err("%s: Could not Create LogMsg Thread Controller",
-		       __func__);
+// LGE_CHANGE_S, 20161129, neo-wifi@lge.com : Debug patch for Wi-Fi driver loading failure, QCT Case 02707530
+        pr_err("%s: kthread_create() returned %p \n",__func__,gwlan_logging.thread);
+// LGE_CHANGE_E, 20161129, neo-wifi@lge.com : Debug patch for Wi-Fi driver loading failure, QCT Case 02707530
+        pr_err("%s: Could not Create LogMsg Thread Controller", __func__);
 		spin_lock_irqsave(&gwlan_logging.spin_lock, irq_flag);
 		vfree(gplog_msg);
 		gplog_msg = NULL;

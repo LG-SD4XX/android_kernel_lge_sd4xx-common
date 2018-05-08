@@ -453,6 +453,9 @@ typedef struct
    v_PVOID_t            pWdiContext;             /* WDI context */
    WDA_state            wdaState ;               /* WDA state tracking */ 
    v_PVOID_t            wdaWdiCfgApiMsgParam ;   /* WDI API paramter tracking */
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+   v_PVOID_t            wdaWdiCfgUpdateIntMsg ;  /* WDI API CFG update param tracking */
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
    vos_event_t          wdaWdiEvent;             /* WDI API sync event */
 
    /* Event to wait for tx completion */
@@ -1187,6 +1190,10 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_PER_ROAM_SCAN_TRIGGER_REQ   SIR_HAL_PER_ROAM_SCAN_TRIGGER_REQ
 #define WDA_PER_ROAM_SCAN_TRIGGER_RSP   SIR_HAL_PER_ROAM_SCAN_TRIGGER_RSP
 #endif
+
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+#define WDA_UPDATE_CFG_INT_PARAM    SIR_HAL_UPDATE_CFG_INT_PARAM
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
 
 #ifdef WLAN_WAKEUP_EVENTS
 #define WDA_WAKE_REASON_IND    SIR_HAL_WAKE_REASON_IND  

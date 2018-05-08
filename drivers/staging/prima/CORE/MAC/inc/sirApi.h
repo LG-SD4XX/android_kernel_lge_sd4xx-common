@@ -766,7 +766,7 @@ typedef struct sSirChannelList
 
 typedef struct sSirDFSChannelList
 {
-    v_TIME_t         timeStamp[SIR_MAX_24G_5G_CHANNEL_RANGE];
+    tANI_U32         timeStamp[SIR_MAX_24G_5G_CHANNEL_RANGE];
 
 } tSirDFSChannelList, *tpSirDFSChannelList;
 
@@ -857,8 +857,8 @@ typedef struct sSirSmeScanReq
      * Values of 0xC0, 0x80 & 0x40 are to be used by
      * Roaming/application when 11d is enabled.
      */
-    tANI_U32 min_chntime_btc_esco;    //in units of milliseconds
-    tANI_U32 max_chntime_btc_esco;    //in units of milliseconds
+    tANI_U32 minChannelTimeBtc;    //in units of milliseconds
+    tANI_U32 maxChannelTimeBtc;    //in units of milliseconds
     tANI_U8              returnAfterFirstMatch;
 
     /**
@@ -3703,6 +3703,8 @@ typedef enum DFSChanScanType
 #define SIR_COEX_IND_TYPE_CXM_FEATURES_NOTIFICATION (8)
 #define SIR_COEX_IND_TYPE_TDLS_ENABLE  (6)
 #define SIR_COEX_IND_TYPE_TDLS_DISABLE (7)
+#define SIR_COEX_IND_TYPE_HID_CONNECTED_WLAN_CONNECTED_IN_2p4 (9)
+#define SIR_COEX_IND_TYPE_HID_DISCONNECTED_WLAN_CONNECTED_IN_2p4 (10)
 
 typedef struct sSirSmeCoexInd
 {
@@ -3766,6 +3768,13 @@ typedef struct sSirWlanSetRxpFilters
     tANI_U8 configuredMcstBcstFilterSetting;
     tANI_U8 setMcstBcstFilter;
 }tSirWlanSetRxpFilters,*tpSirWlanSetRxpFilters;
+
+// LGE_CHANGE_S, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
+typedef struct sSirUpdateCfgIntParam
+{
+    tANI_U32 cfgId;
+}tSirUpdateCfgIntParam,*tpSirUpdateCfgIntParam;
+// LGE_CHANGE_E, 20161208, neo-wifi@lge.com : Fixed dynamic packet filter, QCT Case 02689114
 
 typedef struct
 {

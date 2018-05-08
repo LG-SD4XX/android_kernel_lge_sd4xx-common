@@ -192,6 +192,7 @@ vos_sched_open
   //Create the VOSS Main Controller thread
   pSchedContext->McThread = kthread_create(VosMCThread, pSchedContext,
                                            "VosMCThread");
+  kthread_bind(pSchedContext->McThread, 0);
   if (IS_ERR(pSchedContext->McThread)) 
   {
      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
@@ -204,6 +205,7 @@ vos_sched_open
 
   pSchedContext->TxThread = kthread_create(VosTXThread, pSchedContext,
                                            "VosTXThread");
+  kthread_bind(pSchedContext->TxThread, 0);
   if (IS_ERR(pSchedContext->TxThread)) 
   {
      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
@@ -216,6 +218,7 @@ vos_sched_open
 
   pSchedContext->RxThread = kthread_create(VosRXThread, pSchedContext,
                                            "VosRXThread");
+  kthread_bind(pSchedContext->RxThread, 0);
   if (IS_ERR(pSchedContext->RxThread)) 
   {
 
@@ -311,6 +314,7 @@ VOS_STATUS vos_watchdog_open
 
   //Create the Watchdog thread
   pWdContext->WdThread = kthread_create(VosWDThread, pWdContext,"VosWDThread");
+  kthread_bind(pWdContext->WdThread, 0);
   
   if (IS_ERR(pWdContext->WdThread)) 
   {
@@ -752,30 +756,29 @@ static void vos_wd_detect_thread_stuck_cb(void *priv)
   }
 }
 
-/**
+// LGE-START, 2016.11.18, neo-wifi@lge.com, Apply QCT CR1086969 : Initialize thread stuck timer after driver loading is done
+/*
  * vos_thread_stuck_timer_init - Initialize thread stuck timer
  *
  * @pWdContext: watchdog context.
  *
  * Return: void
- */
+*/
 void vos_thread_stuck_timer_init(pVosWatchdogContext pWdContext)
 {
     if (vos_timer_init_deferrable(&pWdContext->threadStuckTimer,
-                      VOS_TIMER_TYPE_SW,
-                      vos_wd_detect_thread_stuck_cb, NULL))
+        VOS_TIMER_TYPE_SW, vos_wd_detect_thread_stuck_cb, NULL)) {
         hddLog(LOGE, FL("Unable to initialize thread stuck timer"));
-    else
-    {
+    } else {
         if (VOS_STATUS_SUCCESS !=
-                 vos_timer_start(&pWdContext->threadStuckTimer,
+                vos_timer_start(&pWdContext->threadStuckTimer,
                                  THREAD_STUCK_TIMER_VAL))
             hddLog(LOGE, FL("Unable to start thread stuck timer"));
         else
             hddLog(LOG1, FL("Successfully started thread stuck timer"));
     }
-
 }
+// LGE-END, 2016.11.18, neo-wifi@lge.com, Apply QCT CR1086969 : Initialize thread stuck timer after driver loading is done
 
 /**
  * wlan_logging_reset_thread_stuck_count()- Callback to

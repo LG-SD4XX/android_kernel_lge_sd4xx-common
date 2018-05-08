@@ -571,11 +571,11 @@ wpt_status dxeErrHandler
       {
           wpt_uint32 regValue, regValueLocal;
           wpt_uint32 count = 0;
-          HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO,
+          HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
                    "%s: DXE Abort Error from S/W", __func__);
 
           wpalReadRegister(WALNDEX_DMA_CSR_ADDRESS, &regValue);
-          HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO,
+          HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
                    "%s: DXE CSR Value: %08x", __func__,regValue);
 
           //Execute the BMU recovery only if firmware triggered the ABORT
@@ -594,7 +594,7 @@ wpt_status dxeErrHandler
 
               // Unblock the firmware
               regValue |= WLANDXE_DMA_CSR_HOST_RECOVERY_DONE;
-              HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO,
+              HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
                        "%s: Host DXE Cleanup done %08x", __func__,regValue);
               wpalWriteRegister(WALNDEX_DMA_CSR_ADDRESS, regValue);
 
@@ -619,7 +619,7 @@ wpt_status dxeErrHandler
               //check if the h/w resources have recovered
               wpalReadRegister(WLANDXE_BMU_AVAILABLE_BD_PDU, &regValue);
               wpalReadRegister(WLANDXE_BMU_AVAILABLE_BD_PDU_LOCAL, &regValueLocal);
-              HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO,
+              HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
                        "===== count %d ABD %d, ABD LOCAL %d =====", count,
                        regValue, regValueLocal);
               if(regValue == 0 || regValueLocal == 0)
@@ -3804,7 +3804,7 @@ static wpt_status dxeTXCleanup
       channelEntry = &tempDxeCtrlBlk->dxeChannel[idx];
       if(idx != WDTS_CHANNEL_TX_LOW_PRI && idx != WDTS_CHANNEL_TX_HIGH_PRI)
       {
-         HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO,
+         HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
                   "%s: %11s continue",__func__,
                   channelType[channelEntry->channelType]);
           continue;
@@ -3824,7 +3824,7 @@ static wpt_status dxeTXCleanup
 
       if( currentCtrlBlk == channelEntry->headCtrlBlk )
       {
-         HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO,
+         HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
                   "%s: %11s Head and Tail are Same",__func__,
                   channelType[channelEntry->channelType]);
 
@@ -3891,7 +3891,7 @@ static wpt_status dxeTXCleanup
           * in theory, COMP CB must be called already ??? */
          if(currentCtrlBlk == channelEntry->headCtrlBlk)
          {
-            HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO,
+            HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
                      "%s: %11s caught up with head ptr",__func__,
                      channelType[channelEntry->channelType]);
             break;
