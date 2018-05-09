@@ -76,6 +76,8 @@
 #include <asm/unaligned.h>
 #include <linux/errqueue.h>
 
+//add_to_scale
+#define TCP_RMEM_SCALE 4
 int sysctl_tcp_timestamps __read_mostly = 1;
 int sysctl_tcp_window_scaling __read_mostly = 1;
 int sysctl_tcp_sack __read_mostly = 1;
@@ -4201,7 +4203,10 @@ static int tcp_prune_queue(struct sock *sk);
 static int tcp_try_rmem_schedule(struct sock *sk, struct sk_buff *skb,
 				 unsigned int size)
 {
-	if (atomic_read(&sk->sk_rmem_alloc) > sk->sk_rcvbuf ||
+    //add_to_scale
+    //printk(KERN_ERR "  [LGE_DATA] sizeof(sk->sk_rcvbuf) = %d\n",(int)sizeof(sk->sk_rcvbuf));
+    //if (atomic_read(&sk->sk_rmem_alloc) > sk->sk_rcvbuf ||
+    if (atomic_read(&sk->sk_rmem_alloc) > ((sk->sk_rcvbuf + sk->sk_sndbuf) * TCP_RMEM_SCALE)  ||
 	    !sk_rmem_schedule(sk, skb, size)) {
 
 		if (tcp_prune_queue(sk) < 0)

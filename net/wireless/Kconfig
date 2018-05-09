@@ -209,3 +209,8 @@ config LIB80211_DEBUG
 	  from lib80211.
 
 	  If unsure, say N.
+
+config LGE_KCC_EXPCH
+	bool "KCC: expanded channels for 5GHz"
+	default n
+
