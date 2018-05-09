@@ -18,7 +18,15 @@
 
 #include "pmic-voter.h"
 
+#ifdef CONFIG_LGE_PM
+#if defined(CONFIG_LGE_PM_SMBCHG_STEP_CHG) || defined(CONFIG_LGE_PM_WATERPROOF_PROTECTION)
+#define NUM_MAX_CLIENTS 10
+#else
+#define NUM_MAX_CLIENTS 9
+#endif
+#else
 #define NUM_MAX_CLIENTS	8
+#endif
 
 struct client_vote {
 	int	state;
