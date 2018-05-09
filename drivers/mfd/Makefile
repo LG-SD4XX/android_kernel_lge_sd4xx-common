@@ -175,6 +175,9 @@ obj-$(CONFIG_MFD_STW481X)	+= stw481x.o
 obj-$(CONFIG_MFD_IPAQ_MICRO)	+= ipaq-micro.o
 obj-$(CONFIG_MFD_MENF21BMC)	+= menf21bmc.o
 obj-$(CONFIG_MFD_HI6421_PMIC)	+= hi6421-pmic-core.o
+obj-$(CONFIG_LGE_DISPLAY_DW8768_DSV)	+= dw8768.o
+obj-$(CONFIG_LGE_DISPLAY_SM5107_DSV)    += sm5107.o
+obj-$(CONFIG_LGE_DISPLAY_EXTERNAL_DSV)	+= dsv-dw8768_sm5107.o
 
 intel-soc-pmic-objs		:= intel_soc_pmic_core.o intel_soc_pmic_crc.o
 obj-$(CONFIG_INTEL_SOC_PMIC)	+= intel-soc-pmic.o
