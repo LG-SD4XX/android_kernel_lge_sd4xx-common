@@ -443,6 +443,31 @@ config SND_SOC_MAX98095
 config SND_SOC_MAX9850
 	tristate
 
+config SND_SOC_MAX98925
+    tristate "Speaker Protection IC"
+config SND_SOC_MAX98927
+    tristate "Speaker Protection IC"
+
+config SND_SOC_USE_QUIN_MI2S
+    bool "Maxim spk protection use quinary mi2s"
+    default n
+    depends on (SND_SOC_MAX98925 || SND_SOC_MAX98927)
+
+config SND_SOC_MAXIM_DSM
+    bool "Maxim spk protection library"
+    default n
+    depends on (SND_SOC_MAX98925 || SND_SOC_MAX98927)
+
+config SND_SOC_MAXIM_DSM_CAL
+    bool "Maxim spk protection calibration"
+    default n
+    depends on (SND_SOC_MAX98925 || SND_SOC_MAX98927)
+
+config SND_SOC_MAXIM_DSM_POWER
+    bool "Maxim spk protection power management"
+    default n
+    depends on SND_SOC_MAX98927
+
 config SND_SOC_PCM1681
 	tristate "Texas Instruments PCM1681 CODEC"
 	depends on I2C

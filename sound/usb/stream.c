@@ -675,6 +675,7 @@ int snd_usb_parse_audio_interface(struct snd_usb_audio *chip, int iface_no)
 					* (fp->maxpacksize & 0x7ff);
 		fp->attributes = parse_uac_endpoint_attributes(chip, alts, protocol, iface_no);
 		fp->clock = clock;
+
 		INIT_LIST_HEAD(&fp->list);
 
 		/* some quirks for attributes here */
