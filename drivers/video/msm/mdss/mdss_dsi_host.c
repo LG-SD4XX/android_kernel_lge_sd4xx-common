@@ -388,7 +388,6 @@ void mdss_dsi_host_init(struct mdss_panel_data *pdata)
 	if (pinfo->data_lane0)
 		dsi_ctrl |= BIT(4);
 
-
 	data = 0;
 	if (pinfo->te_sel)
 		data |= BIT(31);
@@ -580,7 +579,7 @@ error:
 	return rc;
 }
 
-static void mdss_dsi_cfg_lane_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
+void mdss_dsi_cfg_lane_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 						u32 bits, int set)
 {
 	u32 data;
@@ -591,6 +590,7 @@ static void mdss_dsi_cfg_lane_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 	else
 		data &= ~bits;
 	MIPI_OUTP(ctrl->ctrl_base + 0x0ac, data);
+	wmb(); /* make sure write happen */
 }
 
 
@@ -2320,7 +2320,7 @@ void mdss_dsi_wait4video_done(struct mdss_dsi_ctrl_pdata *ctrl)
 
 	/* DSI_INTL_CTRL */
 	data = MIPI_INP((ctrl->ctrl_base) + 0x0110);
-	data &= DSI_INTR_TOTAL_MASK;
+	data &= (DSI_INTR_TOTAL_MASK | DSI_INTR_VIDEO_DONE);	// QCT CR1004068
 	data |= DSI_INTR_VIDEO_DONE_MASK;
 
 	MIPI_OUTP((ctrl->ctrl_base) + 0x0110, data);
@@ -2349,7 +2349,15 @@ static int mdss_dsi_wait4video_eng_busy(struct mdss_dsi_ctrl_pdata *ctrl)
 	if (ctrl->ctrl_state & CTRL_STATE_MDP_ACTIVE) {
 		mdss_dsi_wait4video_done(ctrl);
 		/* delay 4 ms to skip BLLP */
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_PRE_ACTIVE_AREA_DELAY)
+		usleep_range(ctrl->panel_data.panel_info.pre_active_area_delay_us, ctrl->panel_data.panel_info.pre_active_area_delay_us);
+#else
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_WITH_QCT_ESD)
+		usleep_range(1000, 1000);
+#else
 		usleep_range(4000, 4000);
+#endif
+#endif
 		ret = 1;
 	}
 

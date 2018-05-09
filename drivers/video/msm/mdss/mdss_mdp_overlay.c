@@ -38,6 +38,13 @@
 #include "mdss_mdp_wfd.h"
 #include "mdss_dsi_clk.h"
 
+#if defined(CONFIG_TOUCHSCREEN_UNIFIED_DRIVER_3) && defined(CONFIG_LGE_DYNAMIC_FPS)
+#include <linux/input/unified_driver_3/lgtp_common_notify.h>
+#endif
+#ifdef CONFIG_LGE_INTERVAL_DFPS
+#include "lge_interval_dfps.h"
+#endif
+
 #define VSYNC_PERIOD 16
 #define BORDERFILL_NDX	0x0BF000BF
 #define CHECK_BOUNDS(offset, size, max_size) \
@@ -2686,6 +2693,9 @@ static void mdss_mdp_overlay_handle_vsync(struct mdss_mdp_ctl *ctl,
 {
 	struct msm_fb_data_type *mfd = NULL;
 	struct mdss_overlay_private *mdp5_data = NULL;
+#ifdef CONFIG_LGE_DISPLAY_P2S_VSYNC_SKIP
+	struct mdss_data_type *mdata = NULL;
+#endif
 
 	if (!ctl) {
 		pr_err("ctl is NULL\n");
@@ -2704,10 +2714,44 @@ static void mdss_mdp_overlay_handle_vsync(struct mdss_mdp_ctl *ctl,
 		return;
 	}
 
+#ifdef CONFIG_LGE_DISPLAY_P2S_VSYNC_SKIP
+	mdata = mfd_to_mdata(mfd);
+	if (!mdata) {
+		pr_err("mdata is NULL\n");
+		return;
+	}
+
+	if (mdata->enable_skip_vsync) {
+		mdata->bucket += mdata->weight;
+		if (mdata->skip_first == false) {
+			mdata->skip_first = true;
+
+			pr_debug("vsync on fb%d play_cnt=%d\n", mfd->index, ctl->play_cnt);
+
+			mdp5_data->vsync_time = t;
+			sysfs_notify_dirent(mdp5_data->vsync_event_sd);
+		} else {
+			if (mdata->skip_value <= mdata->bucket) {
+				pr_debug("vsync on fb%d play_cnt=%d\n", mfd->index, ctl->play_cnt);
+				mdp5_data->vsync_time = t;
+				sysfs_notify_dirent(mdp5_data->vsync_event_sd);
+				mdata->bucket -= mdata->skip_value;
+			} else {
+				mdata->skip_count++;
+			}
+		}
+	} else {
+		pr_debug("vsync on fb%d play_cnt=%d\n", mfd->index, ctl->play_cnt);
+
+		mdp5_data->vsync_time = t;
+		sysfs_notify_dirent(mdp5_data->vsync_event_sd);
+	}
+#else /* qct original */
 	pr_debug("vsync on fb%d play_cnt=%d\n", mfd->index, ctl->play_cnt);
 
 	mdp5_data->vsync_time = t;
 	sysfs_notify_dirent(mdp5_data->vsync_event_sd);
+#endif
 }
 
 /* function is called in irq context should have minimum processing */
@@ -2990,6 +3034,7 @@ int mdss_mdp_dfps_update_params(struct msm_fb_data_type *mfd,
 static ssize_t dynamic_fps_sysfs_wta_dfps(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
+#ifndef CONFIG_LGE_INTERVAL_DFPS
 	int panel_fps, rc = 0;
 	struct mdss_panel_data *pdata;
 	struct fb_info *fbi = dev_get_drvdata(dev);
@@ -3048,6 +3093,10 @@ static ssize_t dynamic_fps_sysfs_wta_dfps(struct device *dev,
 		pr_err("failed to set dfps params\n");
 		return rc;
 	}
+#endif
+#if defined(CONFIG_TOUCHSCREEN_UNIFIED_DRIVER_3) && defined(CONFIG_LGE_DYNAMIC_FPS)
+		touch_notifier_call_chain(LCD_EVENT_FPS_CHANGED,NULL);
+#endif
 
 	return count;
 } /* dynamic_fps_sysfs_wta_dfps */
@@ -3055,9 +3104,22 @@ static ssize_t dynamic_fps_sysfs_wta_dfps(struct device *dev,
 
 static DEVICE_ATTR(dynamic_fps, S_IRUGO | S_IWUSR, dynamic_fps_sysfs_rda_dfps,
 	dynamic_fps_sysfs_wta_dfps);
+#ifdef CONFIG_LGE_INTERVAL_DFPS
+static DEVICE_ATTR(dfps, S_IRUGO | S_IWUSR, dfps_show, dfps_store);
+static DEVICE_ATTR(dfps_en, S_IRUGO | S_IWUSR, dfps_en_show, dfps_en_store);
+static DEVICE_ATTR(dfps_interval, S_IRUGO | S_IWUSR, dfps_interval_show, NULL);
+static DEVICE_ATTR(dfps_wsize, S_IRUGO | S_IWUSR, dfps_wsize_show,
+		dfps_wsize_store);
+#endif
 
 static struct attribute *dynamic_fps_fs_attrs[] = {
 	&dev_attr_dynamic_fps.attr,
+#ifdef CONFIG_LGE_INTERVAL_DFPS
+	&dev_attr_dfps.attr,
+	&dev_attr_dfps_en.attr,
+	&dev_attr_dfps_interval.attr,
+	&dev_attr_dfps_wsize.attr,
+#endif
 	NULL,
 };
 static struct attribute_group dynamic_fps_fs_attrs_group = {
@@ -3829,12 +3891,21 @@ static int mdss_mdp_hw_cursor_pipe_update(struct msm_fb_data_type *mfd,
 		start_y = 0;
 	}
 
+	if ((img->width > mdata->max_cursor_size) ||
+		(img->height > mdata->max_cursor_size) ||
+		(img->depth != 32) || (start_x >= xres) ||
+		(start_y >= yres)) {
+		pr_err("Invalid cursor image coordinates\n");
+		ret = -EINVAL;
+		goto done;
+	}
+
 	roi.w = min(xres - start_x, img->width - roi.x);
 	roi.h = min(yres - start_y, img->height - roi.y);
 
 	if ((roi.w > mdata->max_cursor_size) ||
-		(roi.h > mdata->max_cursor_size) ||
-		(img->depth != 32) || (start_x >= xres) || (start_y >= yres)) {
+		(roi.h > mdata->max_cursor_size)) {
+		pr_err("Invalid cursor ROI size\n");
 		ret = -EINVAL;
 		goto done;
 	}

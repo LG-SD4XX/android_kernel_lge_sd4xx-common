@@ -25,6 +25,9 @@
 #include "mdss_panel.h"
 #include "mdss_debug.h"
 #include "mdss_mdp_trace.h"
+#if defined(CONFIG_LGE_INTERVAL_DFPS)
+#include "lge_interval_dfps.h"
+#endif
 
 /* wait for at least 2 vsyncs for lowest refresh rate (24hz) */
 #define VSYNC_TIMEOUT_US 100000
@@ -1097,7 +1100,7 @@ static void mdss_mdp_video_underrun_intr_done(void *arg)
 	ctl->underrun_cnt++;
 	MDSS_XLOG(ctl->num, ctl->underrun_cnt);
 	trace_mdp_video_underrun_done(ctl->num, ctl->underrun_cnt);
-	pr_debug("display underrun detected for ctl=%d count=%d\n", ctl->num,
+	pr_info("display underrun detected for ctl=%d count=%d\n", ctl->num,
 			ctl->underrun_cnt);
 
 	if (!test_bit(MDSS_CAPS_3D_MUX_UNDERRUN_RECOVERY_SUPPORTED,
@@ -2082,6 +2085,9 @@ static void early_wakeup_dfps_update_work(struct work_struct *work)
 	if (ret)
 		pr_err("early wakeup failed to set %d fps ret=%d\n",
 			dfps, ret);
+#if defined(CONFIG_LGE_INTERVAL_DFPS)
+	lge_dfps_input_notify();
+#endif
 
 exit:
 	ATRACE_END(__func__);

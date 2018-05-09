@@ -17,7 +17,9 @@
 
 #include "mdss_dsi.h"
 #include "mdss_mdp.h"
-
+#if IS_ENABLED(CONFIG_LGE_TOUCH_LG4894)
+extern bool lg4894_check_finger(void);
+#endif
 /*
  * mdss_check_te_status() - Check the status of panel for TE based ESD.
  * @ctrl_pdata   : dsi controller data
@@ -116,6 +118,20 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 			goto status_dead;
 	}
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_WITH_QCT_ESD)
+	if (get_esd_status()) {
+		pr_err("%s: lge esd status NG, status=0x%X\n", __func__, get_esd_status());
+		init_esd_status();
+		goto status_dead;
+	}
+#endif
+#if IS_ENABLED(CONFIG_LGE_TOUCH_LG4894)
+	if (lg4894_check_finger()) {
+		schedule_delayed_work(&pstatus_data->check_status,
+			msecs_to_jiffies(interval));
+		return;
+	}
+#endif
 
 	/*
 	 * TODO: Because mdss_dsi_cmd_mdp_busy has made sure DMA to
@@ -184,5 +200,9 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 	return;
 
 status_dead:
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_RECOVERY_ESD)
+	lge_mdss_report_panel_dead();
+#else
 	mdss_fb_report_panel_dead(pstatus_data->mfd);
+#endif
 }

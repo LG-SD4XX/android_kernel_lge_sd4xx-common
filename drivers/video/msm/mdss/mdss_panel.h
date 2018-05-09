@@ -55,6 +55,16 @@ struct panel_id {
 
 #define DSC_PPS_LEN		128
 
+#if defined(CONFIG_LGE_HIGH_LUMINANCE_MODE)
+/* backlight mapping table type list */
+enum lge_bl_map_type {
+	LGE_BLDFT = 0,			/* default */
+	LGE_BL = LGE_BLDFT,		/* main backlight */
+	LGE_BLHL,				/* main backlight with high luminance */
+	LGE_BLMAPMAX
+};
+#endif
+
 static inline const char *mdss_panel2str(u32 panel)
 {
 	static const char const *names[] = {
@@ -715,6 +725,23 @@ struct mdss_panel_info {
 
 	/* debugfs structure for the panel */
 	struct mdss_panel_debugfs_info *debugfs_info;
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_BL_USE_BLMAP)
+	int blmap_size;
+	int *blmap;
+#elif defined(CONFIG_LGE_HIGH_LUMINANCE_MODE)
+	int blmap_size;
+	int *blmap[LGE_BLMAPMAX];
+	int hl_mode_on;
+#endif //CONFIG_LGE_DISPLAY_BL_USE_BLMAP
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_RECOVERY_ESD)
+	int esd_bl_delay;
+#endif
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_PRE_ACTIVE_AREA_DELAY)
+	u32 pre_active_area_delay_us;
+#endif
+#if defined(CONFIG_LGE_DISPLAY_DAYLIGHT_MODE)
+	u32 daylight_mode;
+#endif
 };
 
 struct mdss_panel_timing {
