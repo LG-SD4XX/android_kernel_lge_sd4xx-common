@@ -18,3 +18,10 @@ config MACH_MSM8917_LV517_GSM_US
 	select MACH_LGE
 	help
 	  Support for the Qualcomm MSM8917 LV517_GSM_US devices (TMO/MPCS).
+
+config MACH_MSM8940_SF3_TMO_US
+	bool "MSM8940 SF3_TMO_US"
+	depends on ARCH_MSM8916
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8940 SF3_TMO_US device.
