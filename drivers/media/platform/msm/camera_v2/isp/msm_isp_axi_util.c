@@ -16,7 +16,7 @@
 #include "msm_isp_axi_util.h"
 
 #define HANDLE_TO_IDX(handle) (handle & 0xFF)
-#define ISP_SOF_DEBUG_COUNT 0
+#define ISP_SOF_DEBUG_COUNT 5
 
 static int msm_isp_update_dual_HW_ms_info_at_start(
 	struct vfe_device *vfe_dev,
@@ -381,6 +381,7 @@ void msm_isp_axi_reserve_wm(struct vfe_device *vfe_dev,
 			stream_info->stream_handle, j);
 		stream_info->wm[i] = j;
 	}
+	axi_data->need_wm_reconfig = 1;
 }
 
 void msm_isp_axi_free_wm(struct msm_vfe_axi_shared_data *axi_data,
@@ -3024,8 +3025,7 @@ int msm_isp_cfg_axi_stream(struct vfe_device *vfe_dev, void *arg)
 		pr_err("%s: Invalid stream state\n", __func__);
 		return rc;
 	}
-
-	if (axi_data->num_active_stream == 0) {
+	if (axi_data->num_active_stream == 0 || axi_data->need_wm_reconfig) {
 		/*Configure UB*/
 		vfe_dev->hw_info->vfe_ops.axi_ops.cfg_ub(vfe_dev);
 		/*when start reset overflow state*/

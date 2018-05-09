@@ -86,7 +86,7 @@ struct msm_isp_bufq *msm_isp_get_bufq(
 	/* bufq_handle cannot be 0 */
 	if ((bufq_handle == 0) ||
 		bufq_index >= BUF_MGR_NUM_BUF_Q ||
-		(bufq_index > buf_mgr->num_buf_q))
+		(bufq_index >= buf_mgr->num_buf_q))
 		return NULL;
 
 	bufq = &buf_mgr->bufq[bufq_index];
@@ -707,6 +707,7 @@ static int msm_isp_update_put_buf_cnt_unsafe(
 	} else if (bufq->buf_type == ISP_SHARE_BUF &&
 		(*put_buf_mask & (1 << id)) != 0) {
 		return -ENOTEMPTY;
+
 	}
 
 	if (buf_info &&

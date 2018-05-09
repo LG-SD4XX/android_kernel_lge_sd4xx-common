@@ -516,6 +516,7 @@ struct msm_vfe_axi_shared_data {
 	uint32_t event_mask;
 	uint8_t enable_frameid_recovery;
 	enum msm_vfe_camif_state camif_state;
+	uint8_t need_wm_reconfig;
 	uint32_t recovery_count;
 };
 
@@ -772,6 +773,14 @@ struct vfe_device {
 	/* irq info */
 	uint32_t irq0_mask;
 	uint32_t irq1_mask;
+
+/*LGE_CHANGE_S, ignore duplicate irq to fix ping pong bit error, 2016-08-08, hyeonsoo.jeon@lge.com */
+	/* last received irq */
+	uint32_t irq_status0;
+	uint32_t irq_status1;
+	uint32_t ping_pong_status;
+/*LGE_CHANGE_S, ignore duplicate irq to fix ping pong bit error, 2016-08-08, hyeonsoo.jeon@lge.com */
+
 	/* before halt irq info */
 	uint32_t recovery_irq0_mask;
 	uint32_t recovery_irq1_mask;

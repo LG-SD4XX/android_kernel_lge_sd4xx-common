@@ -1277,6 +1277,7 @@ static void msm_vfe44_cfg_axi_ub(struct vfe_device *vfe_dev)
 		msm_vfe44_cfg_axi_ub_equal_slicing(vfe_dev);
 	else
 		msm_vfe44_cfg_axi_ub_equal_default(vfe_dev);
+	axi_data->need_wm_reconfig = 0;
 }
 
 static void msm_vfe44_read_wm_ping_pong_addr(

@@ -1155,6 +1155,7 @@ static void msm_vfe32_cfg_axi_ub(struct vfe_device *vfe_dev)
 		msm_vfe32_cfg_axi_ub_equal_slicing(vfe_dev);
 	else
 		msm_vfe32_cfg_axi_ub_equal_default(vfe_dev);
+	axi_data->need_wm_reconfig = 0;
 }
 
 static void msm_vfe32_update_ping_pong_addr(void __iomem *vfe_base,
