@@ -33,6 +33,28 @@
 #include <linux/spinlock.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/syscore_ops.h>
+#include <linux/switch.h>
+#include <linux/wakelock.h>
+
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+#include <soc/qcom/lge/lge_handle_panic.h>
+#endif
+
+struct switch_dev hallic_sdev = {
+	.name = "smartcover",
+};
+
+struct switch_dev stylus_pen_sdev = {
+	.name = "pen_state",
+};
+
+#if defined(CONFIG_LGE_TOUCH_HALL_IC_COVER)
+static int is_smart_cover_closed = 0;
+int cradle_smart_cover_status(void)
+{
+	return is_smart_cover_closed;
+}
+#endif
 
 struct gpio_button_data {
 	const struct gpio_keys_button *button;
@@ -44,6 +66,7 @@ struct gpio_button_data {
 	spinlock_t lock;
 	bool disabled;
 	bool key_pressed;
+	struct wake_lock gpio_irq_wakelock;
 };
 
 struct gpio_keys_drvdata {
@@ -346,6 +369,36 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 			input_event(input, type, button->code, button->value);
 	} else {
 		input_event(input, type, button->code, !!state);
+		pr_err("%s: code(%d) state(%d)\n", __func__, button->code, !!state);
+
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+		lge_gen_key_panic(button->code, state);
+#endif
+
+		if (!strncmp(bdata->button->desc, "hall_ic", 7)) {
+			if (hallic_sdev.state != state) {
+				switch_set_state(&hallic_sdev, state);
+				pr_info("hall_ic state changed to %d\n", state);
+
+				if(hallic_sdev.state == 0) {
+					pr_info("Set hall_ic wakelock\n");
+					wake_lock_timeout(&bdata->gpio_irq_wakelock, msecs_to_jiffies(3000));
+				}
+			}
+		}
+
+		if (!strncmp(bdata->button->desc, "stylus_pen", 10)) {
+			pr_info("stylus_pen state = %d\n", state);
+			if (stylus_pen_sdev.state != state) {
+				switch_set_state(&stylus_pen_sdev, state);
+				pr_info("stylus_pen state changed to %d\n", state);
+
+				if(stylus_pen_sdev.state == 0) {
+					pr_info("Set stylus_pen wakelock\n");
+					wake_lock_timeout(&bdata->gpio_irq_wakelock, msecs_to_jiffies(3000));
+				}
+			}
+		}
 	}
 	input_sync(input);
 }
@@ -373,6 +426,11 @@ static irqreturn_t gpio_keys_gpio_isr(int irq, void *dev_id)
 	struct gpio_button_data *bdata = dev_id;
 
 	BUG_ON(irq != bdata->irq);
+
+#if defined(CONFIG_LGE_TOUCH_HALL_IC_COVER)
+	if (bdata->button->code == 222)
+		is_smart_cover_closed = !__gpio_get_value(bdata->button->gpio);
+#endif
 
 	if (bdata->button->wakeup)
 		pm_stay_awake(bdata->input->dev.parent);
@@ -478,6 +536,26 @@ static int gpio_keys_setup_key(struct platform_device *pdev,
 			if (error < 0)
 				bdata->timer_debounce =
 						button->debounce_interval;
+		}
+
+		if (!strncmp(desc, "hall_ic", 7)) {
+			if (switch_dev_register(&hallic_sdev) < 0) {
+				pr_err("hall_ic switch registration failed\n");
+				switch_dev_unregister(&hallic_sdev);
+			} else {
+				wake_lock_init(&bdata->gpio_irq_wakelock, WAKE_LOCK_SUSPEND, "hall_ic_wakelock");
+				pr_info("hall_ic switch registration succeeded\b");
+			}
+		}
+
+		if (!strncmp(desc, "stylus_pen", 10)) {
+			if (switch_dev_register(&stylus_pen_sdev) < 0) {
+				pr_err("stylus_pen switch registration failed\n");
+				switch_dev_unregister(&stylus_pen_sdev);
+			} else {
+				wake_lock_init(&bdata->gpio_irq_wakelock, WAKE_LOCK_SUSPEND, "styluspen_wakelock");
+				pr_info("stylus_pen switch registration succeeded\b");
+			}
 		}
 
 		irq = gpio_to_irq(button->gpio);
