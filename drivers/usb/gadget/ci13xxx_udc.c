@@ -70,6 +70,10 @@
 
 #include "ci13xxx_udc.h"
 
+#ifdef CONFIG_LGE_USB_FACTORY
+#include <soc/qcom/lge/board_lge.h>
+#define PORTSC_PFSC BIT(24)
+#endif
 /******************************************************************************
  * DEFINE
  *****************************************************************************/
@@ -359,6 +363,13 @@ static int hw_device_reset(struct ci13xxx *udc)
 		pr_err("lpm = %i", hw_bank.lpm);
 		return -ENODEV;
 	}
+
+#ifdef CONFIG_LGE_USB_FACTORY
+	/* USB FS only used in 130K */
+	if ((lge_get_boot_mode() == LGE_BOOT_MODE_QEM_130K) ||
+			(lge_get_boot_mode() == LGE_BOOT_MODE_PIF_130K))
+		hw_cwrite(CAP_PORTSC, PORTSC_PFSC, PORTSC_PFSC);
+#endif
 
 	return 0;
 }
@@ -1903,17 +1914,18 @@ static int _hardware_enqueue(struct ci13xxx_ep *mEp, struct ci13xxx_req *mReq)
 	 * TD configuration
 	 * TODO - handle requests which spawns into several TDs
 	 */
-	memset(mReq->ptr, 0, sizeof(*mReq->ptr));
-	mReq->ptr->token    = length << ffs_nr(TD_TOTAL_BYTES);
-	mReq->ptr->token   &= TD_TOTAL_BYTES;
-	mReq->ptr->token   |= TD_STATUS_ACTIVE;
+	mReq->ptr->token  = 0;
 	if (mReq->zptr) {
 		mReq->ptr->next    = mReq->zdma;
 	} else {
 		mReq->ptr->next    = TD_TERMINATE;
-		if (!mReq->req.no_interrupt)
-			mReq->ptr->token  |= TD_IOC;
 	}
+
+	mReq->ptr->token    = length << ffs_nr(TD_TOTAL_BYTES);
+	mReq->ptr->token   &= TD_TOTAL_BYTES;
+	mReq->ptr->token   |= TD_STATUS_ACTIVE;
+	if (!mReq->req.no_interrupt && !mReq->zptr)
+		mReq->ptr->token  |= TD_IOC;
 
 	/* MSM Specific: updating the request as required for
 	 * SPS mode. Enable MSM DMA engine according
@@ -3917,8 +3929,10 @@ static int udc_probe(struct ci13xxx_udc_driver *driver, struct device *dev,
 	_udc = udc;
 	return retval;
 
+#ifdef CONFIG_USB_GADGET_DEBUG_FILES
 del_udc:
 	usb_del_gadget_udc(&udc->gadget);
+#endif
 remove_trans:
 	if (udc->transceiver)
 		otg_set_peripheral(udc->transceiver->otg, &udc->gadget);

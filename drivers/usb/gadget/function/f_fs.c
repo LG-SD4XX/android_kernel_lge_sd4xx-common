@@ -787,7 +787,17 @@ static ssize_t ffs_epfile_io(struct file *file, struct ffs_io_data *io_data)
 			   usb_ep_align_maybe(gadget, ep->ep, io_data->len) :
 			   io_data->len;
 
+#ifndef CONFIG_LGE_USB_G_ANDROID
 		extra_buf_alloc = gadget->extra_buf_alloc;
+#else
+		if (epfile->ffs->gadget) {
+			extra_buf_alloc = epfile->ffs->gadget->extra_buf_alloc;
+		} else {
+			spin_unlock_irq(&epfile->ffs->eps_lock);
+			ret = -ENODEV;
+			goto error;
+		}
+#endif
 		spin_unlock_irq(&epfile->ffs->eps_lock);
 
 		if (!io_data->read)
@@ -1587,7 +1597,11 @@ static void ffs_data_clear(struct ffs_data *ffs)
 	if (ffs->gadget)
 		pr_err("%s: ffs:%p ffs->gadget= %p, ffs->flags= %lu\n",
 				__func__, ffs, ffs->gadget, ffs->flags);
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	WARN_ON(ffs->gadget);
+#else
 	BUG_ON(ffs->gadget);
+#endif
 
 	if (ffs->epfiles)
 		ffs_epfiles_destroy(ffs->epfiles, ffs->eps_count);

@@ -124,6 +124,10 @@ struct acc_dev {
 
 	/* list of dead HID devices to unregister */
 	struct list_head	dead_hid_list;
+
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	wait_queue_head_t release_wq;
+#endif
 };
 
 static struct usb_interface_descriptor acc_interface_desc = {
@@ -820,6 +824,10 @@ static int acc_release(struct inode *ip, struct file *fp)
 
 	WARN_ON(!atomic_xchg(&_acc_dev->open_excl, 0));
 	_acc_dev->disconnected = 0;
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	wake_up(&_acc_dev->release_wq);
+#endif
+
 	return 0;
 }
 
@@ -864,6 +872,11 @@ static struct hid_driver acc_hid_driver = {
 	.probe = acc_hid_probe,
 };
 
+#ifdef CONFIG_MACH_MSM8917_B6_LGU_KR
+int audio_source_started;
+extern int boot_cmplt;
+#endif
+
 int acc_ctrlrequest(struct usb_composite_dev *cdev,
 				const struct usb_ctrlrequest *ctrl)
 {
@@ -887,10 +900,20 @@ int acc_ctrlrequest(struct usb_composite_dev *cdev,
 
 	if (b_requestType == (USB_DIR_OUT | USB_TYPE_VENDOR)) {
 		if (b_request == ACCESSORY_START) {
+#ifdef CONFIG_MACH_MSM8917_B6_LGU_KR
+			pr_info("%s - ACCESSORY_START, boot %s\n", __func__,boot_cmplt?"completed":"not completed");
+			if (boot_cmplt != 0) {
+#endif
 			dev->start_requested = 1;
 			schedule_delayed_work(
 				&dev->start_work, msecs_to_jiffies(10));
+#ifdef CONFIG_MACH_MSM8917_B6_LGU_KR
+				value = 0;
+			}
+			audio_source_started = 1;
+#else
 			value = 0;
+#endif
 		} else if (b_request == ACCESSORY_SEND_STRING) {
 			dev->string_index = w_index;
 			cdev->gadget->ep0->driver_data = dev;
@@ -947,8 +970,13 @@ int acc_ctrlrequest(struct usb_composite_dev *cdev,
 			memset(dev->serial, 0, sizeof(dev->serial));
 			dev->start_requested = 0;
 			dev->audio_mode = 0;
+#ifndef CONFIG_LGE_USB_G_ANDROID
 			strlcpy(dev->manufacturer, "Android", ACC_STRING_SIZE);
 			strlcpy(dev->model, "Android", ACC_STRING_SIZE);
+#endif
+#ifdef CONFIG_MACH_MSM8917_B6_LGU_KR
+			audio_source_started = 0;
+#endif
 		}
 	}
 
@@ -971,6 +999,19 @@ err:
 	return value;
 }
 EXPORT_SYMBOL_GPL(acc_ctrlrequest);
+
+#ifdef CONFIG_LGE_USB_G_ANDROID
+void acc_wait_event(void)
+{
+	struct acc_dev  *dev = _acc_dev;
+
+	printk(KERN_INFO "acc_wait_event: enter\n");
+	wait_event_timeout(dev->release_wq,
+			!atomic_read(&dev->open_excl), msecs_to_jiffies(2000));
+	printk(KERN_INFO "acc_wait_event: exit\n");
+}
+EXPORT_SYMBOL_GPL(acc_wait_event);
+#endif
 
 static int
 __acc_function_bind(struct usb_configuration *c,
@@ -1292,6 +1333,9 @@ static int acc_setup(void)
 	spin_lock_init(&dev->lock);
 	init_waitqueue_head(&dev->read_wq);
 	init_waitqueue_head(&dev->write_wq);
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	init_waitqueue_head(&dev->release_wq);
+#endif
 	atomic_set(&dev->open_excl, 0);
 	INIT_LIST_HEAD(&dev->tx_idle);
 	INIT_LIST_HEAD(&dev->hid_list);
