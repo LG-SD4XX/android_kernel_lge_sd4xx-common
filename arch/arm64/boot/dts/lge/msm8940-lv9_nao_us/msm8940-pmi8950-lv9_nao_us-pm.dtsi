@@ -211,8 +211,3 @@
 		qcom,parallel-en-pin-polarity = <1>;
 	};
 };
-&pmi_haptic{
-    status = "okay";
-    qcom,actuator-type = "erm";
-    qcom,vmax-mv = <3132>;
-};

@@ -82,14 +82,6 @@ config MACH_MSM8940_SF3_TMO_US
 	help
 	  Support for the Qualcomm MSM8940 SF3_TMO_US device.
 
-config MACH_MSM8940_SF3_CLR_PR
-bool "MSM8940 SF3_CLR_PR"
-        bool "MSM8940 SF3_CLR_PR"
-        depends on ARCH_MSM8916
-        select MACH_LGE
-        help
-          Support for the Qualcomm MSM8940 SF3_CLR_PR device.
-
 config MACH_MSM8940_SF3_GLOBAL_CA
 	bool "MSM8940 SF3_GLOBAL_CA"
 	depends on ARCH_MSM8916
@@ -103,20 +95,6 @@ config MACH_MSM8940_TF8_TMO_US
 	select MACH_LGE
 	help
 	  Support for the Qualcomm MSM8940 TF8_TMO_US device.
-
-config MACH_MSM8940_TF8_LGU_KR
-	bool "MSM8940 TF8_LGU_KR"
-	depends on ARCH_MSM8916
-	select MACH_LGE
-	help
-	  Support for the Qualcomm MSM8940 TF8_LGU_KR device.
-
-config MACH_MSM8940_TF8_GLOBAL_CA
-	bool "MSM8940 TF8_GLOBAL_CA"
-	depends on ARCH_MSM8916
-	select MACH_LGE
-	help
-	  Support for the Qualcomm MSM8940 TF8_GLOBAL_CA device.
 
 config MACH_MSM8940_SF3_MPCS_US
 	bool "MSM8940 SF3_MPCS_US"
@@ -145,14 +123,7 @@ config MACH_MSM8940_LV9_GLOBAL_COM
 	select MACH_LGE
 	help
 	  Support for the Qualcomm MSM8940 LV9_GLOBAL_COM device.
-
-config MACH_MSM8940_LV9_GLOBAL_CA
-	bool "MSM8940 LV9_GLOBAL_CA"
-	depends on ARCH_MSM8916
-	select MACH_LGE
-	help
-	  Support for the Qualcomm MSM8940 LV9_GLOBAL_CA device.
-
+ 
 config MACH_MSM8940_MH_GLOBAL_COM
 	bool "MSM8940 MH_GLOBAL_COM"
 	depends on ARCH_MSM8916
@@ -160,12 +131,82 @@ config MACH_MSM8940_MH_GLOBAL_COM
 	help
 	  Support for the Qualcomm MSM8940 MH_GLOBAL_COM device.
 
+config MACH_MSM8940_MH_TMO_US
+	bool "MSM8940 MH_TMO_US"
+	depends on ARCH_MSM8916
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8940 MH_TMO_US device.
+
+config MACH_MSM8940_MH_CRK_US
+	bool "MSM8940 MH_CRK_US"
+	depends on ARCH_MSM8916
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8940 MH_CRK_US device.
+
+config MACH_MSM8940_MH_MPCS_US
+	bool "MSM8940 MH_MPCS_US"
+	depends on ARCH_MSM8916
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8940 MH_MPCS_US device.
+
+config MACH_MSM8940_MH_TRF_US
+	bool "MSM8940 MH_TRF_US"
+	depends on ARCH_MSM8916
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8940 MH_TRF_US device.
+
 config MACH_MSM8940_MH_LGU_KR
 	bool "MSM8940 MH_LGU_KR"
 	depends on ARCH_MSM8916
 	select MACH_LGE
 	help
 	  Support for the Qualcomm MSM8940 MH_LGU_KR device.
+
+config MACH_MSM8940_MH_SKT_KR
+	bool "MSM8940 MH_SKT_KR"
+	depends on ARCH_MSM8916
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8940 MH_SKT_KR device.
+
+config MACH_MSM8940_MH_KT_KR
+	bool "MSM8940 MH_KT_KR"
+	depends on ARCH_MSM8916
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8940 MH_KT_KR device.
+
+config MACH_MSM8940_MH_GLOBAL_CA
+	bool "MSM8940 MH_GLOBAL_CA"
+	depends on ARCH_MSM8916
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8940 MH_GLOBAL_CA device.
+
+config MACH_MSM8940_MH_LAO_COM
+	bool "MSM8940 MH_LAO_COM"
+	depends on ARCH_MSM8916
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8940 MH_LAO_COM device.
+
+config MACH_MSM8940_MH_GLOBAL_LDU
+	bool "MSM8940 MH_GLOBAL_LDU"
+	depends on ARCH_MSM8916
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8940 MH_GLOBAL_LDU device.
+
+config MACH_MSM8940_L6_DCM_JP
+	bool "MSM8940 L6_DCM_JP"
+	depends on ARCH_MSM8916
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8940 L6_DCM_JP device.
 
  config MACH_MSM8917_LGPS29_1
 	bool "MSM8917 LGPS29_1"
@@ -272,20 +313,6 @@ config MACH_MSM8917_LV7_GLOBAL_CA
 	select MACH_LGE
 	help
 	  Support for the Qualcomm MSM8917 LV7_GLOBAL_CA device.
-	  
-config MACH_MSM8917_LV7_TRF_US_R
-	bool "MSM8917 LV7_TRF_US_R"
-	depends on ARCH_MSM8916
-	select MACH_LGE
-	help
-	  Support for the Qualcomm MSM8917 LV7_TRF_US_R device.
-	  
-config MACH_MSM8917_LV7_TRF_US_VZW_R
-	bool "MSM8917 LV7_TRF_US_VZW_R"
-	depends on ARCH_MSM8916
-	select MACH_LGE
-	help
-	  Support for the Qualcomm MSM8917 LV7_TRF_US_VZW_R device.
 
 config MACH_MSM8917_LV517N_ATT_US
 	bool "MSM8917 LV517N_ATT_US"
@@ -336,13 +363,6 @@ config MACH_MSM8917_LV517_VZW
 	help
 	  Support for the Qualcomm MSM8917 LV517_VZW device.
 
-config MACH_MSM8917_LV517_LRA_US
-bool "MSM8917 LV517_LRA_US"
-	depends on ARCH_MSM8916
-	select MACH_LGE
-	help
-	  Support for the Qualcomm MSM8917 LV517_LRA_US device.
-
 config MACH_MSM8917_SF317_TRF_US
 	bool "MSM8917 SF317_TRF_US"
 	depends on ARCH_MSM8916
@@ -363,6 +383,95 @@ config MACH_MSM8917_SF317_CRK_US
 	select MACH_LGE
 	help
 	  Support for the Qualcomm MSM8917 SF317_CRK_US device.
+
+config MACH_MSM8917_CV1_LAO_COM
+        bool "MSM8917 CV1_LAO_COM"
+        depends on ARCH_MSM8916
+        select MACH_LGE
+        select LGE_DM_VERITY_RECOVERY
+        help
+          Support for the Qualcomm MSM8917 CV1_LAO_COM device.
+
+config MACH_MSM8917_CV1_VZW
+        bool "MSM8917 CV1_VZW"
+        depends on ARCH_MSM8916
+        select MACH_LGE
+        select LGE_DM_VERITY_RECOVERY
+        help
+          Support for the Qualcomm MSM8917 CV1_VZW device.
+
+config MACH_MSM8917_CV1_ATT_US
+        bool "MSM8917 CV1_ATT_US"
+        depends on ARCH_MSM8916
+        select MACH_LGE
+        select LGE_DM_VERITY_RECOVERY
+        help
+          Support for the Qualcomm MSM8917 CV1_ATT_US device.
+
+config MACH_MSM8917_CV1_CRK_US
+        bool "MSM8917 CV1_CRK_US"
+        depends on ARCH_MSM8916
+        select MACH_LGE
+        select LGE_DM_VERITY_RECOVERY
+        help
+          Support for the Qualcomm MSM8917 CV1_CRK_US device.
+
+config MACH_MSM8917_CV3_LGU_KR
+	bool "MSM8917 CV3_LGU_KR"
+	depends on ARCH_MSM8916
+	select MACH_LGE
+        select LGE_DM_VERITY_RECOVERY
+	help
+	  Support for the Qualcomm MSM8917 CV3_LGU_KR device.
+
+config MACH_MSM8917_CV3_SKT_KR
+	bool "MSM8917 CV3_SKT_KR"
+	depends on ARCH_MSM8916
+	select MACH_LGE
+        select LGE_DM_VERITY_RECOVERY
+	help
+	  Support for the Qualcomm MSM8917 CV3_SKT_KR device.
+
+config MACH_MSM8917_CV3_KT_KR
+	bool "MSM8917 CV3_KT_KR"
+	depends on ARCH_MSM8916
+	select MACH_LGE
+        select LGE_DM_VERITY_RECOVERY
+	help
+	  Support for the Qualcomm MSM8917 CV3_KT_KR device.
+
+config MACH_MSM8917_CV3_VZW
+    bool "MSM8917 CV3_VZW"
+    depends on ARCH_MSM8916
+    select MACH_LGE
+    select LGE_DM_VERITY_RECOVERY
+    help
+      Support for the Qualcomm MSM8917 CV3_VZW device.
+
+config MACH_MSM8917_CV3_CCT_US
+    bool "MSM8917 CV3_CCT_US"
+    depends on ARCH_MSM8916
+    select MACH_LGE
+    select LGE_DM_VERITY_RECOVERY
+    help
+      Support for the Qualcomm MSM8917 CV3_CCT_US device.
+
+config MACH_MSM8917_CV3_LAO_COM
+        bool "MSM8917 CV3_LAO_COM"
+        depends on ARCH_MSM8916
+        select MACH_LGE
+        select LGE_DM_VERITY_RECOVERY
+        help
+          Support for the Qualcomm MSM8917 CV3_LAO_COM device.
+
+config MACH_MSM8917_CV3_CRK_US
+        bool "MSM8917 CV3_CRK_US"
+        depends on ARCH_MSM8916
+        select MACH_LGE
+        select LGE_DM_VERITY_RECOVERY
+        help
+          Support for the Qualcomm MSM8917 CV3_CRK_US device.
+
 endmenu
 
 menu "LGE Specific Patches"
@@ -387,6 +496,14 @@ config LGE_BOOTLOADER_LOG
 	depends on MACH_LGE
 	help
 	  LGE bootloader log
+
+config LGE_BOOT_LOCKUP_DETECT
+	bool "Support to detect lockup during powering on"
+	default n
+	depends on LGE_HANDLE_PANIC
+	help
+	  For detecting lockup in boot , use simple detector which
+	  raise crash when expired some period after boot.
 
 config LGE_BOOTLOADER_TIME_CHECKER
 	tristate "Supprt bootloader(LK, SBL) time"
@@ -419,11 +536,18 @@ config LGE_PM_PSEUDO_BATTERY
 	  Say Y here to enable pseudo mode setting
 
 config LGE_PM_CHARGING_TEMP_SCENARIO
-tristate "Support LGE PM Charging scenario"
+	tristate "Support LGE PM Charging scenario"
 	default n
 	depends on MACH_LGE
 	help
 	  LGE PM Charing Scenario
+
+config LGE_PM_CHARGING_TEMP_SCENARIO_V2
+	tristate "Support LGE PM Charging scenario V2"
+	default n
+	depends on LGE_PM_CHARGING_TEMP_SCENARIO
+	help
+	  LGE PM Charging Scenario V2
 
 config LGE_UART_CONTROL
 	tristate "Support LGE uart control"
@@ -439,12 +563,32 @@ config LGE_EARJACK_DEBUGGER
 	help
 	  Support earjack type UART debugger cable
 
+config LGE_USE_DEFAULT_HARD_RESET
+	bool "On reboot, apply hard reset unless memory contents must be maintained"
+	default n
+	help
+	  Nobody can guarantee stablity upon continuous warm resets.
+
 config LGE_PM_CABLE_DETECTION
     tristate "Support LGE PM Cable Detection"
 	default n
 	depends on MACH_LGE
 	help
 	  LGE PM Cable Detection
+
+config LGE_PM_TIME_TO_FULL
+    tristate "Support LGE PM Time To Full"
+	default n
+	depends on LGE_PM
+	help
+	  LGE PM Time To Full
+
+config LGE_PM_TIME_TO_FULL_AVG_CURRENT
+    tristate "Support LGE PM Time To Full Average Current"
+	default n
+	depends on LGE_PM
+	help
+	  LGE PM Time To Full Average Current
 
 config LGE_PM_UNIFIED_NODE
 	bool "enable LGE PM Unified sysfs node"
@@ -460,12 +604,35 @@ config LGE_PM_ONBINARY_ORANGE
 	help
 	  LGE PM Onebinary Orange Detection
 
+config LGE_ONE_BINARY_SKU
+        tristate "Support LGE One binary sku carrier"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE One Binary sku carrier.
+
+config LGE_ONE_BINARY_HW_SKU
+        tristate "Support LGE One binary gpio value for HW sku"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE One Binary gpio value for HW sku.
+
 config PRE_SELF_DIAGNOSIS
 	tristate "Support LGE self diagnosis for factory"
 	default n
 	depends on MACH_LGE
 	help
 	  LGE self diagnosis
+
+config LGE_DM_VERITY_RECOVERY
+	tristate "Support dm verity corrupt recovery"
+	default n
+	depends on MACH_LGE
+	help
+	  Sometimes, dm-bufio has invalid data. If data is corrupted,
+	  try to recover data.
+
 endmenu
 
 menu "LGE QFPROM Values"
@@ -476,11 +643,4 @@ config LGE_QFPROM_INTERFACE
 	depends on MACH_LGE
 	help
 	  LGE QFPROM DRIVER.
-
-config LGE_QFPROM_SECHASH
-	string "Support qfprom sec hash"
-	default 0x0
-	depends on LGE_QFPROM_INTERFACE
-	help
-	  LGE QFPROM DRIVER-SEC partition's hash value.
 endmenu

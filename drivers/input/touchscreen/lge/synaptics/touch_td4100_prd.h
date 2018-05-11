@@ -80,41 +80,6 @@
 #define LPWG_DOZE_DATA_MAX		35
 #endif
 
-/*
- *  Defiine of SF3 Tovis panel
- */
-#define SF3_TOVIS_REPORT_TYPE_DELTA           02  /* 16-bit normalized image */
-#define SF3_TOVIS_RREPORT_TYPE_RAW_DATA            03  /* raw capacitance (pF) */
-#define SF3_TOVIS_RREPORT_TYPE_E2E_SHORT           95  /* raw capacitance delta */
-#define SF3_TOVIS_RREPORT_TYPE_P2P_NOISE           02  /* raw capacitance delta */
-
-#define SF3_TOVIS_RAW_DATA_MAX            3900
-#define SF3_TOVIS_RAW_DATA_MIN            700
-#define SF3_TOVIS_RAW_DATA_MARGIN             0
-#define SF3_TOVIS_P2P_NOISE_MAX           50
-#define SF3_TOVIS_P2P_NOISE_MIN           0
-
-#define SF3_TOVIS_LPWG_RAW_DATA_MAX       3500
-#define SF3_TOVIS_LPWG_RAW_DATA_MIN       700
-#define SF3_TOVIS_LPWG_P2P_NOISE_MAX      50
-#define SF3_TOVIS_LPWG_P2P_NOISE_MIN      0
-#define SF3_TOVIS_LPWG_DOZE_DATA_MAX      35
-
-/*
- *  Defiine of LV5 Tovis panel
- */
-#define LV5_TOVIS_RAW_DATA_MAX            3300
-#define LV5_TOVIS_RAW_DATA_MIN            700
-#define LV5_TOVIS_RAW_DATA_MARGIN             0
-#define LV5_TOVIS_P2P_NOISE_MAX           60
-#define LV5_TOVIS_P2P_NOISE_MIN           0
-
-#define LV5_TOVIS_LPWG_RAW_DATA_MAX       3300
-#define LV5_TOVIS_LPWG_RAW_DATA_MIN       700
-#define LV5_TOVIS_LPWG_P2P_NOISE_MAX      60
-#define LV5_TOVIS_LPWG_P2P_NOISE_MIN      0
-#define LV5_TOVIS_LPWG_DOZE_DATA_MAX      35
-
 enum {
 	TIME_INFO_SKIP,
 	TIME_INFO_WRITE,

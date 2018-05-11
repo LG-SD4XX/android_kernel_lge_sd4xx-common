@@ -22,12 +22,12 @@
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <1200>;
 		qcom,mdss-dsi-panel-height = <1920>;
-		qcom,mdss-dsi-h-front-porch = <96>;
+		qcom,mdss-dsi-h-front-porch = <152>;
 		qcom,mdss-dsi-h-back-porch = <52>;
 		qcom,mdss-dsi-h-pulse-width = <4>;
 		qcom,mdss-dsi-h-sync-skew = <0>;
 		qcom,mdss-dsi-v-back-porch = <22>;
-		qcom,mdss-dsi-v-front-porch = <26>;
+		qcom,mdss-dsi-v-front-porch = <28>;
 		qcom,mdss-dsi-v-pulse-width = <1>;
 		qcom,mdss-dsi-h-left-border = <0>;
 		qcom,mdss-dsi-h-right-border = <0>;
@@ -54,29 +54,15 @@
 			];
 
 		qcom,mdss-dsi-off-command = [
-			15 01 00 00 01 00 02 8F A5
-			05 01 00 00 00 00 02 10 00
-			15 01 00 00 64 00 02 8F 00
+			05 01 00 00 64 00 02 10 00
 			];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 
 		lge,pre-on-cmds-delay = <30>;
-		lge,pre-bl-on-delay = <100>;
 
 		lge,panel-cmd-state-lp = "dsi_lp_mode";
 		lge,panel-cmd-state-hs = "dsi_hs_mode";
-
-		lge,mdss-dsi-extra-command-names = "mipi-mode", "i2c-mode";
-		lge,mdss-dsi-extra-command-mipi-mode = [
-			15 01 00 00 01 00 02 8F A5
-			];
-		lge,mdss-dsi-extra-command-i2c-mode = [
-			15 01 00 00 64 00 02 8F 00
-			];
-
-		lge,mdss-dsi-extra-command-state-mipi-mode = "dsi_lp_mode";
-		lge,mdss-dsi-extra-command-state-i2c-mode = "dsi_lp_mode";
 
 		lge,panel-cmd-fast-gamma-step1 = [
 			// 34
@@ -287,7 +273,7 @@
 			15 00 00 00 00 00 02 FC 6C
 			15 00 00 00 00 00 02 FD 6E
 			15 00 00 00 00 00 02 FE 00
-			15 01 00 00 00 00 02 FF 00
+			15 01 00 00 64 00 02 FF 00
 			];
 		lge,panel-cmd-fast-gamma-step2 = [
 			//----B Gamma Register----
@@ -496,7 +482,7 @@
 			15 00 00 00 00 00 02 FC 45
 			15 00 00 00 00 00 02 FD 46
 			15 00 00 00 00 00 02 FE 00
-			15 01 00 00 00 00 02 FF 00
+			15 01 00 00 64 00 02 FF 00
 			];
 		lge,panel-cmd-fast-gamma-mono = [
 			15 00 00 00 00 00 02 83 CC
@@ -742,7 +728,7 @@
 			15 00 00 00 00 00 02 FC 45
 			15 00 00 00 00 00 02 FD 46
 			15 00 00 00 00 00 02 FE 00
-			15 01 00 00 00 00 02 FF 00
+			15 01 00 00 64 00 02 FF 00
 			];
 		lge,panel-cmd-fast-gamma-step3 = [
 			//----B Gamma Register----
@@ -951,7 +937,7 @@
 			15 00 00 00 00 00 02 FC 37
 			15 00 00 00 00 00 02 FD 38
 			15 00 00 00 00 00 02 FE 00
-			15 01 00 00 00 00 02 FF 00
+			15 01 00 00 64 00 02 FF 00
 			];
 		lge,panel-cmd-fast-gamma-dft = [
 			//34
@@ -1165,7 +1151,7 @@
 			15 00 00 00 00 00 02 FC EF
 			15 00 00 00 00 00 02 FD F5
 			15 00 00 00 00 00 02 FE 80
-			15 01 00 00 00 00 02 FF 0F
+			15 01 00 00 64 00 02 FF 0F
 			];
 		lge,panel-cmd-fast-gamma-mtd = [
 			15 00 00 00 00 00 02 83 CC
@@ -1414,7 +1400,7 @@
 			15 00 00 00 00 00 02 FC EF
 			15 00 00 00 00 00 02 FD F5
 			15 00 00 00 00 00 02 FE 80
-			15 01 00 00 00 00 02 FF 0F
+			15 01 00 00 64 00 02 FF 0F
 			];
 		lge,panel-cmd-mono-on = [
 			15 01 00 00 00 00 02 83 CC
@@ -1438,11 +1424,14 @@
 		qcom,mdss-dsi-lane-1-state;
 		qcom,mdss-dsi-lane-2-state;
 		qcom,mdss-dsi-lane-3-state;
-		qcom,mdss-dsi-panel-timings = [F8 3C 28 00 6E 6E 32 40 48 03 04 00];	//958.3Mhz
+		qcom,mdss-dsi-panel-timings = [03 3E 2A 01 72 76 2E 42 4C 03 04 00];	//999Mhz
 		qcom,mdss-dsi-t-clk-post = <0x02>;
-		qcom,mdss-dsi-t-clk-pre = <0x30>;
+		qcom,mdss-dsi-t-clk-pre = <0x32>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
+		qcom,mdss-dsi-pan-enable-dynamic-fps;
+		qcom,mdss-dsi-pan-fps-update = "dfps_immediate_porch_mode_vfp";
+		qcom,mdss-dsi-min-refresh-rate = <48>;
 		qcom,off-cmds-dsi-state = "dsi_hs_mode";
 
 		lge,blmap-size = <256>;

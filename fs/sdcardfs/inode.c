@@ -31,8 +31,8 @@ const struct cred * override_fsids(uid_t fsuid, gid_t fsgid)
 	if (!cred)
 		return NULL;
 
-	cred->fsuid = fsuid;
-	cred->fsgid = fsgid;
+	cred->fsuid.val = fsuid;
+	cred->fsgid.val = fsgid;
 
 	old_cred = override_creds(cred);
 

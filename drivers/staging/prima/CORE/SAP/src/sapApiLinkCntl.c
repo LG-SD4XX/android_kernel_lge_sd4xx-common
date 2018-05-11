@@ -1064,6 +1064,23 @@ WLANSAP_ScanCallback
             if (psapContext->channel == AUTO_CHANNEL_SELECT)
 #endif
             {
+// auto channel selection for only 1/6/11 (+)
+                if (psapContext->SapChnlList.channelList != NULL) {
+                    sapCleanupChannelList();
+                }
+
+                psapContext->SapChnlList.channelList =
+                        (v_U8_t *)vos_mem_malloc(3);
+                if (psapContext->SapChnlList.channelList == NULL) {
+                    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                    "In %s, VOS_MALLOC_ERR", __func__);
+                } else {
+                    psapContext->SapChnlList.numChannel = 3;
+                    psapContext->SapChnlList.channelList[0] = 1;
+                    psapContext->SapChnlList.channelList[1] = 6;
+                    psapContext->SapChnlList.channelList[2] = 11;
+                }
+// auto channel selection for only 1/6/11 (-)
                 operChannel = sapSelectChannel(halHandle, psapContext, pResult);
                 sapSetOperatingChannel(psapContext, operChannel);
             }

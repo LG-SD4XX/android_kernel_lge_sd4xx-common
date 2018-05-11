@@ -32,8 +32,8 @@
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include <linux/thermal.h>
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-#include <linux/atomic.h>
+#ifdef CONFIG_LGE_PM
+#include <linux/of_gpio.h>
 #endif
 
 /* QPNP VADC register definition */
@@ -178,9 +178,6 @@ struct qpnp_vadc_mode_state {
 	bool				vadc_meas_int_enable;
 	struct qpnp_adc_tm_btm_param	*param;
 	struct qpnp_adc_amux		vadc_meas_amux;
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	spinlock_t			*meas_int_spin_lock;
-#endif
 };
 
 struct qpnp_vadc_thermal_data {
@@ -216,6 +213,11 @@ struct qpnp_vadc_chip {
 	bool				vadc_hc;
 	int				vadc_debug_count;
 	struct sensor_device_attribute	sens_attr[0];
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+	uint32_t	sbu_sel;
+	uint32_t	sbu_en;
+	uint32_t	edge_sel;
+#endif
 };
 
 LIST_HEAD(qpnp_vadc_device_list);
@@ -627,46 +629,23 @@ static irqreturn_t qpnp_vadc_low_thr_isr(int irq, void *data)
 	struct qpnp_vadc_chip *vadc = data;
 	u8 mode_ctl = 0, mode = 0;
 	int rc = 0;
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	int32_t result;
-	unsigned long flags;
-#endif
 
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	spin_lock_irqsave(vadc->state_copy->meas_int_spin_lock, flags);
-#endif
 	rc = qpnp_vadc_read_reg(vadc, QPNP_VADC_MODE_CTL, &mode, 1);
 	if (rc < 0) {
 		pr_err("mode ctl register read failed with %d\n", rc);
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-		spin_unlock_irqrestore(vadc->state_copy->meas_int_spin_lock, flags);
-#endif
 		return rc;
 	}
 
 	if (!(mode & QPNP_VADC_MEAS_INT_MODE_MASK)) {
 		pr_debug("Spurious VADC threshold 0x%x\n", mode);
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-		spin_unlock_irqrestore(vadc->state_copy->meas_int_spin_lock, flags);
-#endif
 		return IRQ_HANDLED;
 	}
-
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	rc = qpnp_vadc_read_conversion_result(vadc, &result);
-	if (rc) {
-		pr_err("qpnp vadc read adc code failed with %d\n", rc);
-	}
-#endif
 
 	mode_ctl = ADC_OP_NORMAL_MODE;
 	/* Set measurement in single measurement mode */
 	qpnp_vadc_mode_select(vadc, mode_ctl);
 	qpnp_vadc_enable(vadc, false);
 	schedule_work(&vadc->trigger_low_thr_work);
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	spin_unlock_irqrestore(vadc->state_copy->meas_int_spin_lock, flags);
-#endif
 
 	return IRQ_HANDLED;
 }
@@ -676,49 +655,25 @@ static irqreturn_t qpnp_vadc_high_thr_isr(int irq, void *data)
 	struct qpnp_vadc_chip *vadc = data;
 	u8 mode_ctl = 0, mode = 0;
 	int rc = 0;
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	int32_t result;
-	unsigned long flags;
-#endif
 
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	spin_lock_irqsave(vadc->state_copy->meas_int_spin_lock, flags);
-#endif
 	rc = qpnp_vadc_read_reg(vadc, QPNP_VADC_MODE_CTL, &mode, 1);
 	if (rc < 0) {
 		pr_err("mode ctl register read failed with %d\n", rc);
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-		spin_unlock_irqrestore(vadc->state_copy->meas_int_spin_lock, flags);
-#endif
 		return rc;
 	}
 
 	if (!(mode & QPNP_VADC_MEAS_INT_MODE_MASK)) {
 		pr_debug("Spurious VADC threshold 0x%x\n", mode);
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-		spin_unlock_irqrestore(vadc->state_copy->meas_int_spin_lock, flags);
-#endif
 		return IRQ_HANDLED;
 	}
-
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	rc = qpnp_vadc_read_conversion_result(vadc, &result);
-	if (rc) {
-		pr_err("qpnp vadc read adc code failed with %d\n", rc);
-	}
-#endif
 
 	mode_ctl = ADC_OP_NORMAL_MODE;
 	/* Set measurement in single measurement mode */
 	qpnp_vadc_mode_select(vadc, mode_ctl);
 	qpnp_vadc_enable(vadc, false);
 	schedule_work(&vadc->trigger_high_thr_work);
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	spin_unlock_irqrestore(vadc->state_copy->meas_int_spin_lock, flags);
-#endif
 
 	return IRQ_HANDLED;
-
 }
 
 static int32_t qpnp_vadc_version_check(struct qpnp_vadc_chip *dev)
@@ -1529,68 +1484,36 @@ static int32_t qpnp_vadc_manage_meas_int_requests(struct qpnp_vadc_chip *chip)
 	struct qpnp_vadc_chip *vadc = dev_get_drvdata(chip->dev);
 	int rc = 0, dt_index = 0;
 	u8 mode_ctl = 0;
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	unsigned long flags;
-#endif
-
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	spin_lock_irqsave(vadc->state_copy->meas_int_spin_lock, flags);
-#endif
 
 	pr_debug("meas_int_mode:0x%x, mode_ctl:%0x\n",
 		vadc->state_copy->meas_int_mode, mode_ctl);
 
 	if (vadc->state_copy->meas_int_mode) {
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-		disable_irq_wake(vadc->adc->adc_high_thr_irq);
-		disable_irq_wake(vadc->adc->adc_low_thr_irq);
-#endif
 		pr_debug("meas interval in progress. Procced to disable it\n");
 		/* measurement interval in progress. Proceed to disable it */
 		mode_ctl = ADC_OP_NORMAL_MODE;
 		rc = qpnp_vadc_mode_select(vadc, mode_ctl);
 		if (rc < 0) {
 			pr_err("NORM mode select failed with %d\n", rc);
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-			goto int_spin_unlock;
-#else
 			return rc;
-#endif
 		}
 
 		/* Disable bank */
 		rc = qpnp_vadc_enable(vadc, false);
 		if (rc) {
 			pr_err("Disable bank failed with %d\n", rc);
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-			goto int_spin_unlock;
-#else
 			return rc;
-#endif
 		}
 
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-		spin_unlock_irqrestore(vadc->state_copy->meas_int_spin_lock, flags);
-#endif
 		/* Check if a conversion is in progress */
 		rc = qpnp_vadc_wait_for_req_sts_check(vadc);
 		if (rc < 0) {
 			pr_err("req_sts check failed with %d\n", rc);
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-			goto exit;
-#else
 			return rc;
-#endif
 		}
 
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-		spin_lock_irqsave(vadc->state_copy->meas_int_spin_lock, flags);
-#endif
 		vadc->state_copy->meas_int_mode = false;
 		vadc->state_copy->meas_int_request_in_queue = true;
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-		dev_set_drvdata(vadc->dev, vadc);
-#endif
 	} else if (vadc->state_copy->meas_int_request_in_queue) {
 		/* put the meas interval back in queue */
 		pr_debug("put meas interval back in queue\n");
@@ -1603,11 +1526,7 @@ static int32_t qpnp_vadc_manage_meas_int_requests(struct qpnp_vadc_chip *chip)
 		if (dt_index >= vadc->max_channels_available) {
 			pr_err("not a valid VADC channel\n");
 			rc = -EINVAL;
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-			goto int_spin_unlock;
-#else
 			return rc;
-#endif
 		}
 
 		vadc->adc->amux_prop->decimation =
@@ -1620,31 +1539,15 @@ static int32_t qpnp_vadc_manage_meas_int_requests(struct qpnp_vadc_chip *chip)
 		rc = qpnp_vadc_configure(vadc, vadc->adc->amux_prop);
 		if (rc) {
 			pr_err("vadc configure failed with %d\n", rc);
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-			goto int_spin_unlock;
-#else
 			return rc;
-#endif
 		}
 
 		vadc->state_copy->meas_int_mode = true;
 		vadc->state_copy->meas_int_request_in_queue = false;
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-		dev_set_drvdata(vadc->dev, vadc);
-		enable_irq_wake(vadc->adc->adc_high_thr_irq);
-		enable_irq_wake(vadc->adc->adc_low_thr_irq);
-#endif
 	}
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-int_spin_unlock:
-	spin_unlock_irqrestore(vadc->state_copy->meas_int_spin_lock, flags);
-exit:
-	return rc;
-#else
 	dev_set_drvdata(vadc->dev, vadc);
 
 	return 0;
-#endif
 }
 
 struct qpnp_vadc_chip *qpnp_get_vadc(struct device *dev, const char *name)
@@ -1681,7 +1584,13 @@ int32_t qpnp_vadc_conv_seq_request(struct qpnp_vadc_chip *vadc,
 		return -EPROBE_DEFER;
 
 	mutex_lock(&vadc->adc->adc_lock);
-
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT   /* SBU_EN low*/
+	if(channel == P_MUX1_1_1){
+		pr_info("%s SBU SEL HIGH USB ID \n",__func__);
+		gpio_direction_output(vadc->sbu_sel, 1);
+		usleep_range(400, 410);
+	}
+#endif
 	if (vadc->state_copy->vadc_meas_int_enable)
 		qpnp_vadc_manage_meas_int_requests(vadc);
 
@@ -1905,6 +1814,14 @@ recalibrate:
 fail_unlock:
 	if (vadc->state_copy->vadc_meas_int_enable)
 		qpnp_vadc_manage_meas_int_requests(vadc);
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT   /* SBU_EN high */
+        if(channel == P_MUX1_1_1){
+		pr_info("%s SBU SEL LOW UART \n",__func__);
+		gpio_direction_output(vadc->sbu_sel, 0);
+		usleep_range(400, 410);
+        }
+#endif
+
 
 	mutex_unlock(&vadc->adc->adc_lock);
 
@@ -1962,7 +1879,6 @@ int32_t qpnp_vadc_read(struct qpnp_vadc_chip *vadc,
 				return -EINVAL;
 			}
 		}
-
 		prop = POWER_SUPPLY_PROP_FORCE_TLIM;
 		ret.intval = 1;
 
@@ -2116,9 +2032,6 @@ static int32_t qpnp_vadc_thr_update(struct qpnp_vadc_chip *vadc,
 {
 	int rc = 0;
 	u8 buf = 0;
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	u8 read_buf[4];
-#endif
 
 	pr_debug("client requested high:%d and low:%d\n",
 		high_thr, low_thr);
@@ -2153,16 +2066,6 @@ static int32_t qpnp_vadc_thr_update(struct qpnp_vadc_chip *vadc,
 
 	pr_debug("client requested high:%d and low:%d\n", high_thr, low_thr);
 
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	rc = spmi_ext_register_readl(vadc->adc->spmi->ctrl, vadc->adc->slave,
-			(vadc->adc->offset + QPNP_VADC_LOW_THR_LSB), (u8 *)read_buf, 4);
-	if (rc < 0) {
-		pr_err("qpnp adc read reg %d failed with %d\n", QPNP_VADC_LOW_THR_LSB, rc);
-		return rc;
-	}
-	pr_debug("read_buf:0x%02X 0x%02X 0x%02X 0x%02X\n",
-			read_buf[0], read_buf[1], read_buf[2], read_buf[3]);
-#endif
 	return rc;
 }
 
@@ -2239,9 +2142,6 @@ int32_t qpnp_vadc_channel_monitor(struct qpnp_vadc_chip *chip,
 	int rc = 0, idx = 0, amux_prescaling = 0;
 	struct qpnp_vadc_chip *vadc = dev_get_drvdata(chip->dev);
 	u8 buf = 0;
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	unsigned long flags;
-#endif
 
 	if (qpnp_vadc_is_valid(vadc))
 		return -EPROBE_DEFER;
@@ -2258,9 +2158,6 @@ int32_t qpnp_vadc_channel_monitor(struct qpnp_vadc_chip *chip,
 
 	mutex_lock(&vadc->adc->adc_lock);
 
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	spin_lock_irqsave(vadc->state_copy->meas_int_spin_lock, flags);
-#endif
 	channel = param->channel;
 	while (idx < vadc->max_channels_available) {
 		if (vadc->adc->adc_channels[idx].channel_num == channel)
@@ -2324,19 +2221,11 @@ int32_t qpnp_vadc_channel_monitor(struct qpnp_vadc_chip *chip,
 
 #ifdef CONFIG_LGE_USB_G_ANDROID
 	if (param->state_request == ADC_TM_HIGH_THR_ENABLE) {
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-		low_thr = 0;
-#else
 		qpnp_vadc_low_thr_int_en(vadc, false);
 		qpnp_vadc_high_thr_int_en(vadc, true);
-#endif
 	} else if (param->state_request == ADC_TM_LOW_THR_ENABLE) {
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-		high_thr = 0xFFFF;
-#else
 		qpnp_vadc_high_thr_int_en(vadc, false);
 		qpnp_vadc_low_thr_int_en(vadc, true);
-#endif
 	} else if (param->state_request == ADC_TM_HIGH_LOW_THR_ENABLE) {
 		qpnp_vadc_high_thr_int_en(vadc, true);
 		qpnp_vadc_low_thr_int_en(vadc, true);
@@ -2368,9 +2257,6 @@ int32_t qpnp_vadc_channel_monitor(struct qpnp_vadc_chip *chip,
 	dev_set_drvdata(vadc->dev, vadc);
 
 fail_unlock:
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	spin_unlock_irqrestore(vadc->state_copy->meas_int_spin_lock, flags);
-#endif
 	mutex_unlock(&vadc->adc->adc_lock);
 
 	return rc;
@@ -2381,9 +2267,6 @@ int32_t qpnp_vadc_end_channel_monitor(struct qpnp_vadc_chip *chip)
 {
 	struct qpnp_vadc_chip *vadc = dev_get_drvdata(chip->dev);
 	u8 mode_ctl = 0;
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	unsigned long flags;
-#endif
 
 	if (qpnp_vadc_is_valid(vadc))
 		return -EPROBE_DEFER;
@@ -2393,9 +2276,6 @@ int32_t qpnp_vadc_end_channel_monitor(struct qpnp_vadc_chip *chip)
 		return -EINVAL;
 	}
 
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	spin_lock_irqsave(vadc->state_copy->meas_int_spin_lock, flags);
-#endif
 	vadc->state_copy->meas_int_mode = false;
 	vadc->state_copy->meas_int_request_in_queue = false;
 	dev_set_drvdata(vadc->dev, vadc);
@@ -2404,9 +2284,6 @@ int32_t qpnp_vadc_end_channel_monitor(struct qpnp_vadc_chip *chip)
 	qpnp_vadc_mode_select(vadc, mode_ctl);
 	qpnp_vadc_enable(vadc, false);
 
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	spin_unlock_irqrestore(vadc->state_copy->meas_int_spin_lock, flags);
-#endif
 	return 0;
 }
 EXPORT_SYMBOL(qpnp_vadc_end_channel_monitor);
@@ -2898,7 +2775,28 @@ static int qpnp_vadc_probe(struct spmi_device *spmi)
 	}
 
 	INIT_WORK(&vadc->trigger_completion_work, qpnp_vadc_work);
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+	vadc->sbu_sel = of_get_named_gpio(node,"lge,gpio-sbu-sel", 0);
+	if (!gpio_is_valid(vadc->sbu_sel)) {
+		pr_info("sbu_sel pin is not valid\n");
+	}else{
+		rc = gpio_request(vadc->sbu_sel, "sbu sel request");
+		if(rc){
+			pr_info("sbu sel gpio(%d)\n", vadc->sbu_sel);
+		}else{
+			pr_info("%s SBU SEL LOW \n",__func__);
+			gpio_direction_output(vadc->sbu_sel, 0);
+		}
+	}
 
+	vadc->sbu_en = of_get_named_gpio(node, "lge,gpio-sbu-en", 0);
+	/* SBU_EN high */
+
+	if (!gpio_is_valid(vadc->sbu_en)) {
+		pr_err("Unable to sbu_en gpio %d.\n", vadc->sbu_en);
+	}
+
+#endif
 	vadc->vadc_recalib_check = of_property_read_bool(node,
 						"qcom,vadc-recalib-check");
 
@@ -2921,17 +2819,6 @@ static int qpnp_vadc_probe(struct spmi_device *spmi)
 	vadc->state_copy->vadc_meas_int_enable = of_property_read_bool(node,
 						"qcom,vadc-meas-int-mode");
 	if (vadc->state_copy->vadc_meas_int_enable) {
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-		vadc->state_copy->meas_int_spin_lock = devm_kzalloc(&spmi->dev,
-				sizeof(struct spinlock), GFP_KERNEL);
-		if (!vadc->state_copy->meas_int_spin_lock) {
-			dev_err(&spmi->dev, "Unable to allocate memory for meas_int_spin_lock\n");
-			rc = -ENOMEM;
-			goto err_setup;
-		}
-
-		spin_lock_init(vadc->state_copy->meas_int_spin_lock);
-#endif
 		vadc->adc->adc_high_thr_irq = spmi_get_irq_byname(spmi,
 						NULL, "high-thr-en-set");
 		if (vadc->adc->adc_high_thr_irq < 0) {

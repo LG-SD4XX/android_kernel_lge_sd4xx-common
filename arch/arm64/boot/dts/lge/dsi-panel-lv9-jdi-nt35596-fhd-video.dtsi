@@ -26,7 +26,7 @@
 		qcom,mdss-dsi-panel-width = <1080>;
 		qcom,mdss-dsi-panel-height = <1920>;
 		qcom,mdss-dsi-h-front-porch = <24>;
-		qcom,mdss-dsi-h-back-porch = <88>;
+		qcom,mdss-dsi-h-back-porch = <96>;
 		qcom,mdss-dsi-h-pulse-width = <4>;
 		qcom,mdss-dsi-h-sync-skew = <0>;
 		qcom,mdss-dsi-v-back-porch = <3>;
@@ -43,8 +43,8 @@
 		qcom,mdss-dsi-v-bottom-border = <0>;
 		qcom,mdss-dsi-bpp = <24>;
 		qcom,mdss-dsi-color-order = "rgb_swap_rgb";
-		qcom,mdss-dsi-underflow-color = <0>;
-		qcom,mdss-dsi-border-color = <0>;
+		qcom,mdss-dsi-underflow-color = <0xff>;
+		qcom,mdss-dsi-border-color = <0xff>;
 
 		qcom,mdss-dsi-on-command = [
 			/* Preset Monochrome mode */
@@ -74,7 +74,7 @@
 			15 01 00 00 00 00 02 55 00
 			15 01 00 00 00 00 02 56 00  // SRE disable
 			15 01 00 00 00 00 02 58 00
-			15 01 00 00 00 00 02 59 05  // brighntess level
+			15 01 00 00 00 00 02 59 09  // brighntess level
 			15 01 00 00 00 00 02 68 00
 			15 01 00 00 00 00 02 6B 55
 			15 01 00 00 00 00 02 6C FF  // Bright LSB bits
@@ -3170,10 +3170,10 @@
 		qcom,mdss-dsi-lane-1-state;
 		qcom,mdss-dsi-lane-2-state;
 		qcom,mdss-dsi-lane-3-state;
-		qcom,mdss-dsi-panel-timings = [E3 39 22 00 62 66 28 3B 33 03 04 00]; /* TLPX is 62.5ns */
+		qcom,mdss-dsi-panel-timings = [E4 39 22 00 64 66 28 3D 32 03 04 00]; /* TLPX is 62.5ns */
 		qcom,mdss-dsi-tx-eot-append;
 
-		qcom,mdss-dsi-reset-sequence = <1 10>, <1 20>, <1 10>; /* reset is always HIGH */
+		qcom,mdss-dsi-reset-sequence = <1 10>, <1 12>, <1 10>; /* reset is always HIGH */
 		qcom,mdss-dsi-t-clk-post = <0x3>;
 		qcom,mdss-dsi-t-clk-pre = <0x2B>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";

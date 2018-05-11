@@ -114,8 +114,9 @@ int touch_i2c_read(struct i2c_client *client, struct touch_bus_msg *msg)
     } else if (ret < 0) {
         TOUCH_E("i2c_transfer - errno[%d]\n", ret);
     } else if (ret != ARRAY_SIZE(msgs)) {
-        TOUCH_E("i2c_transfer - size[%d] result[%d]\n", (int) ARRAY_SIZE(msgs), ret);
-    } else {
+        TOUCH_E("i2c_transfer - size[%d] result[%d]\n",
+				(int) ARRAY_SIZE(msgs), ret);
+	} else {
         TOUCH_E("unknown error [%d]\n", ret);
     }
 #endif
@@ -269,11 +270,14 @@ static int touch_i2c_remove(struct i2c_client *i2c)
 
 static int touch_i2c_pm_suspend(struct device *dev)
 {
+#if defined(CONFIG_LGE_TOUCH_CORE_QCT)
 	struct touch_core_data *ts = to_touch_core(dev);
 
 	TOUCH_TRACE();
 
 	atomic_set(&ts->state.pm, DEV_PM_SUSPEND);
+#endif
+
 	TOUCH_I("%s : DEV_PM_SUSPEND\n", __func__);
 
 	return 0;
@@ -287,10 +291,10 @@ static int touch_i2c_pm_resume(struct device *dev)
 
 	if (atomic_read(&ts->state.pm) == DEV_PM_SUSPEND_IRQ) {
 		atomic_set(&ts->state.pm, DEV_PM_RESUME);
-            TOUCH_I("%s : DEV_PM_RESUME0\n", __func__);
+		TOUCH_I("%s : DEV_PM_RESUME0\n", __func__);
 		touch_set_irq_pending(ts->irq);
 		touch_resend_irq(ts->irq);
-            return 0;
+		return 0;
 	}
 
 	atomic_set(&ts->state.pm, DEV_PM_RESUME);

@@ -165,8 +165,8 @@ resume:
 		 * instead of calling the fix_derived_permission(). */
 		if(dentry->d_inode){
 			get_derived_permission(this_parent, dentry, locked);
-			dentry->d_inode->i_uid = SDCARDFS_I(dentry->d_inode)->d_uid;
-			dentry->d_inode->i_gid = SDCARDFS_I(dentry->d_inode)->d_gid;
+			dentry->d_inode->i_uid.val = SDCARDFS_I(dentry->d_inode)->d_uid;
+			dentry->d_inode->i_gid.val = SDCARDFS_I(dentry->d_inode)->d_gid;
 		}
 
 		if (!list_empty(&dentry->d_subdirs)) {

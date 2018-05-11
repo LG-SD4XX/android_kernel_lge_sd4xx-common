@@ -227,7 +227,7 @@ struct qpnp_flash_led_buffer {
 	size_t		wpos;
 	size_t		len;
 	struct		qpnp_flash_led *led;
-	u32 	buffer_cnt;
+	u32		buffer_cnt;
 	char		data[0];
 };
 

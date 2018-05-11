@@ -1,4 +1,7 @@
 /*
+ * mausb_common.h
+ * - This file is derived form usbip_common.h
+ *
  * Copyright (C) 2003-2008 Takahiro Hirofuchi
  *
  * This is free software; you can redistribute it and/or modify
@@ -16,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
  * USA.
  */
+
 
 #ifndef __MAUSB_COMMON_H
 #define __MAUSB_COMMON_H
@@ -36,7 +40,7 @@
 
 #undef pr_fmt
 
-//#define DEBUG 1
+#define DEBUG 1
 
 #ifdef DEBUG
 #define pr_fmt(fmt)     KBUILD_MODNAME ": %s:%d: " fmt, __func__, __LINE__
@@ -80,11 +84,6 @@ extern struct device_attribute dev_attr_mausb_debug;
 			printk(KERN_INFO " \n"fmt,##args); \
 	} while (0)
 
-/*
-//pr_debug(fmt, ##args);
-//printk(KERN_INFO " \n"fmt,##args); \
-*/
-
 #define mausb_dbg_sysfs(fmt, args...) \
 	mausb_dbg_with_flag(mausb_debug_sysfs, fmt , ##args)
 #define mausb_dbg_xmit(fmt, args...) \
@@ -113,7 +112,7 @@ extern struct device_attribute dev_attr_mausb_debug;
 	mausb_dbg_with_flag(mausb_debug_stub_tx, fmt , ##args)
 
 /*
- * USB/IP request headers
+ * MAUSB request headers
  *
  * Each request is transferred across the network to its counterpart, which
  * facilitates the normal USB communication. The values contained in the headers
@@ -173,7 +172,6 @@ enum mausb_status {
 	MAUSB_VDEV_ST_ERROR
 };
 
-
 /* event handler */
 #define MAUSB_EH_SHUTDOWN	(1 << 0)
 #define MAUSB_EH_BYE		(1 << 1)
@@ -203,11 +201,7 @@ struct mausb_device {
 
 	struct task_struct *tcp_rx;
 	struct task_struct *tcp_tx;
-/*
-	struct task_struct *tcp_pal_mgnt;
-	struct task_struct *tcp_pal_in;
-	struct task_struct *tcp_pal_out;
-*/
+
 	unsigned long event;
 	struct task_struct *eh;
 	wait_queue_head_t eh_waitq;
@@ -218,7 +212,6 @@ struct mausb_device {
 		void (*unusable)(struct mausb_device *);
 	} mausb_eh_ops;
 }__attribute__((packed));
-
 
 #define kthread_get_run(threadfn, data, namefmt, ...)			   \
 ({									   \
@@ -252,7 +245,6 @@ void mausb_pad_iso(struct mausb_device *ud, struct urb *urb);
 int mausb_recv_xbuff(struct mausb_device *ud, struct urb *urb);
 
 /* mausb_event.c */
-int event_handler(struct mausb_device *ud);
 int mausb_start_eh(struct mausb_device *ud);
 void mausb_stop_eh(struct mausb_device *ud);
 void mausb_event_add(struct mausb_device *ud, unsigned long event);

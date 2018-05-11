@@ -248,17 +248,10 @@ int lge_mdss_dsi_panel_send_on_cmds(struct mdss_dsi_ctrl_pdata *ctrl,
 
 	pr_info("panel off -> %s\n",rm_mode[cur_mode]);
 
-	pr_info("change to MIPI Mode\n");
-	lge_mdss_dsi_panel_extra_cmds_send(ctrl, "mipi-mode");
-
 	pr_info("sending default on cmds\n");
 	lge_send_dcs_cmds(ctrl, default_on_cmds);
 
 	lge_send_dcs_cmds_by_id(ctrl, rm_cmds_id[cur_mode][cur_mode]);
-
-	pr_info("change to I2C Mode\n");
-	lge_mdss_dsi_panel_extra_cmds_send(ctrl, "i2c-mode");
-
 	return 0;
 }
 
@@ -285,9 +278,6 @@ bool lge_change_reader_mode(struct mdss_dsi_ctrl_pdata *ctrl, int old_mode, int 
 
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
 
-	pr_info("change to MIPI Mode\n");
-	lge_mdss_dsi_panel_extra_cmds_send(ctrl, "mipi-mode");
-
 	cmd_id = rm_cmds_id[old_mode][new_mode];
 
 	if (cmd_id == MDN) {
@@ -297,9 +287,6 @@ bool lge_change_reader_mode(struct mdss_dsi_ctrl_pdata *ctrl, int old_mode, int 
 	} else {
 		lge_send_dcs_cmds_by_id(ctrl, cmd_id);
 	}
-
-	pr_info("change to I2C Mode\n");
-	lge_mdss_dsi_panel_extra_cmds_send(ctrl, "i2c-mode");
 
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
 

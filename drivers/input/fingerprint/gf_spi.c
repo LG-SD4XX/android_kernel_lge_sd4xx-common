@@ -92,9 +92,6 @@ struct gf_key_map key_map[] =
 
 #define GF_3208_CHIP_ID (0x00002202)
 #define GF_3208_RST_DATA (0x0100)
-#define GF_3228_CHIP_ID (0x0000220A)
-#define GF_3228_RST_DATA (0x0800)
-
 #define MAX_RETRY_HW_CHECK_COUNT (5)
 
 #define MAX_REST_RETRY_COUNT 3
@@ -304,7 +301,7 @@ static int gf_get_hw_id(struct gf_dev *gf_dev)
 		gf_spi_read_word(gf_dev,GF_CHIP_ID_HI,&chip_id_2);
 		g_chipID = ((chip_id_2<<16)|(chip_id_1)) >> 8;
 		gf_dbg("%s: chip_id_high = 0x%x,chip_id_low = 0x%x, g_chipID is 0x%08x \n",__func__,chip_id_2,chip_id_1,g_chipID);
-		if(g_chipID == GF_3208_CHIP_ID || g_chipID == GF_3228_CHIP_ID)
+		if(g_chipID == GF_3208_CHIP_ID)
 		{
 			gf_dbg("succeed to read chip id in probe.\n");
 			gf_dev->device_available = GF_DEVICE_AVAILABLE;
@@ -314,7 +311,6 @@ static int gf_get_hw_id(struct gf_dev *gf_dev)
 	}
 	gf_dev->device_available = GF_DEVICE_NOT_AVAILABLE;
 	gf_dbg("fail to read chip id in probe.\n");
-
 	return -GF_PERM_ERROR;
 }
 
@@ -335,7 +331,7 @@ static int gf_check_rst(struct gf_dev *gf_dev)
 		gf_spi_read_word(gf_dev,GF_IRQ_CTRL3,&reset_data);
 
 		gf_dbg("%s: reset_irq_data = 0x%x \n",__func__,reset_data);
-		if((reset_data != GF_3208_RST_DATA) && (reset_data != GF_3228_RST_DATA)) {
+		if(reset_data != GF_3208_RST_DATA) {
 			gf_get_hw_id(gf_dev);
 			gf_dbg("chip reset check fail.\n");
 			msleep(20);
@@ -348,7 +344,6 @@ static int gf_check_rst(struct gf_dev *gf_dev)
 		}
 	}
 	gf_dev->device_available = 0;
-
 	return -GF_PERM_ERROR;
 }
 
@@ -408,7 +403,9 @@ static int gf_check_irq(struct gf_dev *gf_dev)
 	}
 
 	return result;
+
 }
+
 
 void gf_spi_setup(struct gf_dev *gf_dev, enum gf_spi_transfer_speed speed)
 {
@@ -1058,11 +1055,13 @@ static int gf_run_oem_test(struct gf_dev* gf_dev){
 
 static int gf_setup_input_device(struct gf_dev* gf_dev){
 
+	int status = GF_NO_ERROR;
+
 	/*input device subsystem */
 	gf_dev->input = input_allocate_device();
 	if (gf_dev->input == NULL) {
 		gf_dbg("Faile to allocate input device.\n");
-		return -ENOMEM;
+		status = -ENOMEM;
 	}
 
 	gf_dev->input->name = GF_INPUT_NAME;
@@ -1072,10 +1071,9 @@ static int gf_setup_input_device(struct gf_dev* gf_dev){
 	if (input_register_device(gf_dev->input)) {
 		gf_dbg("Failed to register GF as input device.\n");
 		input_free_device(gf_dev->input);
-		return -ENOMEM;
+		status = -ENOMEM;
 	}
-
-	return GF_NO_ERROR;
+	return status;
 }
 
 static int gf_setup_irq_pin(struct gf_dev* gf_dev){
@@ -1104,7 +1102,7 @@ static int gf_setup_lge_input_device(struct gf_dev* gf_dev){
 	gf_dev->lge_input = input_allocate_device();
 	if(!gf_dev->lge_input) {
 		gf_dbg("[ERROR] input_allocate_deivce failed.\n");
-		return -ENOMEM;
+		status = -ENOMEM;
 	}
 
 	gf_dev->lge_input->name = "fingerprint";
@@ -1115,13 +1113,14 @@ static int gf_setup_lge_input_device(struct gf_dev* gf_dev){
 	if(status) {
 		gf_dbg("[ERROR] nput_register_device failed.\n");
 		input_free_device(gf_dev->lge_input);
-		return -ENOMEM;
+		status = -ENOMEM;
 	}
 	if(sysfs_create_group(&gf_dev->lge_input->dev.kobj, &gf_attr_group)) {
 		gf_dbg("[ERROR] sysfs_create_group failed.\n");
 		input_unregister_device(gf_dev->lge_input);
-		return -ENOMEM;
+		status = -ENOMEM;
 	}
+
 	return status;
 }
 

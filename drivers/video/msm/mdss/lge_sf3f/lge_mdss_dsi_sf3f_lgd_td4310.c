@@ -249,7 +249,6 @@ int sf3f_lgd_td4310_mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enab
 			usleep_range(10000, 10000);
 
 			lge_extra_gpio_set_value(ctrl_pdata, "iovcc", 0);   //iovcc low
-			usleep_range(10000, 10000);
 		}
 
 		lge_extra_gpio_free(ctrl_pdata, "dsv_ena");

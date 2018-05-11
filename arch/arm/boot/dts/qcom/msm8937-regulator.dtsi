@@ -281,7 +281,7 @@
 	rpm-regulator-ldoa23 {
 		status = "okay";
 		pm8937_l23: regulator-l23 {
-			regulator-min-microvolt = <1200000>;
+			regulator-min-microvolt = <950000>; // LGE_CHANGE, change LDO23 MinVoltage from 1200 to 950, 2017-09-12, jungryoul.choi@lge.com
 			regulator-max-microvolt = <1200000>;
 			qcom,init-voltage = <1200000>;
 			status = "okay";

@@ -3817,7 +3817,10 @@ retry_deleg:
 			while (lower_inode->i_op->get_lower_inode) {
 				if (inode->i_sb->s_magic == SDCARDFS_SUPER_MAGIC
 						&& SDCARDFS_SB(inode->i_sb)->options.label) {
-					path_buf = kmalloc(PATH_MAX, GFP_KERNEL);
+					if (!path_buf)
+						path_buf = kmalloc(PATH_MAX, GFP_KERNEL);
+					if (!path_buf)
+						break;
 					propagate_path = dentry_path_raw(dentry, path_buf, PATH_MAX);
 				}
 				lower_inode = lower_inode->i_op->get_lower_inode(lower_inode);
@@ -3835,9 +3838,13 @@ exit2:
 	mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
 #ifdef CONFIG_SDCARD_FS
 	/* temp code to avoid issue */
-	if (path_buf && !IS_ERR(path_buf) && !error && propagate) {
+	if (propagate_path && !error && propagate) {
 		inode->i_sb->s_op->unlink_callback(inode, propagate_path);
+	}
+	if (path_buf)
+	{
 		kfree(path_buf);
+		path_buf = NULL;
 	}
 #endif
 	if (inode)
@@ -4421,8 +4428,12 @@ retry_deleg:
 		while (lower_old_inode->i_op->get_lower_inode) {
 			if (lower_old_inode->i_sb->s_magic == SDCARDFS_SUPER_MAGIC
 					&& SDCARDFS_SB(lower_old_inode->i_sb)->options.label) {
-				path_old_buf = kmalloc(PATH_MAX, GFP_KERNEL);
-				path_new_buf = kmalloc(PATH_MAX, GFP_KERNEL);
+				if (!path_old_buf)
+					path_old_buf = kmalloc(PATH_MAX, GFP_KERNEL);
+				if (!path_new_buf)
+					path_new_buf = kmalloc(PATH_MAX, GFP_KERNEL);
+				if (!path_old_buf || !path_new_buf)
+					break;
 				propagate_old_path = dentry_path_raw(old_dentry, path_old_buf, PATH_MAX);
 				propagate_new_path = dentry_path_raw(new_dentry, path_new_buf, PATH_MAX);
 			}
@@ -4447,11 +4458,19 @@ exit3:
 	unlock_rename(new_dir, old_dir);
 #ifdef CONFIG_SDCARD_FS
 	/* we need to propagate rename for all path(default/read/write) */
-	if (path_old_buf && !IS_ERR(path_old_buf) && path_new_buf && !IS_ERR(path_new_buf)
-			&& !error && propagate_enable) {
+	if (propagate_old_path && propagate_new_path && !error && propagate_enable) {
 		inode->i_sb->s_op->rename_callback(inode, propagate_old_path, propagate_new_path);
+	}
+
+	if (path_old_buf)
+	{
 		kfree(path_old_buf);
+		path_old_buf = NULL;
+	}
+	if (path_new_buf)
+	{
 		kfree(path_new_buf);
+		path_new_buf = NULL;
 	}
 #endif
 	if (delegated_inode) {

@@ -45,7 +45,6 @@ enum DAYLIGHT_MODE {
 };
 #endif
 
-extern int lge_mdss_fb_get_shutdown_state(void);
 extern void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl, struct dsi_panel_cmds *pcmds, u32 flags);
 extern int mdss_dsi_parse_dcs_cmds(struct device_node *np, struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key);
 
@@ -225,13 +224,10 @@ int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 
 	pr_info("%s: (override: lv9)\n", __func__);
 
-	if(!lge_mdss_fb_get_shutdown_state())
-	{
-		ret = mdss_dsi_panel_reset(pdata, 0);
-		if (ret) {
-			pr_warn("%s: Panel reset failed. rc=%d\n", __func__, ret);
-			ret = 0;
-		}
+	ret = mdss_dsi_panel_reset(pdata, 0);
+	if (ret) {
+		pr_warn("%s: Panel reset failed. rc=%d\n", __func__, ret);
+		ret = 0;
 	}
 
 	if (mdss_dsi_pinctrl_set_state(ctrl_pdata, false))

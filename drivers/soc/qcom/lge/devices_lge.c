@@ -27,16 +27,18 @@ char *rev_str[] = {"hdk_a", "hdk_b", "rdk", "rev_a", "rev_b", "rev_c",
 	"rev_10", "rev_11", "revserved"};
 #elif defined(CONFIG_MACH_MSM8917_LV3_MPCS_US) || defined(CONFIG_MACH_MSM8917_LV3_TMO_US)  || defined(CONFIG_MACH_MSM8917_LV3_USC_US)\
 	|| defined(CONFIG_MACH_MSM8917_LV3_LGU_KR) || defined(CONFIG_MACH_MSM8917_LV3_SKT_KR) || defined(CONFIG_MACH_MSM8917_LV3_KT_KR)\
-	|| defined(CONFIG_MACH_MSM8917_LV3_GLOBAL_COM) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US_VZW) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US_R) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US_VZW_R) \
+	|| defined(CONFIG_MACH_MSM8917_LV3_GLOBAL_COM) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US_VZW)\
 	|| defined(CONFIG_MACH_MSM8940_LV9_ATT_US) || defined(CONFIG_MACH_MSM8940_LV9_NAO_US) || defined(CONFIG_MACH_MSM8940_LV9_GLOBAL_COM) \
-	|| defined(CONFIG_MACH_MSM8917_LV7_CCT_US_VZW) || defined(CONFIG_MACH_MSM8917_LV7_CRK_US) || defined(CONFIG_MACH_MSM8917_LV7_GLOBAL_CA) \
-	|| defined(CONFIG_MACH_MSM8940_LV9_GLOBAL_CA) 
+	|| defined(CONFIG_MACH_MSM8917_LV7_CCT_US_VZW) || defined(CONFIG_MACH_MSM8917_LV7_CRK_US) || defined(CONFIG_MACH_MSM8917_LV7_GLOBAL_CA)
 char *rev_str[] = {"rev_0", "rev_a", "rev_b", "rev_c", "rev_d", "rev_e",
 	"rev_10", "rev_11", "reserved"};
-#elif defined(CONFIG_MACH_MSM8940_MH_GLOBAL_COM) || defined(CONFIG_MACH_MSM8940_MH_LGU_KR)
+#elif defined(CONFIG_MACH_MSM8917_CV3_LGU_KR) || defined(CONFIG_MACH_MSM8917_CV3_SKT_KR) || defined(CONFIG_MACH_MSM8917_CV3_KT_KR) || defined(CONFIG_MACH_MSM8917_CV3_LAO_COM) || defined(CONFIG_MACH_MSM8917_CV3_VZW) || defined(CONFIG_MACH_MSM8917_CV3_CRK_US) || defined(CONFIG_MACH_MSM8917_CV3_CCT_US)
+char *rev_str[] = {"rev_0", "rev_a", "rev_b", "rev_c", "rev_d", "rev_e",
+	"rev_f", "rev_g", "rev_h", "rev_10", "rev_11", "reserved"};
+#elif defined(CONFIG_MACH_MSM8940_MH_GLOBAL_COM) || defined(CONFIG_MACH_MSM8940_MH_LGU_KR) || defined(CONFIG_MACH_MSM8940_MH_SKT_KR) || defined(CONFIG_MACH_MSM8940_MH_KT_KR) || defined(CONFIG_MACH_MSM8940_MH_TMO_US) || defined(CONFIG_MACH_MSM8940_MH_CRK_US) || defined(CONFIG_MACH_MSM8940_MH_MPCS_US) || defined(CONFIG_MACH_MSM8940_MH_TRF_US) || defined(CONFIG_MACH_MSM8940_MH_GLOBAL_CA) || defined(CONFIG_MACH_MSM8940_MH_LAO_COM) || defined(CONFIG_MACH_MSM8940_MH_GLOBAL_LDU)
 char *rev_str[] = {"rev_0", "rev_02", "rev_a", "rev_b", "rev_c", "rev_d",
 	"rev_10", "rev_11", "reserved"};
-#elif	defined(CONFIG_MACH_MSM8917_LV517_TMO_US) || defined(CONFIG_MACH_MSM8917_LV517_VZW) || defined(CONFIG_MACH_MSM8917_LV517_LRA_US) || defined(CONFIG_MACH_MSM8917_LV517_TRF_US)\
+#elif	defined(CONFIG_MACH_MSM8917_LV517_TMO_US) || defined(CONFIG_MACH_MSM8917_LV517_VZW) || defined(CONFIG_MACH_MSM8917_LV517_TRF_US)\
 	||  defined(CONFIG_MACH_MSM8917_LV517N_ATT_US) ||defined(CONFIG_MACH_MSM8917_LV517_CRK_US) || defined(CONFIG_MACH_MSM8917_LV517_CLR_PR) || defined(CONFIG_MACH_MSM8917_LV517_MPCS_US)
 char *rev_str[] = {"rev_0", "rev_a_1", "rev_a_2", "rev_a_3", "rev_b", "rev_c",
 	"rev_10", "rev_11", "reserved"};
@@ -44,12 +46,15 @@ char *rev_str[] = {"rev_0", "rev_a_1", "rev_a_2", "rev_a_3", "rev_b", "rev_c",
 	|| defined(CONFIG_MACH_MSM8917_SF317_CRK_US)
 char *rev_str[] = {"rev_a", "rev_a_2", "rev_a_3", "rev_b", "rev_c",
 	"rev_10", "rev_11", "reserved"};
-#elif defined(CONFIG_MACH_MSM8940_SF3_MPCS_US) || defined(CONFIG_MACH_MSM8940_SF3_TMO_US) || defined(CONFIG_MACH_MSM8940_SF3_CLR_PR) || defined(CONFIG_MACH_MSM8940_TF8_TMO_US) || defined(CONFIG_MACH_MSM8940_TF8_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_GLOBAL_CA) || defined(CONFIG_MACH_MSM8940_SF3_GLOBAL_CA)
+#elif defined(CONFIG_MACH_MSM8940_SF3_MPCS_US) || defined(CONFIG_MACH_MSM8940_SF3_TMO_US) || defined(CONFIG_MACH_MSM8940_TF8_TMO_US) || defined(CONFIG_MACH_MSM8940_SF3_GLOBAL_CA) || defined(CONFIG_MACH_MSM8917_CV1_LAO_COM) || defined(CONFIG_MACH_MSM8917_CV1_VZW) || defined(CONFIG_MACH_MSM8917_CV1_ATT_US) || defined(CONFIG_MACH_MSM8917_CV1_CRK_US)
 char *rev_str[] = {"rev_0", "rev_a", "rev_a_2", "rev_b", "rev_c", "rev_d",
         "rev_10", "rev_11", "reserved"};
 #elif defined(CONFIG_MACH_MSM8917_B6_JCM_JP) || defined(CONFIG_MACH_MSM8917_B6_LGU_KR)
 char *rev_str[] = {"hdk_a", "rev_a", "rev_b", "rev_c",
 	"rev_10", "rev_11", "revserved"};
+#elif defined(CONFIG_MACH_MSM8940_L6_DCM_JP)
+char *rev_str[] = {"rev_0", "rev_02", "rev_a", "rev_b", "rev_b_1", "rev_c", "rev_d", "rev_e", 
+	"rev_10", "rev_11", "reserved"};
 #else
 char *rev_str[] = {"evb1", "evb2", "evb3", "rev_0", "rev_01", "rev_f", "rev_b", "rev_c",
 	"rev_d", "rev_e", "rev_a", "rev_10", "rev_11", "rev_12",
@@ -315,12 +320,16 @@ arch_initcall(lge_add_qfprom_devices);
 
 #ifdef CONFIG_LGE_USB_G_LAF
 static enum lge_laf_mode_type lge_laf_mode = LGE_LAF_MODE_NORMAL;
+static bool lge_laf_mid = false;
 
 int __init lge_laf_mode_init(char *s)
 {
 	if (strcmp(s, "") && strcmp(s, "MID"))
 		lge_laf_mode = LGE_LAF_MODE_LAF;
 
+	if(!strcmp(s, "MID")) {
+		lge_laf_mid = true;
+	}
 	return 1;
 }
 __setup("androidboot.laf=", lge_laf_mode_init);
@@ -328,6 +337,11 @@ __setup("androidboot.laf=", lge_laf_mode_init);
 enum lge_laf_mode_type lge_get_laf_mode(void)
 {
 	return lge_laf_mode;
+}
+
+bool lge_get_laf_mid(void)
+{
+	return lge_laf_mid;
 }
 #endif
 
@@ -344,6 +358,39 @@ bool lge_get_mfts_mode(void)
 {
 		return is_mfts_mode;
 }
+
+static int android_fota = 0;
+
+int lge_get_fota_mode(void)
+{
+	return android_fota;
+}
+
+int __init lge_android_fota(char *s)
+{
+	if(!strncmp(s,"true",strlen("true")) == 0)
+		android_fota = 1;
+	else
+		android_fota = 0;
+
+	return 1;
+}
+__setup("androidboot.fota=", lge_android_fota);
+
+static char lge_boot_partition_str[16] = "none";
+
+char* lge_get_boot_partition(void)
+{
+	return lge_boot_partition_str;
+}
+
+int __init lge_boot_partition(char *s)
+{
+	strncpy(lge_boot_partition_str, s, 15);
+	lge_boot_partition_str[15] = '\0'; /* null character added */
+	return 1;
+}
+__setup("lge.boot.partition=", lge_boot_partition);
 
 #ifdef CONFIG_LGE_DISPLAY_BL_DIMMING
 int lge_get_bootreason_with_lcd_dimming(void)
@@ -386,6 +433,11 @@ struct panel_lookup_entry panel_lookup_table[] = {
 	{"sf3_tovis_td4100_hd_video",SF3_TOVIS},
 	{"lv5_tovis_td4100_hd_video",LV5_TOVIS},
 	{"lgd_incell_sw49106_fhd_video", LGD_INCELL_SW49106},
+	{"tianma_ft8006m_hd_video",CV1_TIANMA_FT8006M},
+	{"lgd_lg4894a_hd_video", CV1_LGD_LG4894A},
+	{"tcl_ft8006m_hd_video",CV1_TCL_FT8006M},
+	{"cv3_lgd_lg4894_hd_video",CV3_LGD},
+	{"cv3_tovis_lg4894_hd_video",CV3_TOVIS},
 };
 
 static enum lge_panel_type panel_type = UNDEFINED;
@@ -412,23 +464,24 @@ enum lge_panel_type lge_get_panel_type(void)
 {
 	return panel_type;
 }
+
 #endif
 
-#if defined(CONFIG_LGE_DISPLAY_EXTERNAL_DSV)
-static char dsv_vendor[3];
-
-static int __init display_dsv_setup(char *dsv_cmd)
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_CV3)
+static bool panel_divide_init_cmd = true;
+static int __init lge_check_lcd_init_cmd_division(char *s)
 {
-	sscanf(dsv_cmd, "%s", dsv_vendor);
-	pr_info("dsv vendor id is %s\n", dsv_vendor);
-
-	return 1;
+	if(!strcmp(s, "no")) {
+		panel_divide_init_cmd = false;
+	}
+	pr_info("%s : check lcd initcmd division [%s]\n",__func__, panel_divide_init_cmd ? "yes" : "no");
+	return 0;
 }
-__setup("lge.dsv_id=", display_dsv_setup);
+__setup("lge.InitCmdDivision=", lge_check_lcd_init_cmd_division);
 
-char* lge_get_dsv_vendor(void)
+bool lge_get_lcd_init_cmd_division(void)
 {
-     return dsv_vendor;
+	return panel_divide_init_cmd;
 }
 #endif
 
@@ -448,24 +501,6 @@ bool lge_get_disable_esd_absent_bettery(void)
 {
 	return battery_present;
 }
-
-static bool panel_status_on_boot = true;
-static int __init boot_with_lcd_check(char *s)
-{
-	if(!strcmp(s, "disconnect")) {
-		panel_status_on_boot = false;
-	}
-	pr_info("%s : panel is %s.\n",__func__, panel_status_on_boot?"connected":"disconnected");
-	return 0;
-}
-
-bool lge_get_panel_status_on_boot(void)
-{
-	return panel_status_on_boot;
-}
-
-__setup("lge.bootWithLcd=", boot_with_lcd_check);
-
 #endif
 
 #ifdef CONFIG_LGE_QSDL_SUPPORT
@@ -490,3 +525,76 @@ static int  __init lge_add_qsdl_device(void)
 arch_initcall(lge_add_qsdl_device);
 
 #endif /* CONFIG_LGE_QSDL_SUPPORT */
+
+#ifdef CONFIG_LGE_ONE_BINARY_SKU
+/* For LAOP SKU Carrier Support */
+static enum lge_sku_carrier_type lge_sku_carrier = LAO;
+int __init lge_sku_carrier_init(char *s)
+{
+	if (!strcmp(s, "LAO"))
+		lge_sku_carrier = LAO;
+	else if (!strcmp(s, "TMUS"))
+		lge_sku_carrier = TMUS;
+	else if (!strcmp(s, "TRF_C"))
+		lge_sku_carrier = TRF_C;
+	else if (!strcmp(s, "TRF_G"))
+		lge_sku_carrier = TRF_G;
+	else if (!strcmp(s, "USC"))
+		lge_sku_carrier = USC;
+	else if (!strcmp(s, "VZW"))
+		lge_sku_carrier = VZW;
+	else if (!strcmp(s, "TRF"))
+		lge_sku_carrier = TRF;
+	else if (!strcmp(s, "TMUS71"))
+		lge_sku_carrier = TMUS71;
+	else if (!strcmp(s, "CRK"))
+		lge_sku_carrier = CRK;
+	else
+		lge_sku_carrier = LAO;
+
+	pr_info("LGE One Binary Sku carrier : %d %s\n", lge_sku_carrier, s);
+
+	return 1;
+}
+__setup("lge.sku_carrier=", lge_sku_carrier_init);
+
+enum lge_sku_carrier_type lge_get_sku_carrier(void)
+{
+	return lge_sku_carrier;
+}
+#endif //CONFIG_LGE_ONE_BINARY_SKU
+
+#ifdef CONFIG_LGE_ONE_BINARY_HW_SKU
+/* For LAOP GPIO Value Support for HW SKU */
+static int lge_gpio_value = -1;
+
+int lge_atoi(char *s)
+{
+    int i, n;
+
+	n=0;
+	for(i=0;s[i]>'0'&&s[i]<='9';++i)
+        n=10*n+(s[i]-'0');
+
+    return n;
+}
+
+int __init lge_gpio_value_init(char *s)
+{
+	if (s != NULL)
+		lge_gpio_value = lge_atoi(s);
+	else
+		lge_gpio_value = -1;
+
+	pr_info("LGE One Binary GPIO Value : %d , string : %s\n", lge_gpio_value, s);
+
+	return 1;
+}
+__setup("lge.gpio_value=", lge_gpio_value_init);
+
+int lge_get_gpio_value(void)
+{
+	return lge_gpio_value;
+}
+#endif //CONFIG_LGE_ONE_BINARY_HW_SKU
+

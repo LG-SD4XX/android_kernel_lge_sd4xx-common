@@ -16,3 +16,13 @@ endif
 ifeq ($(CONFIG_INPUT_FPC1145),y)
 obj-$(CONFIG_INPUT_FPC1145)     += fpc1145_tee.o
 endif
+
+ifeq ($(CONFIG_INPUT_FPC1028),y)
+obj-$(CONFIG_INPUT_FPC1028)     += fpc1028_tee.o
+endif
+
+ifeq ($(CONFIG_INPUT_FPC1028_L6),y)
+obj-$(CONFIG_INPUT_FPC1028_L6)     += fpc1028_tee_L6.o
+endif
+
+

@@ -24,62 +24,48 @@
 #include <linux/input/epack_core.h>
 #include <linux/input/epack_audio.h>
 
-#ifdef CONFIG_LGE_EXTERNAL_SPEAKER
-extern int max98925_get_spk_amp_status(void);
-extern int max98925_get_init_status(void);
-extern void max98925_spk_enable(int);
-#endif
 static int epack_state = 0;
 
 void epack_audio_work_func(struct work_struct *audio_work)
 {
 	struct epack_dev_data *epack = container_of(to_delayed_work(audio_work), struct epack_dev_data, audio_work);
+	static int count = 0;
 
-	if (epack_state) {
-#ifdef CONFIG_LGE_EXTERNAL_SPEAKER
-		if (max98925_get_init_status() && !max98925_get_spk_amp_status()) {
-			switch_set_state(&epack->sdev, EPACK_DISABLE);
-			epack_state = 0;
-			pr_err("[EpackSPK][%s] state : %d, Because I2C comm. problem, Change the inter SPK.\n",__func__, get_epack_status());
-		}
-#endif
-	}
-	schedule_delayed_work(&epack->audio_work, msecs_to_jiffies(100));
+	pr_err("[%s] status : %d, count : %d\n",__func__,get_epack_status(),count++);
+
+	schedule_delayed_work(&epack->audio_work, msecs_to_jiffies(13000));
+
 	return;
 }
 
-void audio_input_init(struct i2c_client *client , struct epack_dev_data *epack)
+void audio_input_init(struct i2c_client *client , struct epack_dev_data *data)
 {
 	int err;
-	pr_debug("[EpackSPK][%s] enter\n", __func__);
-	epack->sdev.name = EPACK_STATE;
-	err = switch_dev_register(&epack->sdev);
+	pr_debug("[%s] enter\n", __func__);
+ 	data->sdev.name = EPACK_STATE;
+	err = switch_dev_register(&data->sdev);
 	if (err < 0) {
-        pr_err("[EpackSPK][%s] Failed to register switch device\n", __func__);
-        switch_dev_unregister(&epack->sdev);
+        pr_err("[%s] Failed to register switch device\n", __func__);
+        switch_dev_unregister(&data->sdev);
 	}
 }
 
-void audio_input_set_sdev_name(struct epack_dev_data *epack, int status)
+void audio_input_set_sdev_name(struct epack_dev_data *data, int status)
 {
-	pr_debug("[EpackSPK][%s] enter\n", __func__);
+	pr_debug("[%s] enter\n", __func__);
 
+	epack_state = status;
 
-	if (status) {
-		epack_state = status;
-		switch_set_state(&epack->sdev, EPACK_ENABLE);
-	} else {
-#ifdef CONFIG_LGE_EXTERNAL_SPEAKER
-		pr_info("[EpackSPK] Call EpackSPK disable\n");
-		max98925_spk_enable(0);
-#endif
-		epack_state = status;
-		switch_set_state(&epack->sdev, EPACK_DISABLE);
-	}
-	pr_info("[EpackSPK][%s] sdev.name : %s, epack state: %d\n", __func__, epack->sdev.name, epack_state);
+	if (status)
+		switch_set_state(&data->sdev, EPACK_ENABLE);
+	else
+		switch_set_state(&data->sdev, EPACK_DISABLE);
+
+	pr_info("[%s] sdev.name: %s, epack state: %d\n", __func__, data->sdev.name, epack_state);
 }
 
 int audio_get_epack_state(void)
 {
 	return epack_state;
 }
+

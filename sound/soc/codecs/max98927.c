@@ -2455,7 +2455,18 @@ static int max98927_i2c_probe(struct i2c_client *i2c,
 			pdata->nodsm = 0;
 			break;
 		}
-
+#ifdef CONFIG_MACH_LGE // for set reset gpio.
+		max98927->reset_gpio = of_get_named_gpio(i2c->dev.of_node, "maxim,reset_gpio", 0);
+		if (gpio_is_valid(max98927->reset_gpio)) {
+			ret = gpio_request(max98927->reset_gpio, "MAXIM98927_RESET");
+			if (ret)
+				pr_err("%s: Failed to request reset gpio\n", __func__);
+			else
+				gpio_direction_output(max98927->reset_gpio, 1);
+		}
+		else
+			pr_err("%s: invalid reset gpio\n", __func__);
+#endif
 		if (of_property_read_bool(
 				i2c->dev.of_node, "maxim,i2c-pull-up"))
 			max98927_regulator_config(&i2c->dev);

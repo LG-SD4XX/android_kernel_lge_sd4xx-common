@@ -11,7 +11,6 @@
 int mdss_dsi_pinctrl_set_state(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 					bool active);
 
-struct mdss_dsi_ctrl_pdata *cp_ctrl_pdata;
 extern void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl, struct dsi_panel_cmds *pcmds, u32 flags);
 
 static atomic_t boot_fw_recovery = ATOMIC_INIT(0);
@@ -95,16 +94,22 @@ int tianma_ft860x_cmd_transfer(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 int tianma_ft860x_panel_external_api(int type, int enable)
 {
 	int rc = 0;
+	struct mdss_dsi_ctrl_pdata *pdata = NULL;
+
+	pdata = lge_mdss_dsi_get_ctrl_pdata();
+	if (pdata == NULL)
+		return -ENODEV;
+
 	switch(type) {
 		case VDDI_CTRL:
 			break;
 		case AVDD_AVEE_CTRL:
 			break;
 		case LCD_RESET_CTRL:
-			rc = tianma_ft860x_reset_ctrl(cp_ctrl_pdata, enable);
+			rc = tianma_ft860x_reset_ctrl(pdata, enable);
 			break;
 		case LCD_INIT_CMD_TRANSFER:
-			rc = tianma_ft860x_cmd_transfer(cp_ctrl_pdata, enable);
+			rc = tianma_ft860x_cmd_transfer(pdata, enable);
 			break;
 		case NONE:
 		default:
@@ -120,21 +125,22 @@ int tianma_ft860x_firmware_recovery(void)
 	struct mdss_panel_info *pinfo = NULL;
 	u32 backup_level = 0;
 	int rc = 0;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+
+	ctrl_pdata = lge_mdss_dsi_get_ctrl_pdata();
+	if (ctrl_pdata == NULL)
+		return -ENODEV;
+
 
 	pr_info("firmware update detected, LCD recovery function called\n");
 
-	if (cp_ctrl_pdata == NULL) {
-		pr_err("%s: no mdss_dsi_ctrl_pdata\n", __func__);
-		return -EINVAL;
-	}
-
-	pdata = &(cp_ctrl_pdata->panel_data);
+	pdata = &(ctrl_pdata->panel_data);
 	if (pdata == NULL) {
 		pr_err("%s: no panel_data\n", __func__);
 		return -EINVAL;
 	}
 
-	pinfo = &(cp_ctrl_pdata->panel_data.panel_info);
+	pinfo = &(ctrl_pdata->panel_data.panel_info);
 	if (pinfo->cont_splash_enabled) {
 		pr_info("%s: firmware recovery called before dsi init\n", __func__);
 		set_boot_fw_recovery(1);

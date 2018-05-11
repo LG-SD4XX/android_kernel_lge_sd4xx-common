@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -12,6 +12,7 @@
 
 #define SENSOR_DRIVER_I2C "i2c_camera"
 /* Header file declaration */
+#include <linux/string.h>  //LGE_CHANGE add for log fefe7270.park@lge.com
 #include "msm_sensor.h"
 #include "msm_sd.h"
 #include "camera.h"
@@ -112,7 +113,11 @@ static int32_t msm_sensor_driver_create_i2c_v4l_subdev
 	s_ctrl->msm_sd.sd.entity.name =	s_ctrl->msm_sd.sd.name;
 	s_ctrl->sensordata->sensor_info->session_id = session_id;
 	s_ctrl->msm_sd.close_seq = MSM_SD_CLOSE_2ND_CATEGORY | 0x3;
-	msm_sd_register(&s_ctrl->msm_sd);
+	rc = msm_sd_register(&s_ctrl->msm_sd);
+	if (rc < 0) {
+		pr_err("failed: msm_sd_register rc %d", rc);
+		return rc;
+	}
 	msm_sensor_v4l2_subdev_fops = v4l2_subdev_fops;
 #ifdef CONFIG_COMPAT
 	msm_sensor_v4l2_subdev_fops.compat_ioctl32 =
@@ -149,7 +154,11 @@ static int32_t msm_sensor_driver_create_v4l_subdev
 	s_ctrl->msm_sd.sd.entity.group_id = MSM_CAMERA_SUBDEV_SENSOR;
 	s_ctrl->msm_sd.sd.entity.name = s_ctrl->msm_sd.sd.name;
 	s_ctrl->msm_sd.close_seq = MSM_SD_CLOSE_2ND_CATEGORY | 0x3;
-	msm_sd_register(&s_ctrl->msm_sd);
+	rc = msm_sd_register(&s_ctrl->msm_sd);
+	if (rc < 0) {
+		pr_err("failed: msm_sd_register rc %d", rc);
+		return rc;
+	}
 	msm_cam_copy_v4l2_subdev_fops(&msm_sensor_v4l2_subdev_fops);
 #ifdef CONFIG_COMPAT
 	msm_sensor_v4l2_subdev_fops.compat_ioctl32 =
@@ -504,17 +513,11 @@ static int32_t msm_sensor_create_pd_settings(void *setting,
 
 #ifdef CONFIG_COMPAT
 	if (is_compat_task()) {
-		int i = 0;
-		struct msm_sensor_power_setting32 *power_setting_iter =
-		(struct msm_sensor_power_setting32 *)compat_ptr((
-		(struct msm_camera_sensor_slave_info32 *)setting)->
-		power_setting_array.power_setting);
-
-		for (i = 0; i < size_down; i++) {
-			pd[i].config_val = power_setting_iter[i].config_val;
-			pd[i].delay = power_setting_iter[i].delay;
-			pd[i].seq_type = power_setting_iter[i].seq_type;
-			pd[i].seq_val = power_setting_iter[i].seq_val;
+		rc = msm_sensor_get_pw_settings_compat(
+			pd, pu, size_down);
+		if (rc < 0) {
+			pr_err("failed");
+			return -EFAULT;
 		}
 	} else
 #endif
@@ -717,6 +720,80 @@ static void msm_sensor_fill_sensor_info(struct msm_sensor_ctrl_t *s_ctrl,
 	strlcpy(entity_name, s_ctrl->msm_sd.sd.entity.name, MAX_SENSOR_NAME);
 }
 
+
+/*LGE_CHANGE_S sensor check by eeprom vendor id fefe7270.park@lge.com*/
+
+int32_t msm_sensor_eeprom_match_vendor_id(
+	enum msm_camera_i2c_reg_addr_type addr_type, enum msm_camera_i2c_data_type data_type,
+	struct msm_sensor_ctrl_t *s_ctrl, struct msm_camera_sensor_slave_info *slave_info,
+	unsigned short eeprom_slave_addr, unsigned int vendor_id_addr, unsigned int expected_vendor_id)
+{
+	int32_t rc = 0;
+	uint16_t vendor_id = 0;
+
+	s_ctrl->sensor_i2c_client->cci_client->sid = eeprom_slave_addr >> 1;
+	s_ctrl->sensor_i2c_client->addr_type = addr_type;
+
+	s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+			s_ctrl->sensor_i2c_client, vendor_id_addr,
+			&vendor_id, data_type);
+
+	s_ctrl->sensor_i2c_client->cci_client->sid = slave_info->slave_addr >> 1;
+	s_ctrl->sensor_i2c_client->addr_type = slave_info->addr_type;
+
+	pr_err("%s: %s eeprom read vendor_id: 0x%x expected_vendor_id 0x%x:\n",
+			__func__, slave_info->sensor_name, vendor_id, expected_vendor_id);
+
+	if(vendor_id != expected_vendor_id)
+		rc = -EINVAL;
+
+	return rc;
+}
+
+int msm_sensor_check_module_id(struct msm_sensor_ctrl_t *s_ctrl,
+	struct msm_camera_sensor_slave_info *slave_info)
+{
+	int32_t rc = 0;
+
+	if(strncmp(slave_info->sensor_name, "sl556", 5) == 0 && slave_info->slave_addr == 0x50){
+		if(strcmp("sl556_cowell", slave_info->sensor_name) == 0){
+			rc = msm_sensor_eeprom_match_vendor_id(MSM_CAMERA_I2C_BYTE_ADDR, MSM_CAMERA_I2C_BYTE_DATA,
+				s_ctrl, slave_info, 0xA0, 0x00, 0x11);
+		} else if (strcmp("sl556_lgit", slave_info->sensor_name) == 0) {
+			rc = msm_sensor_eeprom_match_vendor_id(MSM_CAMERA_I2C_BYTE_ADDR, MSM_CAMERA_I2C_BYTE_DATA,
+				s_ctrl, slave_info, 0xA0, 0x00, 0x01);
+		} else if (strcmp("sl556_sunny", slave_info->sensor_name) == 0) {
+			rc = msm_sensor_eeprom_match_vendor_id(MSM_CAMERA_I2C_WORD_ADDR, MSM_CAMERA_I2C_BYTE_DATA,
+				s_ctrl, slave_info, 0xA0, 0x0700, 0x20);
+		} else if (strcmp("sl556_byd", slave_info->sensor_name) == 0) {
+			rc = msm_sensor_eeprom_match_vendor_id(MSM_CAMERA_I2C_WORD_ADDR, MSM_CAMERA_I2C_BYTE_DATA,
+				s_ctrl, slave_info, 0xA8, 0x0000, 0x42);
+		} else {
+			pr_err("%s is not a listed sensor !!!", slave_info->sensor_name);
+			rc = -EINVAL;
+		}
+	} else if(strncmp(slave_info->sensor_name, "sl846", 5) == 0 && slave_info->slave_addr == 0x40){
+        if(strcmp("sl846_cowell", slave_info->sensor_name) == 0){
+            rc = msm_sensor_eeprom_match_vendor_id(MSM_CAMERA_I2C_WORD_ADDR, MSM_CAMERA_I2C_BYTE_DATA,
+                s_ctrl, slave_info, 0xB0, 0x0700, 0x13);
+        } else if (strcmp("sl846_lgit", slave_info->sensor_name) == 0) {
+            rc = msm_sensor_eeprom_match_vendor_id(MSM_CAMERA_I2C_WORD_ADDR, MSM_CAMERA_I2C_BYTE_DATA,
+                s_ctrl, slave_info, 0xB0, 0x0700, 0x01);
+        } else {
+            pr_err("%s is not a listed sensor !!!", slave_info->sensor_name);
+            rc = -EINVAL;
+        }
+	}
+
+	if (rc < 0)
+		pr_err("%s:%d match id failed rc %d\n", __func__, __LINE__, rc);
+
+	return rc;
+}
+
+/*LGE_CHANGE_E sensor check by eeprom vendor id fefe7270.park@lge.com*/
+
+
 /* static function definition */
 int32_t msm_sensor_driver_probe(void *setting,
 	struct msm_sensor_info_t *probed_info, char *entity_name)
@@ -828,16 +905,6 @@ int32_t msm_sensor_driver_probe(void *setting,
 		slave_info->sensor_init_params.position);
 	CDBG("mount %d",
 		slave_info->sensor_init_params.sensor_mount_angle);
-#ifdef SENSOR_INFO
-	 if(slave_info->camera_id == 0)
-	 {
-	 	rear_sensor_name = slave_info->sensor_name;
-	 }
-	 else if (slave_info->camera_id == 1)
-	 {
-	 	front_sensor_name = slave_info->sensor_name;
-	 }
-#endif
 
 	/* Validate camera id */
 	if (slave_info->camera_id >= MAX_CAMERAS) {
@@ -865,13 +932,15 @@ int32_t msm_sensor_driver_probe(void *setting,
 		 * probe
 		 */
 /* LGE_CHANGE_S, check slave address as well when sensor is probed again, 2016-09-12, jungryoul.choi@lge.com */
-		if ((slave_info->sensor_id_info.sensor_id ==
-			s_ctrl->sensordata->cam_slave_info->sensor_id_info.sensor_id) &&
-			(slave_info->slave_addr ==
-			s_ctrl->sensordata->cam_slave_info->slave_addr)) {
+		if (slave_info->sensor_id_info.sensor_id ==
+			s_ctrl->sensordata->cam_slave_info->
+				sensor_id_info.sensor_id &&
+			!(strcmp(slave_info->sensor_name,
+			s_ctrl->sensordata->cam_slave_info->sensor_name))) {
 /* LGE_CHANGE_E, check slave address as well when sensor is probed again, 2016-09-12, jungryoul.choi@lge.com */
-			pr_err("slot%d: sensor id%d already probed\n",
+			pr_err("slot%d: sensor name: %s sensor id%d already probed\n",
 				slave_info->camera_id,
+				slave_info->sensor_name,
 				s_ctrl->sensordata->cam_slave_info->
 					sensor_id_info.sensor_id);
 			msm_sensor_fill_sensor_info(s_ctrl,
@@ -1011,13 +1080,27 @@ CSID_TG:
 		goto free_camera_info;
 	}
 
+    /*LGE_CHANGE_S sensor check by eeprom vendor id fefe7270.park@lge.com*/
+	rc = msm_sensor_check_module_id(s_ctrl, slave_info);
+	if (rc < 0) {
+		pr_err("%s module id matching failed", slave_info->sensor_name);
+		s_ctrl->func_tbl->sensor_power_down(s_ctrl);
+		goto free_camera_info;
+	}
+	/*LGE_CHANGE_E sensor check by eeprom vendor id fefe7270.park@lge.com*/
+
 	pr_err("%s probe succeeded", slave_info->sensor_name);
 
-	/*
-	  Set probe succeeded flag to 1 so that no other camera shall
-	 * probed on this slot
-	 */
-	s_ctrl->is_probe_succeed = 1;
+#ifdef SENSOR_INFO
+	if(slave_info->camera_id == 0)
+	{
+		rear_sensor_name = slave_info->sensor_name;
+	}
+	else if (slave_info->camera_id == 1)
+	{
+		front_sensor_name = slave_info->sensor_name;
+	}
+#endif
 
 	/*
 	 * Update the subdevice id of flash-src based on availability in kernel.
@@ -1071,6 +1154,11 @@ CSID_TG:
 
 	msm_sensor_fill_sensor_info(s_ctrl, probed_info, entity_name);
 
+	/*
+	 * Set probe succeeded flag to 1 so that no other camera shall
+	 * probed on this slot
+	 */
+	s_ctrl->is_probe_succeed = 1;
 	return rc;
 
 camera_power_down:

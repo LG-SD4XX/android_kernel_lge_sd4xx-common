@@ -14,20 +14,8 @@ ifeq ($(CONFIG_MACH_MSM8940_SF3_TMO_US),y)
 DTS_TARGET := msm8940-sf3_tmo_us
 endif
 
-ifeq ($(CONFIG_MACH_MSM8940_SF3_CLR_PR),y)
-DTS_TARGET := msm8940-sf3_tmo_us
-endif
-
 ifeq ($(CONFIG_MACH_MSM8940_TF8_TMO_US),y)
 DTS_TARGET := msm8940-tf8_tmo_us
-endif
-
-ifeq ($(CONFIG_MACH_MSM8940_TF8_LGU_KR),y)
-DTS_TARGET := msm8940-tf8_lgu_kr
-endif
-
-ifeq ($(CONFIG_MACH_MSM8940_TF8_GLOBAL_CA),y)
-DTS_TARGET := msm8940-tf8_global_ca
 endif
 
 ifeq ($(CONFIG_MACH_MSM8940_SF3_GLOBAL_CA),y)
@@ -118,14 +106,6 @@ ifeq ($(CONFIG_MACH_MSM8917_LV7_GLOBAL_CA),y)
 DTS_TARGET := msm8917-lv7_global_ca
 endif
 
-ifeq ($(CONFIG_MACH_MSM8917_LV7_TRF_US_R),y)
-DTS_TARGET := msm8917-lv7_trf_us_R
-endif
-
-ifeq ($(CONFIG_MACH_MSM8917_LV7_TRF_US_VZW_R),y)
-DTS_TARGET := msm8917-lv7_trf_us_vzw_R
-endif
-
 ifeq ($(CONFIG_MACH_MSM8917_B6_JCM_JP),y)
 DTS_TARGET := msm8917-b6_jcm_jp
 endif
@@ -162,10 +142,6 @@ ifeq ($(CONFIG_MACH_MSM8917_LV517_VZW),y)
 DTS_TARGET := msm8917-lv517_vzw
 endif
 
-ifeq ($(CONFIG_MACH_MSM8917_LV517_LRA_US),y)
-DTS_TARGET := msm8917-lv517_lra_us
-endif
-
 ifeq ($(CONFIG_MACH_MSM8917_SF317_TRF_US),y)
 DTS_TARGET := msm8917-sf317_trf_us
 endif
@@ -190,16 +166,96 @@ ifeq ($(CONFIG_MACH_MSM8940_LV9_GLOBAL_COM),y)
 DTS_TARGET := msm8940-lv9_global_com
 endif
 
-ifeq ($(CONFIG_MACH_MSM8940_LV9_GLOBAL_CA),y)
-DTS_TARGET := msm8940-lv9_global_ca
-endif
-
 ifeq ($(CONFIG_MACH_MSM8940_MH_GLOBAL_COM),y)
 DTS_TARGET := msm8940-mh_global_com
 endif
 
+ifeq ($(CONFIG_MACH_MSM8940_MH_GLOBAL_LDU),y)
+DTS_TARGET := msm8940-mh_global_ldu
+endif
+
+ifeq ($(CONFIG_MACH_MSM8940_MH_TMO_US),y)
+DTS_TARGET := msm8940-mh_tmo_us
+endif
+
+ifeq ($(CONFIG_MACH_MSM8940_MH_CRK_US),y)
+DTS_TARGET := msm8940-mh_crk_us
+endif
+
+ifeq ($(CONFIG_MACH_MSM8940_MH_MPCS_US),y)
+DTS_TARGET := msm8940-mh_mpcs_us
+endif
+
+ifeq ($(CONFIG_MACH_MSM8940_MH_TRF_US),y)
+DTS_TARGET := msm8940-mh_trf_us
+endif
+
 ifeq ($(CONFIG_MACH_MSM8940_MH_LGU_KR),y)
 DTS_TARGET := msm8940-mh_lgu_kr
+endif
+
+ifeq ($(CONFIG_MACH_MSM8940_MH_SKT_KR),y)
+DTS_TARGET := msm8940-mh_skt_kr
+endif
+
+ifeq ($(CONFIG_MACH_MSM8940_MH_KT_KR),y)
+DTS_TARGET := msm8940-mh_kt_kr
+endif
+
+ifeq ($(CONFIG_MACH_MSM8940_MH_GLOBAL_CA),y)
+DTS_TARGET := msm8940-mh_global_ca
+endif
+
+ifeq ($(CONFIG_MACH_MSM8940_MH_LAO_COM),y)
+DTS_TARGET := msm8940-mh_lao_com
+endif
+
+ifeq ($(CONFIG_MACH_MSM8940_L6_DCM_JP),y)
+DTS_TARGET := msm8940-l6_dcm_jp
+endif
+
+ifeq ($(CONFIG_MACH_MSM8917_CV1_LAO_COM),y)
+DTS_TARGET := msm8917-cv1_lao_com
+endif
+
+ifeq ($(CONFIG_MACH_MSM8917_CV1_VZW),y)
+DTS_TARGET := msm8917-cv1_vzw
+endif
+
+ifeq ($(CONFIG_MACH_MSM8917_CV1_ATT_US),y)
+DTS_TARGET := msm8917-cv1_att_us
+endif
+
+ifeq ($(CONFIG_MACH_MSM8917_CV1_CRK_US),y)
+DTS_TARGET := msm8917-cv1_crk_us
+endif
+
+ifeq ($(CONFIG_MACH_MSM8917_CV3_LGU_KR),y)
+DTS_TARGET := msm8917-cv3_lgu_kr
+endif
+
+ifeq ($(CONFIG_MACH_MSM8917_CV3_SKT_KR),y)
+DTS_TARGET := msm8917-cv3_skt_kr
+endif
+
+ifeq ($(CONFIG_MACH_MSM8917_CV3_KT_KR),y)
+DTS_TARGET := msm8917-cv3_kt_kr
+endif
+
+ifeq ($(CONFIG_MACH_MSM8917_CV3_VZW),y)
+DTS_TARGET := msm8917-cv3_vzw
+endif
+
+ifeq ($(CONFIG_MACH_MSM8917_CV3_CCT_US),y)
+DTS_TARGET := msm8917-cv3_cct_us
+endif
+
+ifeq ($(CONFIG_MACH_MSM8917_CV3_LAO_COM),y)
+DTS_TARGET := msm8917-cv3_lao_com
+endif
+
+ifeq ($(CONFIG_MACH_MSM8917_CV3_CRK_US),y)
+DTS_TARGET := msm8917-cv3_crk_us
 endif
 
 ALL_DTS := $(notdir $(wildcard echo $(srctree)/$(src)/$(DTS_TARGET)/*.dts))

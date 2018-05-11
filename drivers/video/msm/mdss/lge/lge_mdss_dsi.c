@@ -37,28 +37,10 @@ static int lge_mdss_dsi_parse_gpio_params(struct platform_device *ctrl_pdev,
 	return 0;
 }
 
-static int lge_mdss_dsi_parse_clk_params(struct platform_device *ctrl_pdev,
-        struct mdss_dsi_ctrl_pdata *ctrl_pdata)
-{
-	int rc;
-	u32 tmp;
-
-	rc = of_property_read_u32(ctrl_pdev->dev.of_node, "lge,esc-clk-rate", &tmp);
-	if (rc) {
-		pr_info("%s: esc-clk-rate not specified\n", __func__);
-	} else {
-		ctrl_pdata->lge_extra.esc_clk_rate = tmp;
-		pr_info("%s: esc-clk-rate=%d\n", __func__, ctrl_pdata->lge_extra.esc_clk_rate);
-	}
-
-	return 0;
-}
-
 int lge_mdss_dsi_parse_extra_params(struct platform_device *ctrl_pdev,
         struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	lge_mdss_dsi_parse_gpio_params(ctrl_pdev, ctrl_pdata);
-	lge_mdss_dsi_parse_clk_params(ctrl_pdev, ctrl_pdata);
 
 	return 0;
 }
@@ -211,7 +193,8 @@ __weak void lge_set_panel_recovery_flag(int flag)
 {
 }
 
-int lge_mdss_dsi_panel_power_seq_all() {
+__weak int lge_mdss_dsi_panel_power_seq_all()
+{
 	int ret = 0;
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_MFTS)
 	if (lge_get_display_power_ctrl())

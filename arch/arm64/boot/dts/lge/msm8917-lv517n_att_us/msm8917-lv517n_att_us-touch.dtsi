@@ -50,7 +50,7 @@
 		use_firmware = <0>;
 		fw_image = "touch/lv5/sic/L0W53LV5_1_06.img", /* for revision 9 & lcd fpcb revision 2 */
 		           "touch/lv5/sic/L0W53LV5_1_09.img", /* for revision 9 & lcd fpcb revision 4 */
-		           "touch/lv5/sic/L0W53LV5_1_21.img"; /* for revision 9 & lcd fpcb revision 5 */
+		           "touch/lv5/sic/L0W53LV5_1_20.img"; /* for revision 9 & lcd fpcb revision 5 */
 		panel_spec = "touch/lv5/sic/lv5_limit.txt";
 		panel_spec_mfts_folder = "touch/lv5/sic/lv5_limit_mfts.txt";
 	};
@@ -92,8 +92,8 @@
 		/* Firmware */
 		use_fw_upgrade = <1>;
 		use_firmware = <0>;
-		fw_image = "touch/lv5/synaptics/PLG640-V1.03_PR2543713_DS5.12.3.6.1005_20053183.img",
-				    "touch/lv5/synaptics/PLG640-V1.03_PR2543713_DS5.12.3.6.1005_20053183.bin";
+		fw_image = "touch/lv5/synaptics/PLG640-V1.02_PR2537091_DS5.12.3.6.1005_20053182.img",
+				    "touch/lv5/synaptics/PLG640-V1.02_PR2537091_DS5.12.3.6.1005_20053182.bin";
 		panel_spec = "touch/lv5/synaptics/lv5_limit.txt";
 		panel_spec_mfts_folder = "touch/lv5/synaptics/lv5_limit.txt";
 

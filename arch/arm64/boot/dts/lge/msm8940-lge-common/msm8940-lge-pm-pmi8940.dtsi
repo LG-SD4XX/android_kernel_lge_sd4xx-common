@@ -139,6 +139,7 @@
 			"charger", "usb_parallel_chg_status", "NULL",
 			"charger", "usb_parallel_charging_enabled", "NULL",
 			"charger", "quick_charging_state", "/sys/module/qpnp_smbcharger/parameters/quick_charging_state",
+			"charger", "chgstep", "/sys/class/power_supply/battery/device/chgstep",
 			/* LCD Backlight */
 			"lcd", "brightness", "/sys/class/leds/lcd-backlight/brightness",
 			"lcd", "max_brightness", "/sys/class/leds/lcd-backlight/max_brightness",
@@ -233,6 +234,9 @@
 	qcom,fg-dischg-med-voltage-gain = <5 4 4>;
 	qcom,fg-dischg-high-voltage-gain = <5 5 4>;
 	qcom,cl-max-limit-deciperc= <50>;
+	qcom,fg-batt-life-cycle-set = <0 200 300 400>;
+	qcom,fg-batt-life-cycle-offset = <0 3 7 10>;
+	qcom,fg-batt-life-cycle-vfloat = <4400 4380 4360 4340>;
 };
 
 &pmi8940_charger {
@@ -244,6 +248,8 @@
 	qcom,override-usb-current;
 	lge,jeita-disabled;
 	lge,hvdcp-not-supported;
+        qcom,batt-life-cycle-fcc-ma = <1200 1200 1200 1200>;
+        qcom,batt-life-cycle-vfloat = <4400 4380 4360 4340>;
 
 	qcom,usb_pin-vadc = <&pmi8940_vadc>;
 

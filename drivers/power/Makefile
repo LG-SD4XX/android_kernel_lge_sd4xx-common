@@ -71,10 +71,18 @@ obj-$(CONFIG_BATTERY_BQ28400)	+= bq28400_battery.o
 obj-$(CONFIG_QPNP_BMS)		+= qpnp-bms.o batterydata-lib.o
 obj-$(CONFIG_QPNP_VM_BMS)	+= qpnp-vm-bms.o batterydata-lib.o batterydata-interface.o
 obj-$(CONFIG_LGE_PM_BATTERY_ID_CHECKER) += lge_battery_id.o
+ifdef CONFIG_LGE_PM_CCD
+obj-$(CONFIG_QPNP_FG)		+= qpnp-fg-ccd.o
+else
 obj-$(CONFIG_QPNP_FG)		+= qpnp-fg.o
+endif
 obj-$(CONFIG_QPNP_CHARGER)	+= qpnp-charger.o
 obj-$(CONFIG_QPNP_LINEAR_CHARGER)	+= qpnp-linear-charger.o
+ifdef CONFIG_LGE_PM_CCD
+obj-$(CONFIG_QPNP_SMBCHARGER)	+= qpnp-smbcharger-ccd.o pmic-voter.o
+else
 obj-$(CONFIG_QPNP_SMBCHARGER)	+= qpnp-smbcharger.o pmic-voter.o
+endif
 obj-$(CONFIG_QPNP_TYPEC)	+= qpnp-typec.o
 obj-$(CONFIG_CHARGER_TPS65090)	+= tps65090-charger.o
 obj-$(CONFIG_BATTERY_BCL)	+= battery_current_limit.o
@@ -82,4 +90,5 @@ obj-$(CONFIG_MSM_BCL_CTL)	+= msm_bcl.o
 obj-$(CONFIG_MSM_BCL_PERIPHERAL_CTL) += bcl_peripheral.o
 obj-$(CONFIG_POWER_RESET)	+= reset/
 obj-$(CONFIG_LGE_PM_SMPL_COUNTER) += lge_smpl_count.o
+obj-$(CONFIG_LGE_PM_QPNP_QNOVO)	+= qns_system.o
 obj-$(CONFIG_ARCH_MSM)		+= qcom/

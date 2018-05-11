@@ -19,7 +19,6 @@
 		maxim,sub_reg = <0x34>;
 		maxim,sub_bus = <2>;
 		maxim,spk_vol = <0x14>;
-		maxim,nodsm;
 		maxim,platform_info = <1 0x1016 0x10001062 0x10001063 0x00000000 51>;
 		maxim,regcfg =
 			<0x0 0x36 0x90>,

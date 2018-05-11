@@ -41,7 +41,7 @@
 
 #define DRIVER_VERSION 6
 
-static u32 FC8180_FREQ_XTAL = BBM_XTAL_FREQ;
+extern unsigned int freq_xtal;
 
 static u32 reg_table[57][8] = {
 	{473143, 0x1f, 0x50, 0xa0, 0x50, 0xa0, 0x50, 0x02},
@@ -182,25 +182,27 @@ s32 fc8180_tuner_init(HANDLE handle, enum BAND_TYPE band)
 
 	/* AGC Block Control */
 
-	if (FC8180_FREQ_XTAL <= 16000) {
+    print_log(0, "[dtv][dbg] freq_xtal %d\n", freq_xtal);
+
+	if (freq_xtal <= 16000) {
 		fc8180_write(handle, 0x95, 0xa1);
 		fc8180_write(handle, 0x96, 0x03);
-	} else if (FC8180_FREQ_XTAL <= 17500) {
+	} else if (freq_xtal <= 17500) {
 		fc8180_write(handle, 0x95, 0xa1);
 		fc8180_write(handle, 0x96, 0x04);
-	} else if (FC8180_FREQ_XTAL <= 20000) {
+	} else if (freq_xtal <= 20000) {
 		fc8180_write(handle, 0x95, 0xa1);
 		fc8180_write(handle, 0x96, 0x05);
-	} else if (FC8180_FREQ_XTAL <= 25500) {
+	} else if (freq_xtal <= 25500) {
 		fc8180_write(handle, 0x95, 0xa1);
 		fc8180_write(handle, 0x96, 0x09);
-	} else if (FC8180_FREQ_XTAL <= 26500) {
+	} else if (freq_xtal <= 26500) {
 		fc8180_write(handle, 0x95, 0xa1);
 		fc8180_write(handle, 0x96, 0x0a);
-	} else if (FC8180_FREQ_XTAL <= 29000) {
+	} else if (freq_xtal <= 29000) {
 		fc8180_write(handle, 0x95, 0xa1);
 		fc8180_write(handle, 0x96, 0x0b);
-	} else if (FC8180_FREQ_XTAL <= 35000) {
+	} else if (freq_xtal <= 35000) {
 		fc8180_write(handle, 0x95, 0xa2);
 		fc8180_write(handle, 0x96, 0x03);
 	} else {
@@ -294,7 +296,7 @@ s32 fc8180_tuner_init(HANDLE handle, enum BAND_TYPE band)
 	fc8180_write(handle, 0x02, 0x01);
 	fc8180_write(handle, 0x66, 0x03);
 
-	filter_cal = fc8180_set_filter(handle, FC8180_FREQ_XTAL, bw);
+	filter_cal = fc8180_set_filter(handle, freq_xtal, bw);
 
 	fc8180_write(handle, 0x17, filter_cal);
 
@@ -311,8 +313,8 @@ s32 fc8180_tuner_init(HANDLE handle, enum BAND_TYPE band)
 	fc8180_write(handle, 0xbe, 0x53);
 	fc8180_write(handle, 0xc2, 0xb9);
 	fc8180_write(handle, 0xc3, 0xd7);
-	fc8180_write(handle, 0xf3, 0x27);
-	fc8180_write(handle, 0xf5, 0x80);
+	fc8180_write(handle, 0xf3, 0x0f);
+	fc8180_write(handle, 0xf5, 0x7a);
 #endif
 
 	return BBM_OK;
@@ -389,7 +391,7 @@ s32 fc8180_set_freq(HANDLE handle, u32 freq)
 	fc8180_write(handle, 0x8c, 0x00);
 
 	f_vco = freq * div_ratio;
-	f_comp = FC8180_FREQ_XTAL / ref_div;
+	f_comp = freq_xtal / ref_div;
 	n_val = (f_vco / f_comp);
 	f_diff = f_vco - (f_comp * n_val);
 	f_diff_shift = f_diff << 16;
@@ -448,10 +450,10 @@ s32 fc8180_set_freq(HANDLE handle, u32 freq)
 		}
 	}
 
-	if (FC8180_FREQ_XTAL == 19200) {
+	if (freq_xtal == 19200) {
 		fc8180_write(handle, 0x8b, reg_table[i][7]);
 		fc8180_write(handle, 0x8c, 0x7f);
-	} else if (FC8180_FREQ_XTAL == 32000) {
+	} else if (freq_xtal == 32000) {
 		fc8180_write(handle, 0x8b, 0x01);
 		fc8180_write(handle, 0x8c, 0x7c);
 	}

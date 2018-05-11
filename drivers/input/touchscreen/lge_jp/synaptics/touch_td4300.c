@@ -1241,7 +1241,7 @@ int synaptics_cover_control(struct device *dev, int mode)
 
 #define USE_DSV_TOGGLE_MODE			1
 #define USE_HW_RESET				0
-#define USE_TCI_DEBUG				0
+#define USE_TCI_DEBUG				1
 #define LPWG_OFF_DELAY				55		// 50
 #define LPWG_SCAN_DELAY				220
 

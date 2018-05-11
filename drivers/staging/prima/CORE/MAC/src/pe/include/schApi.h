@@ -92,8 +92,9 @@ extern tSirRetStatus schBeaconEdcaProcess(tpAniSirGlobal pMac, tSirMacEdcaParamS
 void schSetBeaconInterval(tpAniSirGlobal pMac,tpPESession psessionEntry);
 
 tSirRetStatus schSendBeaconReq( tpAniSirGlobal, tANI_U8 *, tANI_U16, tpPESession psessionEntry );
-
-void limUpdateProbeRspTemplateIeBitmapBeacon1(tpAniSirGlobal,tDot11fBeacon1*,tANI_U32*,tDot11fProbeResponse*);
+// 2017-04-24, neo-wifi@lge.com, QCT Patch - wlan: Update probe response ssid from PE session [START]
+tSirRetStatus limUpdateProbeRspTemplateIeBitmapBeacon1(tpAniSirGlobal, tDot11fBeacon1*, tpPESession psessionEntry);
+// 2017-04-24, neo-wifi@lge.com, QCT Patch - wlan: Update probe response ssid from PE session [END]
 void limUpdateProbeRspTemplateIeBitmapBeacon2(tpAniSirGlobal,tDot11fBeacon2*,tANI_U32*,tDot11fProbeResponse*);
 void SetProbeRspIeBitmap(tANI_U32*,tANI_U32);
 tANI_U32 limSendProbeRspTemplateToHal(tpAniSirGlobal,tpPESession,

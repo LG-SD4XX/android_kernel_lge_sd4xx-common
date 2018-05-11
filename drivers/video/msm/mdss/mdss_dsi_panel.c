@@ -29,17 +29,18 @@
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
 #include "lge/reader_mode.h"
 #endif
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMFORT_MODE)
+#include "lge/lge_comfort_view.h"
+#endif
+
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_MFTS)
 #include "lge/mfts_mode.h"
 #endif
 
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_ESD_NOT_CHECK_WITH_FACTORY_CABLE)
 #include <soc/qcom/lge/board_lge.h>
-#endif
+extern bool lge_get_disable_esd_absent_bettery(void);
 
-#if IS_ENABLED(CONFIG_LGE_DISPLAY_EXTERNAL_DSV)
-#include <soc/qcom/lge/board_lge.h>
-#include "lge/lge_mdss_dsi_panel.h"
 #endif
 
 #define DT_CMD_HDR 6
@@ -771,6 +772,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
 	lge_mdss_dsi_panel_send_on_cmds(ctrl, on_cmds, lge_get_reader_mode());
+#elif IS_ENABLED(CONFIG_LGE_DISPLAY_COMFORT_MODE)
+	lge_mdss_dsi_panel_send_on_cmds(ctrl, on_cmds, lge_get_comfort_view());
 #else
 	if (on_cmds->cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, on_cmds, CMD_REQ_COMMIT);
@@ -816,6 +819,9 @@ static int mdss_dsi_post_panel_on(struct mdss_panel_data *pdata)
 
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
 	lge_mdss_dsi_panel_send_post_on_cmds(ctrl, lge_get_reader_mode());
+#endif
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMFORT_MODE)
+	lge_mdss_dsi_panel_send_post_on_cmds(ctrl, lge_get_comfort_view());
 #endif
 
 	if (pinfo->is_dba_panel && pinfo->is_pluggable) {
@@ -1168,6 +1174,58 @@ void mdss_dsi_panel_dsc_pps_send(struct mdss_dsi_ctrl_pdata *ctrl,
 	pcmds.link_state = DSI_LP_MODE;
 
 	mdss_dsi_panel_cmds_send(ctrl, &pcmds, CMD_REQ_COMMIT);
+}
+
+static int mdss_dsi_parse_hdr_settings(struct device_node *np,
+		struct mdss_panel_info *pinfo)
+{
+	int rc = 0;
+	struct mdss_panel_hdr_properties *hdr_prop;
+
+	if (!np) {
+		pr_err("%s: device node pointer is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!pinfo) {
+		pr_err("%s: panel info is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	hdr_prop = &pinfo->hdr_properties;
+	hdr_prop->hdr_enabled = of_property_read_bool(np,
+		"qcom,mdss-dsi-panel-hdr-enabled");
+
+	if (hdr_prop->hdr_enabled) {
+		rc = of_property_read_u32_array(np,
+				"qcom,mdss-dsi-panel-hdr-color-primaries",
+				hdr_prop->display_primaries,
+				DISPLAY_PRIMARIES_COUNT);
+		if (rc) {
+			pr_info("%s:%d, Unable to read color primaries,rc:%u",
+					__func__, __LINE__,
+					hdr_prop->hdr_enabled = false);
+		}
+
+		rc = of_property_read_u32(np,
+			"qcom,mdss-dsi-panel-peak-brightness",
+			&(hdr_prop->peak_brightness));
+		if (rc) {
+			pr_info("%s:%d, Unable to read hdr brightness, rc:%u",
+				__func__, __LINE__, rc);
+			hdr_prop->hdr_enabled = false;
+		}
+
+		rc = of_property_read_u32(np,
+			"qcom,mdss-dsi-panel-blackness-level",
+			&(hdr_prop->blackness_level));
+		if (rc) {
+			pr_info("%s:%d, Unable to read hdr brightness, rc:%u",
+				__func__, __LINE__, rc);
+			hdr_prop->hdr_enabled = false;
+		}
+	}
+	return 0;
 }
 
 static int mdss_dsi_parse_dsc_version(struct device_node *np,
@@ -1742,8 +1800,7 @@ static void mdss_dsi_parse_esd_params(struct device_node *np,
 	pinfo->esd_check_enabled = of_property_read_bool(np,
 		"qcom,esd-check-enabled");
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_ESD_NOT_CHECK_WITH_FACTORY_CABLE)
-	if((factory_cable() && !lge_get_disable_esd_absent_bettery()) ||
-				!lge_get_panel_status_on_boot() || lge_get_mfts_mode()) {
+	if(factory_cable() && !lge_get_disable_esd_absent_bettery()) {
 		pinfo->esd_check_enabled = false;
 	}
 	pr_info("%s : esd_check is %d\n",__func__,pinfo->esd_check_enabled);
@@ -2574,6 +2631,9 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	rc = mdss_panel_parse_display_timings(np, &ctrl_pdata->panel_data);
 	if (rc)
 		return rc;
+	rc = mdss_dsi_parse_hdr_settings(np, pinfo);
+	if (rc)
+		return rc;
 
 	pinfo->mipi.rx_eot_ignore = of_property_read_bool(np,
 		"qcom,mdss-dsi-rx-eot-ignore");
@@ -2642,6 +2702,9 @@ static int mdss_panel_parse_dt(struct device_node *np,
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
 	lge_mdss_dsi_parse_reader_mode_cmds(np, ctrl_pdata);
 #endif
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMFORT_MODE)
+	lge_mdss_dsi_parse_comfort_view_cmds(np, ctrl_pdata);
+#endif
 
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
 	lge_mdss_panel_parse_dt_extra(np, ctrl_pdata);
@@ -2670,14 +2733,6 @@ error:
 	return -EINVAL;
 }
 
-#if IS_ENABLED(CONFIG_LGE_MIPI_DSI_LGD_K7J_FHD_VIDEO_INCELL_LCD_PANEL) || IS_ENABLED(CONFIG_LGE_DISPLAY_LV3_TIANMA_FT860X)
-extern struct mdss_dsi_ctrl_pdata *cp_ctrl_pdata;
-#endif
-
-#if IS_ENABLED(CONFIG_LGE_DISPLAY_EXTERNAL_DSV)
-extern dsv_type dsv_vendor_id;
-#endif
-
 int mdss_dsi_panel_init(struct device_node *node,
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	int ndx)
@@ -2685,10 +2740,6 @@ int mdss_dsi_panel_init(struct device_node *node,
 	int rc = 0;
 	static const char *panel_name;
 	struct mdss_panel_info *pinfo;
-
-#if IS_ENABLED(CONFIG_LGE_DISPLAY_EXTERNAL_DSV)
-	char *dsv_vendor = (char*)lge_get_dsv_vendor();
-#endif
 
 	if (!node || !ctrl_pdata) {
 		pr_err("%s: Invalid arguments\n", __func__);
@@ -2734,17 +2785,10 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
 
 
-#if IS_ENABLED(CONFIG_LGE_MIPI_DSI_LGD_K7J_FHD_VIDEO_INCELL_LCD_PANEL) || IS_ENABLED(CONFIG_LGE_DISPLAY_LV3_TIANMA_FT860X)
-	cp_ctrl_pdata = ctrl_pdata;
-#endif
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	lge_mdss_dsi_store_ctrl_pdata(ctrl_pdata);
 
-#if IS_ENABLED(CONFIG_LGE_DISPLAY_EXTERNAL_DSV)
-	if(!strcmp(dsv_vendor, "DW"))
-		dsv_vendor_id = DSV_DW8768;
-	else if(!strcmp(dsv_vendor, "SM"))
-		dsv_vendor_id = DSV_SM5107;
-
-	pr_info("%s: DSV is %s\n", __func__, dsv_vendor);
+	lge_mdss_panel_select_initial_cmd_set(ctrl_pdata);
 #endif
 
 	return 0;

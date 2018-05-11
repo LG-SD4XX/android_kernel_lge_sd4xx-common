@@ -24,8 +24,6 @@
 #include <linux/power_supply.h>
 #include <linux/switch.h>
 
-#define PACKET_SIZE	64
-
 enum epack_status{
 	EPACK_ABSENT,
 	EPACK_POWER_LOW,
@@ -56,10 +54,7 @@ struct epack_dev_data {
 	unsigned int bin_fwver[2];
 	unsigned int devid;
 	unsigned int devconfig[2];
-	uint8_t rcvbuf[PACKET_SIZE];
-	uint8_t sendbuf[PACKET_SIZE];
 	bool force_update;
-	bool debug_i2c_fail;
 
 	int slavemode;
 
@@ -72,19 +67,18 @@ struct epack_dev_data {
 	struct mutex i2c_lock;
 	struct workqueue_struct *wq;
 	struct delayed_work audio_work;
-	struct delayed_work debug_monitor_work;
-	struct delayed_work notify_epack_w_otg_work;
+	struct delayed_work pwr_monitor_work;
 	struct delayed_work notify_epack_ready_work;
 	struct delayed_work notify_epack_unready_work;
+	struct delayed_work notify_vbus_src_work;
 	struct power_supply *usb_psy;
 	struct switch_dev sdev;
 };
 
 int get_epack_status(void);
 int get_vbus_source(void);
-void set_tablet_otg_status(int on);
-void epack_audio_work_func(struct work_struct *audio_work);
-void epack_debug_monitor(struct work_struct *work);
+void epack_audio_work_func(struct work_struct *upgrade_work);
+void epack_pwr_monitor_work(struct work_struct *upgrade_work);
 int epack_firmware_update(struct i2c_client *client, struct device *dev,int flag, char* fwpath);
 bool check_fw_update(unsigned int fwver,unsigned int hwver);
 int get_fw_ver_from_file(char* fwpath, struct device *dev);

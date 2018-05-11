@@ -77,5 +77,6 @@
 #define SDCARDFS_SUPER_MAGIC    0xb550ca10
 #endif
 #define BTRFS_TEST_MAGIC	0x73727279
+#define ZSMALLOC_MAGIC		0x58295829
 
 #endif /* __LINUX_MAGIC_H__ */

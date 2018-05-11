@@ -29,6 +29,5 @@
 	qcom,dpdm_sw-gpio = <&tlmm 57 0x0>;
 	qcom,otg_ena-gpio = <&tlmm 43 0x0>;
 	qcom,otg_enb-gpio = <&tlmm 21 0x0>;
-	qcom,ovlo_inb-gpio = <&tlmm 63 0x0>;
 	qcom,phy-otg-vadc = <&pmi8950_vadc>;
 };

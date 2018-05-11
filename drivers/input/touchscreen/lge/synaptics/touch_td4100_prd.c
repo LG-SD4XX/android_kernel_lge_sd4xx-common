@@ -46,7 +46,6 @@ static s16 combined_data1[ROW_SIZE][COL_SIZE];
 static s16 combined_data2[ROW_SIZE][COL_SIZE];
 static u8 buffer[PAGE_SIZE];
 
-
 static void log_file_size_check(struct device *dev)
 {
 	char *fname = NULL;
@@ -626,17 +625,14 @@ FAIL:
 
 static int TD4100_Get_Delta_Data(struct device *dev)
 {
-	struct synaptics_data *d = to_synaptics_data(dev);
 	int i, j, k, ret = 0;
 	int16_t *delta = NULL;
 
 	TOUCH_TRACE();
 
 	delta = kzalloc(sizeof(int16_t) * (REPORT_DATA_LEN), GFP_KERNEL);
-	if(synaptics_is_product(d, "PLG643", 6))
-		ret = TD4100_Get_Report_Data(dev, SF3_TOVIS_REPORT_TYPE_DELTA, delta, REPORT_DATA_LEN);
-	else
-		ret = TD4100_Get_Report_Data(dev, REPORT_TYPE_DELTA, delta, REPORT_DATA_LEN);
+
+	ret = TD4100_Get_Report_Data(dev, REPORT_TYPE_DELTA, delta, REPORT_DATA_LEN);
 	if (ret < 0) {
 		TOUCH_E("Error to get report data\n");
 		return ret;
@@ -658,7 +654,6 @@ static int TD4100_Get_Delta_Data(struct device *dev)
 
 static int TD4100_Get_Rawdata(struct device *dev)
 {
-	struct synaptics_data *d = to_synaptics_data(dev);
 	int i, j, k, ret = 0;
 	int16_t *rawdata = NULL;
 
@@ -666,10 +661,7 @@ static int TD4100_Get_Rawdata(struct device *dev)
 
 	rawdata = kzalloc(sizeof(int16_t) * (REPORT_DATA_LEN), GFP_KERNEL);
 
-	if(synaptics_is_product(d, "PLG643", 6))
-		ret = TD4100_Get_Report_Data(dev, SF3_TOVIS_RREPORT_TYPE_RAW_DATA, rawdata, REPORT_DATA_LEN);
-	else
-		ret = TD4100_Get_Report_Data(dev, REPORT_TYPE_RAW_DATA, rawdata, REPORT_DATA_LEN);
+	ret = TD4100_Get_Report_Data(dev, REPORT_TYPE_RAW_DATA, rawdata, REPORT_DATA_LEN);
 	if (ret < 0) {
 		TOUCH_E("Error to get report data\n");
 		return ret;
@@ -711,20 +703,14 @@ static int TD4100_Get_P2P_Noise_Data(struct device *dev)
 	}
 	for (frm = 0; frm < NOISE_TEST_FRM; frm++) {
 		/* Set F54 Report Type and Command register (to get report) */
-		if(synaptics_is_product(d, "PLG643", 6))
-			data = SF3_TOVIS_RREPORT_TYPE_P2P_NOISE;
-		else
-			data = REPORT_TYPE_P2P_NOISE;
-
+		data = REPORT_TYPE_P2P_NOISE;
 		ret = synaptics_write(dev, REPORT_TYPE_REG, &data, 1);
 		if (ret < 0) {
 			TOUCH_E("Not set Report Type Register\n");
 			goto FAIL;
 		}
-		if(synaptics_is_product(d, "PLG643", 6))
-			ret = RspSetCommandType(dev, 0x1, SF3_TOVIS_RREPORT_TYPE_P2P_NOISE);
-		else
-			ret = RspSetCommandType(dev, 0x1, REPORT_TYPE_P2P_NOISE);
+
+		ret = RspSetCommandType(dev, 0x1, REPORT_TYPE_P2P_NOISE);
 		if (ret < 0) {
 			TOUCH_E("Not set CommandType\n");
 			goto FAIL;
@@ -786,7 +772,6 @@ FAIL:
 /* LGD considers test result with only image 1 data compared with upper limit */
 static int TD4100_Get_E2E_Short_Data(struct device *dev)
 {
-	struct synaptics_data *d = to_synaptics_data(dev);
 	int i, j, k, ret = 0, index;
 	u8 buf[64] = {0, };
 	int16_t *shortdata = NULL;
@@ -807,10 +792,7 @@ static int TD4100_Get_E2E_Short_Data(struct device *dev)
 	}
 
 	/* reading 2 images at the same time do size of read is (REPORT_DATA_LEN*2) */
-	if(synaptics_is_product(d, "PLG643", 6))
-		ret = TD4100_Get_Report_Data(dev, SF3_TOVIS_RREPORT_TYPE_E2E_SHORT, shortdata, (REPORT_DATA_LEN*2));
-	else
-		ret = TD4100_Get_Report_Data(dev, REPORT_TYPE_E2E_SHORT, shortdata, (REPORT_DATA_LEN*2));
+	ret = TD4100_Get_Report_Data(dev, REPORT_TYPE_E2E_SHORT, shortdata, (REPORT_DATA_LEN*2));
 	if (ret < 0) {
 		TOUCH_E("Error to get report data type E2E Short\n");
 		return ret;
@@ -922,10 +904,8 @@ static int TD4100_Get_AMP_Open_Data(struct device *dev)
 
 	/* read the first image with original integration duration and CBC on count config */
 	opendata = kzalloc(sizeof(int16_t) * (REPORT_DATA_LEN), GFP_KERNEL);
-	if(synaptics_is_product(d, "PLG643", 6))
-		ret = TD4100_Get_Report_Data(dev, SF3_TOVIS_RREPORT_TYPE_RAW_DATA, opendata, REPORT_DATA_LEN);
-	else
-		ret = TD4100_Get_Report_Data(dev, REPORT_TYPE_RAW_DATA, opendata, REPORT_DATA_LEN);
+
+	ret = TD4100_Get_Report_Data(dev, REPORT_TYPE_RAW_DATA, opendata, REPORT_DATA_LEN);
 	if (ret < 0) {
 		TOUCH_E("Error to get report data\n");
 		goto FAIL;
@@ -964,12 +944,8 @@ static int TD4100_Get_AMP_Open_Data(struct device *dev)
 	}
 
 	memset(opendata, 0, (sizeof(int16_t) * REPORT_DATA_LEN));
-
 	/* read the first image with original integration duration and CBC on count config */
-	if(synaptics_is_product(d, "PLG643", 6))
-		ret = TD4100_Get_Report_Data(dev, SF3_TOVIS_RREPORT_TYPE_RAW_DATA, opendata, REPORT_DATA_LEN);
-	else
-		ret = TD4100_Get_Report_Data(dev, REPORT_TYPE_RAW_DATA, opendata, REPORT_DATA_LEN);
+	ret = TD4100_Get_Report_Data(dev, REPORT_TYPE_RAW_DATA, opendata, REPORT_DATA_LEN);
 	if (ret < 0) {
 		TOUCH_E("Error to get report data\n");
 		goto FAIL;
@@ -1078,7 +1054,7 @@ static int TD4100_Get_LPWG_Doze_Data(struct device *dev)
 			max = data;
 		}
 
-		if (data > LV5_TOVIS_LPWG_DOZE_DATA_MAX) {
+		if(data > LPWG_DOZE_DATA_MAX) {
 			TOUCH_E("[%2d] LPWG Doze Data : %d\n", i, data);
 			fail_count++;
 		}
@@ -1090,14 +1066,13 @@ static int TD4100_Get_LPWG_Doze_Data(struct device *dev)
 		ret += snprintf(buffer + ret, PAGE_SIZE - ret, "Test FAIL : %d Errors\n", fail_count);
 	} else {
 		ret += snprintf(buffer + ret, PAGE_SIZE - ret, "Test PASS : No Errors\n");
-		ret += snprintf(buffer + ret, PAGE_SIZE - ret, "MAX = %d, Upper = %d\n", max, LV5_TOVIS_LPWG_DOZE_DATA_MAX);
+		ret += snprintf(buffer + ret, PAGE_SIZE - ret, "MAX = %d, Upper = %d\n", max, LPWG_DOZE_DATA_MAX);
 	}
 	return ret;
 }
 
 static int TD4100_Test_Result_Data(struct device *dev, int test_type, int* test_result)
 {
-	struct synaptics_data *d = to_synaptics_data(dev);
 	int i = 0;
 	int j = 0;
 	int ret = 0;
@@ -1124,16 +1099,8 @@ static int TD4100_Test_Result_Data(struct device *dev, int test_type, int* test_
 		}
 		TOUCH_I("===== Get Raw Data Complete !!!=====\n");
 		ret += snprintf(buffer + ret, PAGE_SIZE - ret, "============= Raw Data Test Result =============\n");
-		if (synaptics_is_product(d, "PLG643", 6)) {
-			limit_upper = SF3_TOVIS_RAW_DATA_MAX + SF3_TOVIS_RAW_DATA_MARGIN;
-			limit_lower = SF3_TOVIS_RAW_DATA_MIN - SF3_TOVIS_RAW_DATA_MARGIN;
-		} else if (synaptics_is_product(d, "PLG640", 6)) {
-			limit_upper = LV5_TOVIS_RAW_DATA_MAX + LV5_TOVIS_RAW_DATA_MARGIN;
-			limit_lower = LV5_TOVIS_RAW_DATA_MIN - LV5_TOVIS_RAW_DATA_MARGIN;
-		} else {
-			limit_upper = RAW_DATA_MAX + RAW_DATA_MARGIN;
-			limit_lower = RAW_DATA_MIN - RAW_DATA_MARGIN;
-		}
+		limit_upper = RAW_DATA_MAX + RAW_DATA_MARGIN;
+		limit_lower = RAW_DATA_MIN - RAW_DATA_MARGIN;
 		break;
 
 	case P2P_NOISE_TEST:
@@ -1144,12 +1111,7 @@ static int TD4100_Test_Result_Data(struct device *dev, int test_type, int* test_
 		}
 		TOUCH_I("===== Get Peak-to-Peak Noise Data Complete !!!=====\n");
 		ret += snprintf(buffer + ret, PAGE_SIZE - ret, "============= Peak-to-Peak Noise Test Result =============\n");
-		if (synaptics_is_product(d, "PLG643", 6))
-			limit_upper = SF3_TOVIS_P2P_NOISE_MAX;
-		else if (synaptics_is_product(d, "PLG640", 6))
-			limit_upper = LV5_TOVIS_P2P_NOISE_MAX;
-		else
-			limit_upper = P2P_NOISE_MAX;
+		limit_upper = P2P_NOISE_MAX;
 		//limit_lower = P2P_NOISE_MIN;
 		check_limit_lower = 0;
 		break;
@@ -1184,16 +1146,8 @@ static int TD4100_Test_Result_Data(struct device *dev, int test_type, int* test_
 		}
 		TOUCH_I("===== Get Raw Data Complete !!!=====\n");
 		ret += snprintf(buffer + ret, PAGE_SIZE - ret, "\n============= LPWG Raw Data Test Result =============\n");
-		if (synaptics_is_product(d, "PLG643", 6)) {
-			limit_upper = SF3_TOVIS_LPWG_RAW_DATA_MAX + SF3_TOVIS_RAW_DATA_MARGIN;
-			limit_lower = SF3_TOVIS_LPWG_RAW_DATA_MIN - SF3_TOVIS_RAW_DATA_MARGIN;
-		} else if (synaptics_is_product(d, "PLG640", 6)) {
-			limit_upper = LV5_TOVIS_LPWG_RAW_DATA_MAX + LV5_TOVIS_RAW_DATA_MARGIN;
-			limit_lower = LV5_TOVIS_LPWG_RAW_DATA_MIN - LV5_TOVIS_RAW_DATA_MARGIN;
-		} else {
-			limit_upper = LPWG_RAW_DATA_MAX + RAW_DATA_MARGIN;
-			limit_lower = LPWG_RAW_DATA_MIN - RAW_DATA_MARGIN;
-		}
+		limit_upper = LPWG_RAW_DATA_MAX + RAW_DATA_MARGIN;
+		limit_lower = LPWG_RAW_DATA_MIN - RAW_DATA_MARGIN;
 		break;
 	case LPWG_P2P_NOISE_TEST:
 		result = TD4100_Get_P2P_Noise_Data(dev);
@@ -1203,13 +1157,7 @@ static int TD4100_Test_Result_Data(struct device *dev, int test_type, int* test_
 		}
 		TOUCH_I("===== Get Peak-to-Peak Noise Data Complete !!!=====\n");
 		ret += snprintf(buffer + ret, PAGE_SIZE - ret, "============= LPWG P2P Noise Test Result =============\n");
-		if (synaptics_is_product(d, "PLG643", 6))
-			limit_upper = SF3_TOVIS_LPWG_P2P_NOISE_MAX;
-		else if (synaptics_is_product(d, "PLG640", 6))
-			limit_upper = LV5_TOVIS_LPWG_P2P_NOISE_MAX;
-		else
-			limit_upper = LPWG_P2P_NOISE_MAX;
-
+		limit_upper = LPWG_P2P_NOISE_MAX;
 		//limit_lower = LPWG_P2P_NOISE_MIN;
 		check_limit_lower = 0;
 		break;

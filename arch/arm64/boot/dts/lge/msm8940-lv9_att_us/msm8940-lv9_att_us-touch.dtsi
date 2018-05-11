@@ -51,7 +51,7 @@
 
 		/* firmware & panel_spec path */
 		use_fw_upgrade = <1>;
-		fw_image = "touch/lv9/synaptics/PLG636-V1.06-PR2553235-DS5.2.20.2.1046_40052186.img";
+		fw_image = "touch/lv9/synaptics/PLG636-V1.03-PR2528259-DS5.2.20.2.1046_40052183.img";
 		panel_spec = "touch/lv9/synaptics/lv9_limit.txt";
 		panel_spec_mfts_folder = "touch/lv9/synaptics/lv9_limit_mfts.txt";
 	};

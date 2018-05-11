@@ -40,7 +40,7 @@
 #include <soc/qcom/lge/lge_handle_panic.h>
 #endif
 
-#if defined(CONFIG_MACH_MSM8917_B6_JCM_JP) || defined(CONFIG_MACH_MSM8917_B6_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_TMO_US) || defined(CONFIG_MACH_MSM8940_TF8_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_GLOBAL_CA)
+#if defined(CONFIG_MACH_MSM8917_B6_JCM_JP) || defined(CONFIG_MACH_MSM8917_B6_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_TMO_US)
 #include <soc/qcom/lge/board_lge.h>
 #endif
 
@@ -52,11 +52,11 @@ struct switch_dev stylus_pen_sdev = {
 	.name = "pen_state",
 };
 
-#if defined(CONFIG_MACH_MSM8917_B6_JCM_JP) || defined(CONFIG_MACH_MSM8917_B6_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_TMO_US) || defined(CONFIG_MACH_MSM8940_TF8_LGU_KR)  || defined(CONFIG_MACH_MSM8940_TF8_GLOBAL_CA)
+#if defined(CONFIG_MACH_MSM8917_B6_JCM_JP) || defined(CONFIG_MACH_MSM8917_B6_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_TMO_US)
 static int hotkey_prev_state = 0;
 #endif
 
-#if defined(CONFIG_MACH_MSM8940_TF8_TMO_US) || defined(CONFIG_MACH_MSM8940_TF8_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_GLOBAL_CA)
+#if defined(CONFIG_MACH_MSM8940_TF8_TMO_US)
 static int upkey_prev_state = 0;
 static int hallic_prev_state = 0;
 #endif
@@ -381,7 +381,7 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 		if (state)
 			input_event(input, type, button->code, button->value);
 	} else {
-#if defined(CONFIG_MACH_MSM8917_B6_JCM_JP) || defined(CONFIG_MACH_MSM8917_B6_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_TMO_US) || defined(CONFIG_MACH_MSM8940_TF8_LGU_KR)  || defined(CONFIG_MACH_MSM8940_TF8_GLOBAL_CA)
+#if defined(CONFIG_MACH_MSM8917_B6_JCM_JP) || defined(CONFIG_MACH_MSM8917_B6_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_TMO_US)
 		/*
 		* HOT_KEY button is reported several times.
 		* Check state and discard Same state of HOT_KEY
@@ -389,7 +389,7 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 		* State 1 - HOT_KEY(0x179) Press
 		*/
 		if (button->code == 0x179 && hotkey_prev_state == state) {
-			//printk(KERN_ERR "gpio_keys: Discard Wrong Hot Key\n");
+			printk(KERN_ERR "gpio_keys: Discard Wrong Hot Key\n");
 			return;
 		}
 		if (button->code == 0x179 ) {
@@ -397,7 +397,7 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 		}
 #endif
 
-#if defined(CONFIG_MACH_MSM8940_TF8_TMO_US) || defined(CONFIG_MACH_MSM8940_TF8_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_GLOBAL_CA)
+#if defined(CONFIG_MACH_MSM8940_TF8_TMO_US)
 		/*
 		* UP_KEY button is reported several times.
 		* Check state and discard Same state of UP_KEY
@@ -405,7 +405,7 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 		* State 1 - UP_KEY(0x73) Press
 		*/
 		if (button->code == 0x73 && upkey_prev_state == state) {
-			//printk(KERN_ERR "gpio_keys: Discard Wrong Up Key\n");
+			printk(KERN_ERR "gpio_keys: Discard Wrong Up Key\n");
 			return;
 		}
 		if (button->code == 0x73 ) {
@@ -419,7 +419,7 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 		* State 1 - HALL_IC(0xde) Press
 		*/
 		if (button->code == 0xde && hallic_prev_state == state) {
-			//printk(KERN_ERR "gpio_keys: Discard Wrong Hall IC Key\n");
+			printk(KERN_ERR "gpio_keys: Discard Wrong Hall IC Key\n");
 			return;
 		}
 		if (button->code == 0xde ) {
@@ -434,7 +434,7 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 		lge_gen_key_panic(button->code, state);
 #endif
 
-#if defined(CONFIG_MACH_MSM8917_B6_JCM_JP) || defined(CONFIG_MACH_MSM8917_B6_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_TMO_US) || defined(CONFIG_MACH_MSM8940_TF8_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_GLOBAL_CA)
+#if defined(CONFIG_MACH_MSM8917_B6_JCM_JP) || defined(CONFIG_MACH_MSM8917_B6_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_TMO_US)
                 printk(KERN_ERR "gpio_keys: code=%d%s, state=%d\n",
                                  button->code,
                                  (button->code == 0x179) ? "(HOT_KEY)" : "",
@@ -849,7 +849,7 @@ gpio_keys_get_devtree_pdata(struct device *dev)
 		if (of_property_read_u32(pp, "debounce-interval",
 					&button->debounce_interval))
 			button->debounce_interval = 5;
-#if defined(CONFIG_MACH_MSM8917_B6_JCM_JP) || defined(CONFIG_MACH_MSM8917_B6_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_TMO_US) || defined(CONFIG_MACH_MSM8940_TF8_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_GLOBAL_CA)
+#if defined(CONFIG_MACH_MSM8917_B6_JCM_JP) || defined(CONFIG_MACH_MSM8917_B6_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_TMO_US)
 		if(!strncmp(button->desc, "hot_key", 7) && lge_get_factory_boot())
 		{
 			pr_info("%s:hot_key debounce_interval is 15 in factory mode, org value = %d\n",

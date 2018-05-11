@@ -36,34 +36,6 @@
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
-
-		back {
-			label = "Back";
-			gpios = <&tlmm 124 0x1>;
-			linux,input-type = <1>;
-			linux,code = <158>;
-			gpio-key,wakeup;
-			debounce-interval = <15>;
-		};
-
-		menu {
-			label = "Menu";
-			gpios = <&tlmm 126 0x1>;
-			linux,input-type = <1>;
-			linux,code = <139>;
-			gpio-key,wakeup;
-			debounce-interval = <15>;
-		};
-
-		home {
-			label = "Home";
-			gpios = <&tlmm 127 0x1>;
-			linux,input-type = <1>;
-			linux,code = <102>;
-			gpio-key,wakeup;
-			debounce-interval = <15>;
-		};
-
 	};
 
 	hbtp {
@@ -76,6 +48,7 @@
 };
 
 &blsp1_uart2 {
+	status = "disabled";
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart_console_active>;
 };

@@ -149,6 +149,7 @@ struct iris_device {
 #ifdef CONFIG_LGE_ANT_SWITCH_FMRADIO_TDMB
 	int fm_sw;
 #endif
+	int lna_en;
 	struct hci_fm_blend_table blend_tbl;
 };
 
@@ -3778,6 +3779,7 @@ static int iris_vidioc_s_ext_ctrls(struct file *file, void *priv,
 	struct hci_fm_set_cal_req_proc proc_cal_req;
 	struct hci_fm_set_spur_table_req spur_tbl_req;
 	char *spur_data;
+	char tmp_buf[2];
 
 	struct iris_device *radio = video_get_drvdata(video_devdata(file));
 	char *data = NULL;
@@ -3914,9 +3916,18 @@ static int iris_vidioc_s_ext_ctrls(struct file *file, void *priv,
 	case V4L2_CID_PRIVATE_IRIS_SET_SPURTABLE:
 		memset(&spur_tbl_req, 0, sizeof(spur_tbl_req));
 		data = (ctrl->controls[0]).string;
-		bytes_to_copy = (ctrl->controls[0]).size;
-		spur_tbl_req.mode = data[0];
-		spur_tbl_req.no_of_freqs_entries = data[1];
+		if (copy_from_user(&bytes_to_copy, &((ctrl->controls[0]).size),
+					sizeof(bytes_to_copy))) {
+			retval = -EFAULT;
+			goto END;
+		}
+		if (copy_from_user(&tmp_buf[0], &data[0],
+					sizeof(tmp_buf))) {
+			retval = -EFAULT;
+			goto END;
+		}
+		spur_tbl_req.mode = tmp_buf[0];
+		spur_tbl_req.no_of_freqs_entries = tmp_buf[1];
 
 		if (((spur_tbl_req.no_of_freqs_entries * SPUR_DATA_LEN) !=
 					bytes_to_copy - 2) ||
@@ -4114,6 +4125,10 @@ static int iris_vidioc_s_ctrl(struct file *file, void *priv,
 			}
 			if (radio->mode == FM_RECV_TURNING_ON) {
 				radio->mode = FM_RECV;
+				if (radio->lna_en > 0) {
+					gpio_direction_output(radio->lna_en, 1);
+					FMDBG("[LNA ENABLED] gpio_get_value : %d\n", gpio_get_value(radio->lna_en));
+				}
 #ifdef CONFIG_LGE_ANT_SWITCH_FMRADIO_TDMB
 				if (radio->fm_sw > 0) {
 					if (ldo_status == 1) {
@@ -4127,7 +4142,7 @@ static int iris_vidioc_s_ctrl(struct file *file, void *priv,
 						mdelay(300);
 					}
 
-					gpio_direction_output(radio->fm_sw, 1);
+					gpio_direction_output(radio->fm_sw, 0);
 					FMDBG("[FM_RECV_TURNING_ON] gpio_get_value : %d\n", gpio_get_value(radio->fm_sw));
 				}
 #endif
@@ -4177,7 +4192,7 @@ static int iris_vidioc_s_ctrl(struct file *file, void *priv,
 				}
 #ifdef CONFIG_LGE_ANT_SWITCH_FMRADIO_TDMB
 				if (radio->fm_sw > 0) {
-					gpio_direction_output(radio->fm_sw, 0);
+					gpio_direction_output(radio->fm_sw, 1);
 					FMDBG("[FM_TURNING_OFF] gpio_get_value : %d\n", gpio_get_value(radio->fm_sw));
 
 					if (ldo_status == 1) {
@@ -4186,6 +4201,10 @@ static int iris_vidioc_s_ctrl(struct file *file, void *priv,
 					}
 				}
 #endif
+				if (radio->lna_en > 0) {
+					gpio_direction_output(radio->lna_en, 0);
+					FMDBG("[LNA DISABLED] gpio_get_value : %d\n", gpio_get_value(radio->lna_en));
+				}
 				break;
 			case FM_TRANS:
 				radio->mode = FM_TURNING_OFF;
@@ -5680,6 +5699,16 @@ static int iris_probe(struct platform_device *pdev)
 		FMDBG("radio antenna enable gpio : %d, ret: %d\n", radio->fm_sw, retval);
 	}
 #endif
+	radio->lna_en = -1;
+	radio->lna_en = of_get_named_gpio(pdev->dev.of_node, "qcom,lna-en-gpio", 0);
+
+	if (radio->lna_en > 0) {
+		retval = gpio_request(radio->lna_en, "lna_en");
+		gpio_direction_output(radio->lna_en, 0);
+		FMDBG("LNA enable gpio : %d, ret: %d\n", radio->lna_en, retval);
+	}
+
+
 	for (i = 0; i < IRIS_BUF_MAX; i++) {
 		int kfifo_alloc_rc = 0;
 

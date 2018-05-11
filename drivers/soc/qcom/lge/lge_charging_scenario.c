@@ -44,7 +44,7 @@ static enum lge_states_changes states_change;
 static int change_charger;
 static int pseudo_chg_ui;
 
-#ifdef CONFIG_LGE_THERMALE_CHG_CONTROL
+#ifdef CONFIG_LGE_THERMAL_CHG_CONTROL
 static int last_thermal_current;
 #endif
 
@@ -148,7 +148,7 @@ determine_lge_charging_state(enum lge_battemp_states battemp_st, int batt_volt)
 
 			next_state = CHG_BATT_STPCHG_STATE;
 		} else if (battemp_st <= CHG_BATTEMP_M4_41) {
-			states_change = STS_CHE_DECCUR_TO_NORAML;
+			states_change = STS_CHE_DECCUR_TO_NORMAL;
 			pseudo_chg_ui = 0;
 			next_state = CHG_BATT_NORMAL_STATE;
 		} else if (batt_volt > DC_IUSB_VOLTUV) {
@@ -217,8 +217,7 @@ void lge_monitor_batt_temp(struct charging_info req, struct charging_rsp *res)
 			res->force_update = true;
 		} else
 			res->force_update = false;
-	}
-	else {
+	} else {
 		res->force_update = false;
 	}
 
@@ -234,7 +233,7 @@ void lge_monitor_batt_temp(struct charging_info req, struct charging_rsp *res)
 	res->disable_chg =
 		charging_state == CHG_BATT_STPCHG_STATE ? true : false;
 
-#ifdef CONFIG_LGE_THERMALE_CHG_CONTROL
+#ifdef CONFIG_LGE_THERMAL_CHG_CONTROL
 	if (charging_state == CHG_BATT_NORMAL_STATE) {
 		if (req.chg_current_te <= req.chg_current_ma)
 			res->dc_current = req.chg_current_te;
@@ -284,13 +283,13 @@ void lge_monitor_batt_temp(struct charging_info req, struct charging_rsp *res)
 	pr_err("DLCS : res -> btm_state    = %d\n", res->btm_state);
 	pr_err("DLCS : res -> is_charger   = %d\n", req.is_charger);
 	pr_err("DLCS : res -> pseudo_chg_ui= %d\n", res->pseudo_chg_ui);
-#ifdef CONFIG_LGE_THERMALE_CHG_CONTROL
+#ifdef CONFIG_LGE_THERMAL_CHG_CONTROL
 	pr_err("DLCS : req -> chg_current  = %d\n", req.chg_current_te);
 #endif
 	pr_err("DLCS ==============================================\n");
 #endif
 
-#ifdef CONFIG_LGE_THERMALE_CHG_CONTROL
+#ifdef CONFIG_LGE_THERMAL_CHG_CONTROL
 	pr_err("LGE charging scenario : state %d -> %d(%d-%d),"\
 		" temp=%d, volt=%d, BTM=%d,"\
 		" charger=%d, cur_set=%d/%d, chg_cur = %d\n",

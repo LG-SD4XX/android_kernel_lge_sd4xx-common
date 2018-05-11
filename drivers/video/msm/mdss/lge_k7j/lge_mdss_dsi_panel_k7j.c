@@ -8,7 +8,8 @@
 #include <soc/qcom/lge/board_lge.h>
 
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_EXTERNAL_DSV)
-#include <linux/mfd/dsv-dw8768_sm5107.h>
+#define EXT_DSV_PRIVILEGED
+#include <linux/mfd/external_dsv.h>
 #endif
 
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_DEBUG)
@@ -168,8 +169,6 @@ int lge_mdss_dsi_panel_reset_ctrl(struct mdss_dsi_ctrl_pdata *ctrl_pdata, int en
 	return rc;
 }
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_EXTERNAL_DSV)
-dsv_type dsv_vendor_id = DSV_DW8768;
-
 int lge_mdss_dsi_panel_power_dsv_ctrl(struct mdss_dsi_ctrl_pdata *ctrl_pdata, int enable)
 {
 	int rc = 0;
@@ -194,25 +193,10 @@ int lge_mdss_dsi_panel_power_dsv_ctrl(struct mdss_dsi_ctrl_pdata *ctrl_pdata, in
 	}
 
 	if(enable) {
-		if(dsv_vendor_id == DSV_DW8768) {
-			rc += ext_dsv_register_set(DW8768_ENABLE_REG, 0x0F);
-			rc += ext_dsv_register_set(DW8768_DISCHARGE_STATUS_CONTROL_REG, 0x83);
-			rc += ext_dsv_register_set(DW8768_KNOCK_ON_CONTROL_REG, 0x00);
-		} else {
-			rc += ext_dsv_register_set(SM5107_CONTROL, 0x43);
-			rc += ext_dsv_register_set(SM5107_CTRL_SET, 0x40);
-		}
+		ext_dsv_mode_change(DSV_MODE_NORMAL);
 	} else {
-		if(dsv_vendor_id == DSV_DW8768) {
-			rc += ext_dsv_register_set(DW8768_ENABLE_REG, 0x07);
-			rc += ext_dsv_register_set(DW8768_DISCHARGE_STATUS_CONTROL_REG, 0x80);
-			rc += ext_dsv_register_set(DW8768_KNOCK_ON_CONTROL_REG, 0x08);
-		} else {
-			rc += ext_dsv_register_set(SM5107_CONTROL, 0x40);
-			rc += ext_dsv_register_set(SM5107_CTRL_SET, 0x28);
-		}
+		ext_dsv_mode_change(DSV_MODE_LPWG);
 	}
-	pr_info("%s: dsv[%d] enabled[%d], result[%d] \n", __func__, dsv_vendor_id, enable, rc);
 
 	return rc;
 }
@@ -325,26 +309,30 @@ int lge_mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl_pdata, int typ
 	return rc;
 }
 
-struct mdss_dsi_ctrl_pdata *cp_ctrl_pdata;
 void lge_incell_lcd_external_api(int type, int enable)
 {
 	enum hw_rev_type rev = lge_get_board_revno();
+	struct mdss_dsi_ctrl_pdata *pdata = NULL;
+
+	pdata = lge_mdss_dsi_get_ctrl_pdata();
+	if (pdata == NULL)
+		return;
 
 	switch(type) {
 		case VDDI_CTRL:
-			lge_mdss_dsi_panel_power_vddio_ctrl(cp_ctrl_pdata, enable);
+			lge_mdss_dsi_panel_power_vddio_ctrl(pdata, enable);
 			break;
 		case AVDD_AVEE_CTRL:
 			if (rev <= HW_REV_B)
-				lge_mdss_dsi_panel_power_labibb_ctrl(cp_ctrl_pdata, enable);
+				lge_mdss_dsi_panel_power_labibb_ctrl(pdata, enable);
 			else if (rev >= HW_REV_C)
-				lge_mdss_dsi_panel_power_dsv_ctrl(cp_ctrl_pdata, enable);
+				lge_mdss_dsi_panel_power_dsv_ctrl(pdata, enable);
 			break;
 		case LCD_RESET_CTRL:
-			lge_mdss_dsi_panel_reset_ctrl(cp_ctrl_pdata, enable);
+			lge_mdss_dsi_panel_reset_ctrl(pdata, enable);
 			break;
 		case LCD_INIT_CMD_TRANSFER:
-			lge_mdss_dsi_panel_cmds_send(cp_ctrl_pdata, type);
+			lge_mdss_dsi_panel_cmds_send(pdata, type);
 			break;
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_RECOVERY_ESD)
 		case LCD_ESD_RESET:

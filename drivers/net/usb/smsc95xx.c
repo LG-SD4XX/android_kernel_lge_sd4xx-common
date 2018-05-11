@@ -1675,9 +1675,6 @@ static int smsc95xx_resume(struct usb_interface *intf)
 	int ret;
 	u32 val;
 
-	if(!dev)
-		return 0;
-
 	BUG_ON(!dev);
 	pdata = (struct smsc95xx_priv *)(dev->data[0]);
 	suspend_flags = pdata->suspend_flags;

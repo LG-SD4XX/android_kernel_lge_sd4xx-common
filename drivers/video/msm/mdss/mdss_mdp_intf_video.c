@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -25,9 +25,6 @@
 #include "mdss_panel.h"
 #include "mdss_debug.h"
 #include "mdss_mdp_trace.h"
-#if defined(CONFIG_LGE_INTERVAL_DFPS)
-#include "lge_interval_dfps.h"
-#endif
 
 /* wait for at least 2 vsyncs for lowest refresh rate (24hz) */
 #define VSYNC_TIMEOUT_US 100000
@@ -1753,8 +1750,9 @@ static void mdss_mdp_handoff_programmable_fetch(struct mdss_mdp_ctl *ctl,
 			MDSS_MDP_REG_INTF_HSYNC_CTL) >> 16;
 		v_total_handoff = mdp_video_read(ctx,
 			MDSS_MDP_REG_INTF_VSYNC_PERIOD_F0)/h_total_handoff;
-		pinfo->prg_fet = v_total_handoff -
-			((fetch_start_handoff - 1)/h_total_handoff);
+		if (h_total_handoff)
+			pinfo->prg_fet = v_total_handoff -
+				((fetch_start_handoff - 1)/h_total_handoff);
 		pr_debug("programmable fetch lines %d start:%d\n",
 			pinfo->prg_fet, fetch_start_handoff);
 		MDSS_XLOG(pinfo->prg_fet, fetch_start_handoff,
@@ -2085,9 +2083,6 @@ static void early_wakeup_dfps_update_work(struct work_struct *work)
 	if (ret)
 		pr_err("early wakeup failed to set %d fps ret=%d\n",
 			dfps, ret);
-#if defined(CONFIG_LGE_INTERVAL_DFPS)
-	lge_dfps_input_notify();
-#endif
 
 exit:
 	ATRACE_END(__func__);
@@ -2115,10 +2110,21 @@ static int mdss_mdp_video_early_wake_up(struct mdss_mdp_ctl *ctl)
 	 * lot of latency rendering the input events useless in preventing the
 	 * idle time out.
 	 */
-	if (ctl->mfd->idle_state == MDSS_FB_IDLE_TIMER_RUNNING) {
-		if (ctl->mfd->idle_time)
+	if ((ctl->mfd->idle_state == MDSS_FB_IDLE_TIMER_RUNNING) ||
+				(ctl->mfd->idle_state == MDSS_FB_IDLE)) {
+		/*
+		 * Modify the idle time so that an idle fallback can be
+		 * triggered for those cases, where we have no update
+		 * despite of a touch event and idle time is 0.
+		 */
+		if (!ctl->mfd->idle_time) {
+			ctl->mfd->idle_time = 70;
+			schedule_delayed_work(&ctl->mfd->idle_notify_work,
+							msecs_to_jiffies(200));
+		} else {
 			mod_delayed_work(system_wq, &ctl->mfd->idle_notify_work,
 					 msecs_to_jiffies(ctl->mfd->idle_time));
+		}
 		pr_debug("Delayed idle time\n");
 	} else {
 		pr_debug("Nothing to done for this state (%d)\n",

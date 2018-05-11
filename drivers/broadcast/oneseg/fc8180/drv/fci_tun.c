@@ -166,6 +166,11 @@ s32 tuner_i2c_write(HANDLE handle, u8 addr, u8 alen, u8 *data, u8 len)
 
 s32 tuner_set_freq(HANDLE handle, u32 freq)
 {
+#ifdef BBM_I2C_TSIF
+	u8 tsif_en = 0;
+	u8 buf_en = 0;
+#endif /* BBM_I2C_TSIF */
+
 	if (tuner == NULL)
 		return BBM_E_TN_SELECT;
 
@@ -175,10 +180,23 @@ s32 tuner_set_freq(HANDLE handle, u32 freq)
 	freq -= 380;
 #endif
 
+#ifdef BBM_I2C_TSIF
+	bbm_byte_read(handle, BBM_TS_SEL, &tsif_en);
+	bbm_byte_write(handle, BBM_TS_SEL, tsif_en & 0x7f);
+
+	bbm_byte_read(handle, BBM_BUF_ENABLE, &buf_en);
+	bbm_byte_write(handle, BBM_BUF_ENABLE, 0x00);
+#endif /* BBM_I2C_TSIF */
+
 	if (tuner->set_freq(handle, freq))
 		return BBM_E_TN_SET_FREQ;
 
 	fc8180_reset(handle);
+
+#ifdef BBM_I2C_TSIF
+	bbm_byte_write(handle, BBM_TS_SEL, tsif_en);
+	bbm_byte_write(handle, BBM_BUF_ENABLE, buf_en);
+#endif /* BBM_I2C_TSIF */
 
 	return BBM_OK;
 }

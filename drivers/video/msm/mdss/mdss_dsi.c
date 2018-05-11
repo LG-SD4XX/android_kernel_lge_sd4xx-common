@@ -215,7 +215,11 @@ static char const *mdss_dsi_get_clk_src(struct mdss_dsi_ctrl_pdata *ctrl)
 	}
 }
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_OVERRIDE_MDSS_DSI_CTRL_SHUTDOWN)
+int mdss_dsi_set_clk_src(struct mdss_dsi_ctrl_pdata *ctrl)
+#else
 static int mdss_dsi_set_clk_src(struct mdss_dsi_ctrl_pdata *ctrl)
+#endif
 {
 	int rc;
 	struct dsi_shared_data *sdata;
@@ -311,7 +315,14 @@ static int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	if (!ctrl_pdata->lge_extra.lp11_off) {
+		ret = mdss_dsi_panel_reset(pdata, 0);
+	}
+#else
 	ret = mdss_dsi_panel_reset(pdata, 0);
+#endif
+
 	if (ret) {
 		pr_warn("%s: Panel reset failed. rc=%d\n", __func__, ret);
 		ret = 0;
@@ -734,6 +745,11 @@ static ssize_t mdss_dsi_cmd_state_write(struct file *file,
 	int *link_state = file->private_data;
 	char *input;
 
+	if (!count) {
+		pr_err("%s: Zero bytes to be written\n", __func__);
+		return -EINVAL;
+	}
+
 	input = kmalloc(count, GFP_KERNEL);
 	if (!input) {
 		pr_err("%s: Failed to allocate memory\n", __func__);
@@ -865,10 +881,15 @@ static ssize_t mdss_dsi_cmd_write(struct file *file, const char __user *p,
 
 	/* Writing in batches is possible */
 	ret = simple_write_to_buffer(string_buf, blen, ppos, p, count);
+	if (ret < 0) {
+		pr_err("%s: Failed to copy data\n", __func__);
+		mutex_unlock(&pcmds->dbg_mutex);
+		return -EINVAL;
+	}
 
-	string_buf[blen] = '\0';
+	string_buf[ret] = '\0';
 	pcmds->string_buf = string_buf;
-	pcmds->sblen = blen;
+	pcmds->sblen = count;
 	mutex_unlock(&pcmds->dbg_mutex);
 	return ret;
 }
@@ -1214,6 +1235,14 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata, int power_state)
 			panel_info->panel_power_state, power_state);
 		goto end;
 	}
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	if (ctrl_pdata->lge_extra.lp11_off) {
+		if (mdss_dsi_pinctrl_set_state(ctrl_pdata, true))
+			pr_debug("reset enable: pinctrl not enabled\n");
+		mdss_dsi_panel_reset(pdata, 0);
+	}
+#endif
 
 	if (mdss_panel_is_power_on(power_state)) {
 		pr_debug("%s: dsi_off with panel always on\n", __func__);

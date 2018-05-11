@@ -54,8 +54,8 @@
 		use_firmware = <0>;
 		fw_image = "touch/sf3/synaptics/PLG632_V0.42_PR2536179-DS5.12.4.1.1015-5005712A.img",
 				    "touch/sf3/synaptics/PLG632_V0.42_PR2536179-DS5.12.4.1.1015-5005712A.bin",
-				   "touch/sf3/synaptics/PLG643_V0.03_PR2555503-DS5.12.4.2.1009-20057103.img",
-				   "touch/sf3/synaptics/PLG643_V0.03_PR2555503-DS5.12.4.2.1009-20057103.bin";
+				   "touch/sf3/synaptics/PLG643_V0.01_PR2536183-DS5.12.4.2.1009-20057101.img",
+				   "touch/sf3/synaptics/PLG643_V0.01_PR2536183-DS5.12.4.2.1009-20057101.bin";
 		panel_spec = "touch/sf3/synaptics/sf3_limit.txt";
 		panel_spec_mfts_folder = "touch/sf3/synaptics/sf3_limit.txt";
 

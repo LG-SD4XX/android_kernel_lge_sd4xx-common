@@ -10,9 +10,10 @@
 
 #include <linux/input/epack_core.h>
 #define DEFAULT_FW_PATH_REV_04 "epack/tf8/EM-P100_0124_0404_AP.bin"
-#define DEFAULT_FW_PATH_REV_05 "epack/tf8/EM-P100_0303_0509_AP.bin"
+#define DEFAULT_FW_PATH_REV_05 "epack/tf8/EM-P100_0124_0505_AP.bin"
 #define PAGE_SIZE_EPACK                      0x00000200     /* Page size */
 
+#define PACKET_SIZE	64
 #define FILE_BUFFER	128
 #define MAX_FWPATH_SIZE 255
 
@@ -46,6 +47,9 @@
 #define APROM_MODE	1
 #define LDROM_MODE	2
 
+//extern u8 imageBegin, imageEnd;
+extern u8 rcvbuf[PACKET_SIZE];
+extern u8 sendbuf[PACKET_SIZE];
 extern unsigned int g_packno;
 extern unsigned short gcksum;
 

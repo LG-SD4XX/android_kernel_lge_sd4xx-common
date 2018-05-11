@@ -1,4 +1,7 @@
 /*
+ * stub_rx.c - mausb packets received and parsed
+ * - This file is derived form /drivers/usb/usbip/stub_rx.c
+ *
  * Copyright (C) 2003-2008 Takahiro Hirofuchi
  *
  * This is free software; you can redistribute it and/or modify
@@ -16,7 +19,6 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
  * USA.
  */
-
 #include <asm/byteorder.h>
 #include <linux/kthread.h>
 #include <linux/usb.h>
@@ -24,10 +26,10 @@
 
 #include "mausb_common.h"
 #include "stub.h"
-#include "mausb.h"
+#include "mausb_dev.h"
 #include "mausb_util.h"
 
-extern ktime_t timer_start;
+//extern ktime_t timer_start;
 
 static int is_clear_halt_cmd(struct urb *urb)
 {
@@ -224,8 +226,6 @@ int tweak_special_requests(struct urb *urb)
 	return 1;
 }
 
-
-
 int get_pipe(struct stub_device *sdev, int epnum, int dir)
 {
 	struct usb_device *udev = sdev->udev;
@@ -284,9 +284,10 @@ void masking_bogus_flags(struct urb *urb)
 	int				is_out;
 	unsigned int	allowed;
 	struct usb_ctrlrequest *setup;
-//	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"---> %s\n",__func__);
+
 	if (!urb || urb->hcpriv || !urb->complete)
 		return;
+
 	dev = urb->dev;
 	if ((!dev) || (dev->state < USB_STATE_UNAUTHENTICATED))
 		return;
@@ -295,18 +296,16 @@ void masking_bogus_flags(struct urb *urb)
 		[usb_pipeendpoint(urb->pipe)];
 	if (!ep)
 		return;
-	//LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"IN 2 %s\n",__func__);
+
 	xfertype = usb_endpoint_type(&ep->desc);
 	if (xfertype == USB_ENDPOINT_XFER_CONTROL) {
-			//LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,"IN 3 %s\n",__func__);
-			setup = (struct usb_ctrlrequest *) urb->setup_packet;
+		setup = (struct usb_ctrlrequest *) urb->setup_packet;
 
 		if (!setup)
 			return;
 		is_out = !(setup->bRequestType & USB_DIR_IN) ||
 			!setup->wLength;
 	} else {
-			//LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX, "IN 4 %s\n",__func__);
 		is_out = usb_endpoint_dir_out(&ep->desc);
 	}
 
@@ -315,21 +314,17 @@ void masking_bogus_flags(struct urb *urb)
 		   URB_DIR_MASK | URB_FREE_BUFFER);
 	switch (xfertype) {
 	case USB_ENDPOINT_XFER_BULK:
-//		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP, "USB_ENDPOINT_XFER_BULK\n");
 		if (is_out)
 			allowed |= URB_ZERO_PACKET;
 		/* FALLTHROUGH */
 	case USB_ENDPOINT_XFER_CONTROL:
-//		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"USB_ENDPOINT_XFER_CONTROL\n");
 		allowed |= URB_NO_FSBR;	/* only affects UHCI */
 		/* FALLTHROUGH */
 	default:			/* all non-iso endpoints */
-//		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"default\n");
 		if (!is_out)
 			allowed |= URB_SHORT_NOT_OK;
 		break;
 	case USB_ENDPOINT_XFER_ISOC:
-//		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"USB_ENDPOINT_XFER_ISOC\n");
 		allowed |= URB_ISO_ASAP;
 		break;
 	}
@@ -350,85 +345,96 @@ static void stub_rx_pdu(struct mausb_device *ud)
 	struct mausb_header *pkt;
 	__u8 *pdu_data;
 #ifdef MAUSB_TIMER_LOG
+	ktime_t timer_start;
 	ktime_t timer_end;
 	s64 actual_time;
 #endif
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,"-------->%s",__func__);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,"-------->%s",__func__);
+
 	memset(&pdu, 0, sizeof(pdu));
 
-	ret = mausb_recv(ud->tcp_socket, &pdu, sizeof(struct mausb_header));
 #ifdef MAUSB_TIMER_LOG
 	timer_start = ktime_get();
 #endif
+
+	ret = mausb_recv(ud->tcp_socket, &pdu, sizeof(struct mausb_header));
+
 	if (ret != sizeof(pdu)) {
-		LG_PRINT(DBG_LEVEL_LOW,DATA_TRANS_RX,"recv a header, %d\n", ret);
+		DBG_MAUSB(DBG_LEVEL_LOW,DATA_TRANS_RX,"recv a header, %d\n", ret);
 		mausb_event_add(ud, SDEV_EVENT_ERROR_TCP);
 		return;
 	}
 
 	pkt_len = pdu.u.non_iso_hdr.remsize_credit;
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,"pkt_len: %lu",pkt_len);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,"pkt_len: %lu",pkt_len);
 
-//	print_hex_dump(KERN_INFO, "DEV HEADER:", DUMP_PREFIX_ADDRESS, 16, 1,
-//						   &(pdu.base), sizeof(struct mausb_header), false);
-	if ( (pkt_len - size) > 0 ){
 
+	if ((pkt_len - size) > 0) {
 		if (pdu.base.type_subtype == 0)
 			return;
-		if ((!mausb_get_ep_number(&pdu)) || (mausb_is_out_data_pkt(&pdu)) || (mausb_is_mgmt_pkt(&pdu))) {
 
+		if ((!mausb_get_ep_number(&pdu)) ||
+		    (mausb_is_out_data_pkt(&pdu)) ||
+		    (mausb_is_mgmt_pkt(&pdu))) {
 			packet = kzalloc(pkt_len, GFP_ATOMIC);
-			if (packet == NULL )
-			{
-				LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,"kzalloc FAILED length: %lu\n",pkt_len);
+			if (packet == NULL ) {
+				DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,
+					"kzalloc FAILED length: %lu\n",pkt_len);
 				return;
 			}
 			memcpy(packet,&pdu,size);
 			pkt_len -= size;
-			LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,"Payload length: %lu\n",pkt_len);
+			DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,
+					"Payload length: %lu\n",pkt_len);
 			pdu_data = (__u8 *)packet;
 
-			ret = mausb_recv(ud->tcp_socket, (void *)(&(pdu_data[size])), pkt_len);
+			ret = mausb_recv(ud->tcp_socket,
+					(void *)(&(pdu_data[size])), pkt_len);
 			if (ret != pkt_len) {
-				LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX, "Receive Payload FAILED, %d\n", ret);
+				DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,
+					"Receive Payload FAILED, %d\n", ret);
 				mausb_event_add(ud, SDEV_EVENT_ERROR_TCP);
 				return;
 			}
-			//printk(KERN_INFO "Sequence no: %d\n",pdu.u.non_iso_hdr.reqid_seqno);
-			//print_hex_dump(KERN_INFO, "PAYLOAD:", DUMP_PREFIX_ADDRESS, 16, 1,
-			//				&(pdu_data[size]), pkt_len, false);
+			printk(KERN_INFO "Sequence no: %d\n",pdu.u.non_iso_hdr.reqid_seqno);
+			if(pkt_len < 128)
+			print_hex_dump(KERN_INFO, "PAYLOAD:", DUMP_PREFIX_ADDRESS, 16, 1,
+							&(pdu_data[size]), pkt_len, false);
+			printk(KERN_INFO"\n");
 #ifdef MAUSB_TIMER_LOG
 			timer_end = ktime_get();
 			actual_time = ktime_to_ms(ktime_sub(timer_end, timer_start));
-			LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX, " Time taken for data receive: %u  milli seconds\n",(unsigned int)(actual_time));
+			DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,
+				" Time taken for data receive:"
+				" %u  milli seconds\n",
+				(unsigned int)(actual_time));
 #endif
-		}
-		else {
+		} else {
 			packet = kzalloc(size, GFP_ATOMIC);
-		if (packet == NULL )
-			{
-				LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,"kzalloc packet FAILED \n");
+			if (packet == NULL ) {
+				DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,
+						"kzalloc packet FAILED \n");
 				return;
 			}
 			memcpy(packet,&pdu,size);
 		}
-	}
-	else {
-		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,"pkt_len zero else case \n");
+	} else {
+		DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,
+				"pkt_len zero else case \n");
 		packet = kzalloc(size, GFP_ATOMIC);
-		if (packet == NULL )
-			{
-				LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,"kzalloc packet FAILED \n");
-				return;
-			}
+		if (packet == NULL ) {
+			DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,
+					"kzalloc packet FAILED \n");
+			return;
+		}
 		memcpy(packet,&pdu,size);
 	}
 	pal = kzalloc(sizeof(struct stub_mausb_pal), GFP_ATOMIC);
-	if (pal == NULL )
-	{
-		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,"kzalloc stub_mausb_pal FAILED \n");
+	if (!pal) {
+		DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,
+				"kzalloc stub_mausb_pal FAILED \n");
 		if(packet)
-		 kfree(packet);
+			kfree(packet);
 		return;
 	}
 
@@ -436,39 +442,34 @@ static void stub_rx_pdu(struct mausb_device *ud)
 	pal->pdu = packet;
 	pal->length = pdu.u.non_iso_hdr.remsize_credit;
 	if (mausb_is_mgmt_pkt(&pdu)) {
-		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,"management packet\n");
+		DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,"management packet\n");
 		spin_lock_irqsave(&sdev->mausb_pal_lock, flags);
 		list_add_tail(&pal->list, &sdev->mausb_pal_mgmt_init);
 		spin_unlock_irqrestore(&sdev->mausb_pal_lock, flags);
-		//wake_up(&sdev->pal_mgmt_waitq);
 		mausbdev_mgmt_process_packect(ud);
-	 	}
-	else if (mausb_is_data_pkt(&pdu)) {
-		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,"data packet");
+	} else if (mausb_is_data_pkt(&pdu)) {
+		DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,"data packet");
 
 		pkt = (struct mausb_header *)pal->pdu;
-		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,"pkt->u.non_iso_hdr.reqid_seqno: %d\n",pkt->u.non_iso_hdr.reqid_seqno);
+		DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,
+			"pkt->u.non_iso_hdr.reqid_seqno: %d\n",
+			pkt->u.non_iso_hdr.reqid_seqno);
 		pal->seqnum = pkt->u.non_iso_hdr.reqid_seqno;
 
 		if (mausb_is_in_data_pkt(&pdu)){
-			LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX, "in data packet");
+			DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,
+					"in data packet");
 			spin_lock_irqsave(&sdev->mausb_pal_lock, flags);
 			list_add_tail(&pal->list, &sdev->mausb_pal_in_init);
 			spin_unlock_irqrestore(&sdev->mausb_pal_lock, flags);
-			//wake_up(&sdev->pal_in_waitq);
 			mausbdev_in_process_packect(ud);
-		}
-		else if (mausb_is_out_data_pkt(&pdu)){
-			//LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX, "out data packet");
+		} else if (mausb_is_out_data_pkt(&pdu)){
 			spin_lock_irqsave(&sdev->mausb_pal_lock, flags);
 			list_add_tail(&pal->list, &sdev->mausb_pal_out_init);
 			spin_unlock_irqrestore(&sdev->mausb_pal_lock, flags);
-			//wake_up(&sdev->pal_out_waitq);
 			mausbdev_out_process_packect(ud);
 			}
 		}
-
-	return;
 }
 
 int stub_rx_loop(void *data)
@@ -478,9 +479,7 @@ int stub_rx_loop(void *data)
 	while (!kthread_should_stop()) {
 		if (mausb_event_happened(ud))
 			break;
-		//LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX, "---> Start New Packet is receiving");
 		stub_rx_pdu(ud);
-		//LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX, "<-- End New Packet is receiving");
 	}
 
 	return 0;

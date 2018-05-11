@@ -13,6 +13,7 @@
 #include "../../qcom/msm8937-mdss-panels.dtsi"
 #include "../dsi-panel-lgd-ft8707-fhd-video.dtsi"
 #include "../dsi-panel-lgd-td4300-fhd-video.dtsi"
+#include "../ext_dsv_k7j_dw8768_sm5107.dtsi"
 
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
@@ -107,12 +108,4 @@
 
 &mdss_fb0 {
 	/delete-property/ qcom,mdss-fb-splash-logo-enabled;
-};
-
-&i2c_2 {
-     ext_dsv_dw_sm@3e {
-         status = "ok";
-         compatible = "ext_dsv_dw_sm";
-         reg = <0x3e>;
-    };
 };

@@ -18,23 +18,16 @@
 int I2C_MasterSendData(struct i2c_client *client)
 {
 	int result;
-	struct epack_dev_data *epack = i2c_get_clientdata(client);
 	struct i2c_msg msgs = {
 
 	.addr = client->addr,
 	.flags = client->flags,
 	.len = 64,
-	.buf = (u8 *)(epack->sendbuf),
+	.buf = (u8 *)sendbuf,
 	};
 
-	if(epack == NULL)
-	{
-		epack_log("%s: epack struct is null\n", __func__);
-		return -1;
-	}
-
 	epack_log("%s sendbuf : \n", __func__);
-	print_array(epack->sendbuf,PACKET_SIZE);
+ 	print_array(sendbuf,PACKET_SIZE);
 
 	result = i2c_transfer(client->adapter, &msgs, 1);
 
@@ -44,25 +37,19 @@ int I2C_MasterSendData(struct i2c_client *client)
 int I2C_MasterRcvData(struct i2c_client *client)
 {
 	int result;
-	struct epack_dev_data *epack = i2c_get_clientdata(client);
+
 	struct i2c_msg msgs = {
 
 	.addr = client->addr,
 	.flags = client->flags | I2C_M_RD,
 	.len = 64,
-	.buf = epack->rcvbuf,
+	.buf = rcvbuf,
 	};
-
-	if(epack == NULL)
-	{
-		epack_log("%s: epack struct is null\n", __func__);
-		return -1;
-	}
 
 	result = i2c_transfer(client->adapter, &msgs, 1);
 
 	epack_log("%s rcvbuf : \n", __func__);
-	print_array(epack->rcvbuf,PACKET_SIZE);
+ 	print_array(rcvbuf,PACKET_SIZE);
 
 	return result;
 }
@@ -71,14 +58,8 @@ int I2C_MasterRcvData(struct i2c_client *client)
 bool send_data(struct i2c_client *client)
 {
 	int result;
-	struct epack_dev_data *epack = i2c_get_clientdata(client);
 
-	if(epack == NULL)
-	{
-		epack_log("%s: epack struct is null\n", __func__);
-		return 0;
-	}
-	gcksum = check_sum(epack->sendbuf, PACKET_SIZE);
+	gcksum = check_sum(sendbuf, PACKET_SIZE);
 
 	result = I2C_MasterSendData(client);
 
@@ -97,12 +78,7 @@ bool RcvData(struct i2c_client *client)
 	unsigned short lcksum;
 	int rcv_g_packno;
 	u8 *buf;
-	struct epack_dev_data *epack = i2c_get_clientdata(client);
-	if(epack == NULL)
-	{
-		epack_log("%s: epack struct is null\n", __func__);
-		return 0;
-	}
+
 	msleep(50);//50ms
 
 	result = I2C_MasterRcvData(client);
@@ -113,7 +89,7 @@ bool RcvData(struct i2c_client *client)
 		return 0;
 	}
 
-	buf = epack->rcvbuf;
+	buf = rcvbuf;
 	memcpy(&lcksum, buf, 2);
 	buf += 4;
 

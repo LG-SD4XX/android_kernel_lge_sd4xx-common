@@ -28,24 +28,20 @@
 #include <linux/irq.h>
 
 #if defined(CONFIG_LGE_TOUCH_CORE_QCT)
-#if defined(CONFIG_MSM8909_K6P)
-#include <soc/qcom/lge/lge_boot_mode.h>
-#else
 #include <soc/qcom/lge/board_lge.h>
 #endif
-#endif
-
 #if defined(CONFIG_LGE_TOUCH_CORE_MTK)
-#if defined(TARGET_MT6735_K6P)
 #include <mt_gpio.h>
 #include <mach/gpio_const.h>
 #endif
+#if defined(CONFIG_LGE_TOUCH_CORE_MTK_LEGACY)
+#include <mach/mt_gpio.h>
+#include <mach/mt_pm_ldo.h>
 #endif
 
 extern int touch_gpio_init(int pin, const char *name);
 extern void touch_gpio_direction_input(int pin);
 extern void touch_gpio_direction_output(int pin, int value);
-extern void touch_gpio_set_pull(int pin, int value);
 
 extern int touch_power_init(struct device *dev);
 extern void touch_power_vdd(struct device *dev, int value);
@@ -74,12 +70,11 @@ struct touch_bus_msg {
 	int tx_size;
 	u8 *rx_buf;
 	int rx_size;
-	u8 bits_per_word;
 };
 
 #define MAX_BUF_SIZE	(64 * 1024)
-#define MAX_XFER_BUF_SIZE	(100 * 1024)
-#define MAX_XFER_COUNT	4
+#define MAX_XFER_BUF_SIZE	(1024)
+#define MAX_XFER_COUNT	15
 
 struct touch_xfer_data_t {
 	u16 addr;
@@ -95,7 +90,6 @@ struct touch_xfer_data {
 
 struct touch_xfer_msg {
 	struct touch_xfer_data data[MAX_XFER_COUNT];
-	u8 bits_per_word;
 	u8 msg_count;
 };
 
@@ -116,6 +110,6 @@ extern int touch_bus_write(struct device *dev, struct touch_bus_msg *msg);
 extern int touch_bus_xfer(struct device *dev, struct touch_xfer_msg *xfer);
 extern int touch_bus_device_init(struct touch_hwif *hwif, void *driver);
 extern void touch_bus_device_exit(struct touch_hwif *hwif);
-extern int touch_get_device_type(void);
+extern enum touch_device_type touch_get_device_type(void);
 
 #endif /* LGE_TOUCH_HWIF_H */

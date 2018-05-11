@@ -95,7 +95,7 @@
 #define F12_HOVERING_FINGER_STATUS	(0x05)
 #define F12_GLOVED_FINGER_STATUS	(0x06)
 #define F12_MAX_OBJECT				(0x06)
-#define FINGER_REPORT_DATA			(d->f12_reg.data[15])
+#define FINGER_REPORT_DATA			(d->f12_reg.ctrl[15])
 #define FINGER_REPORT_REG			(d->f12_reg.ctrl[20])
 
 #define LPWG_STATUS_REG				(d->f51.dsc.data_base)
@@ -130,7 +130,6 @@
 /* STYLUS Control Reg */
 #define STYLUS_CTRL_REG		(d->f51.dsc.control_base + 21)
 #define STYLUS_MODE_ENABLE	0x08
-#define SENSING_MODE_ENABLE     0x10
 
 /* Real-Time LPWG Fail Reason Ctrl */
 #define NUM_OF_EACH_FINGER_DATA		8
@@ -189,6 +188,13 @@
 #define PDT_END				0x00DD
 
 enum{
+	CONNECT_NONE = 0,
+	CONNECT_USB,
+	CONNECT_TA,
+	CONNECT_OTG,
+};
+
+enum{
 	NOISE_DISABLE = 0,
 	NOISE_ENABLE,
 };
@@ -212,48 +218,32 @@ enum {
     FAIL_TAP_COUNT,
 };
 
-/* Charger Connection State */
-enum{
-	CONNECT_NONE = 0,
-	CONNECT_USB,
-	CONNECT_TA,
-	CONNECT_OTG,
-};
-
-/* IC Initialization State */
-enum {
-	IC_INIT_NEED = 0,
-	IC_INIT_DONE,
-};
-
-/* IC Configured State */
-enum {
-	IC_CONFIGURED_NEED = 0,
-	IC_CONFIGURED_DONE,
-};
-
-/* ESD Initialization State */
-enum {
-	ESD_RECOVERY_NEED = 0,
-	ESD_RECOVERY_DONE,
-};
-
-/* Stylus Mode State*/
+/* stylus mode */
 enum {
 	STYLUS_OFF= 0,
 	STYLUS_ON,
 };
 
-/* Panel Reset State*/
+/* Added for IC Initialization state*/
+enum {
+	IC_INIT_NEED = 0,
+	IC_INIT_DONE,
+};
+
 enum {
 	PANEL_RESET_NEED = 0,
 	PANEL_RESET_MAX = 3,
 };
 
-/* Sensing Test Bit State */
+/* Added for ESD Initialization state*/
 enum {
-	SENSING_BIT_CLEAR = 0,
-	SENSING_BIT_SET,
+	ESD_RECOVERY_NEED = 0,
+	ESD_RECOVERY_DONE,
+};
+/* Added for IC Configured state */
+enum {
+	IC_CONFIGURED_NEED = 0,
+	IC_CONFIGURED_DONE,
 };
 
 enum {
@@ -368,7 +358,6 @@ struct td4310_state_info {
 	atomic_t esd_recovery;
 	atomic_t stylus_mode;
 	atomic_t panel_reset_flag;
-	atomic_t sensing_test;
 };
 
 struct td4310_data {
@@ -388,16 +377,9 @@ struct td4310_data {
 	u8 object_report;
 	u8 max_num_of_fingers;
 	u8 lpwg_fail_reason;
-	u8 num_of_pages;
 	struct delayed_work fb_notify_work;
 	struct pm_qos_request pm_qos_req;
 	struct td4310_state_info state;
-
-	bool use_palm_filter;
-	u16 palm_mask;
-	struct point palm_point[MAX_NUM_OF_FINGERS];
-	struct touch_data old_tdata[MAX_NUM_OF_FINGERS];
-	struct delayed_work palm_filter_work;
 };
 
 static inline struct td4310_data *to_td4310_data(struct device *dev)

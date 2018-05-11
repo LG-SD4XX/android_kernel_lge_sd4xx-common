@@ -6053,10 +6053,11 @@ WLANTL_RxFrames
    ---------------------------------------------------------------------*/
   vosTempBuff = vosDataBuff;
 
-  while ( NULL != vosTempBuff )
+  //QCT Case 03283306
+  while ( NULL != vosDataBuff )
   {
     broadcast = VOS_FALSE;
-    selfBcastLoopback = VOS_FALSE; 
+    selfBcastLoopback = VOS_FALSE;
 
     vos_pkt_walk_packet_chain( vosDataBuff, &vosDataBuff, 1/*true*/ );
 
@@ -8368,7 +8369,7 @@ WLANTL_STATxAuth
      then there will be no need for any AC downgrade logic in TL/WDI.   */
 #if 0
   if (( ucTid != tlMetaInfo.ucTID ) &&
-      ( 0 != pStaClient->wSTADesc.ucQosEnabled ) && 
+      ( 0 != pStaClient->wSTADesc.ucQosEnabled ) &&
       ( 0 != ucSwFrmXtl ))
   {
     /*---------------------------------------------------------------------
@@ -8376,7 +8377,7 @@ WLANTL_STATxAuth
     ---------------------------------------------------------------------*/
     ucQCOffset = WLANHAL_TX_BD_HEADER_SIZE + WLANTL_802_11_HEADER_LEN;
 
-    //!!!Fix this replace peek with extract 
+    //!!!Fix this replace peek with extract
     vos_pkt_peek_data( vosDataBuff, ucQCOffset,(v_PVOID_t)&pucQosCtrl,
                        sizeof(*pucQosCtrl));
     *pucQosCtrl = ucTid; //? proper byte order

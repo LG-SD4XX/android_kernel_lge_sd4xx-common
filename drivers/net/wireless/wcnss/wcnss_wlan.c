@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -250,6 +250,11 @@ static struct notifier_block wnb = {
 
 #define NVBIN_FILE "wlan/prima/WCNSS_qcom_wlan_nv_boot.bin"
 
+// by LGE for 1 binary exception
+#define LGE_WIFI_DYNAMIC_NV 1
+#define NVBIN_BKUP_FILE "wlan/prima/WCNSS_qcom_wlan_backup_nv_boot.bin"
+// by LGE for 1 binary exception
+
 /* On SMD channel 4K of maximum data can be transferred, including message
  * header, so NV fragment size as next multiple of 1Kb is 3Kb.
  */
@@ -397,8 +402,7 @@ static struct {
 	int	user_cal_read;
 	int	user_cal_available;
 	u32	user_cal_rcvd;
-	int	user_cal_exp_size;
-
+	u32	user_cal_exp_size;
 	int	iris_xo_mode_set;
 	int	fw_vbatt_state;
 	char	wlan_nv_macAddr[WLAN_MAC_ADDR_SIZE];
@@ -425,6 +429,7 @@ static struct {
 	struct delayed_work wcnss_pm_qos_del_req;
 	struct mutex pm_qos_mutex;
 	struct clk *snoc_wcnss;
+	unsigned long clk_rate;
 } *penv = NULL;
 
 static ssize_t wcnss_wlan_macaddr_store(struct device *dev,
@@ -592,12 +597,11 @@ void wcnss_pronto_is_a2xb_bus_stall(void *tst_addr, u32 fifo_mask, char *type)
 	}
 }
 
-/* Log pronto debug registers before sending reset interrupt */
+/* Log pronto debug registers during SSR Timeout CB */
 void wcnss_pronto_log_debug_regs(void)
 {
 	void __iomem *reg_addr, *tst_addr, *tst_ctrl_addr;
 	u32 reg = 0, reg2 = 0, reg3 = 0, reg4 = 0;
-
 
 	reg_addr = penv->msm_wcnss_base + PRONTO_PMU_SPARE_OFFSET;
 	reg = readl_relaxed(reg_addr);
@@ -802,6 +806,33 @@ void wcnss_pronto_log_debug_regs(void)
 	reg_addr = penv->msm_wcnss_base + PRONTO_PMU_WLAN_AHB_CBCR_OFFSET;
 	reg3 = readl_relaxed(reg_addr);
 	pr_err("PMU_WLAN_AHB_CBCR %08x\n", reg3);
+}
+EXPORT_SYMBOL(wcnss_pronto_log_debug_regs);
+
+/* Log pronto debug registers before sending reset interrupt */
+void wcnss_pronto_dump_regs(void)
+{
+	void __iomem *reg_addr;
+	u32 reg = 0, reg2 = 0, reg3 = 0, reg4 = 0;
+
+	if (!penv || !penv->triggered || !penv->msm_wcnss_base) {
+		pr_info(DEVICE " WCNSS driver is not triggered by userspace\n");
+		return;
+	}
+
+	wcnss_pronto_log_debug_regs();
+
+	reg_addr = penv->msm_wcnss_base + PRONTO_PMU_WLAN_BCR_OFFSET;
+	reg = readl_relaxed(reg_addr);
+
+	reg_addr = penv->msm_wcnss_base + PRONTO_PMU_WLAN_GDSCR_OFFSET;
+	reg2 = readl_relaxed(reg_addr);
+
+	reg_addr = penv->msm_wcnss_base + PRONTO_PMU_WLAN_AHB_CBCR_OFFSET;
+	reg3 = readl_relaxed(reg_addr);
+
+	reg_addr = penv->msm_wcnss_base + PRONTO_PMU_CPU_AHB_CMD_RCGR_OFFSET;
+	reg4 = readl_relaxed(reg_addr);
 
 	msleep(50);
 
@@ -881,7 +912,7 @@ void wcnss_pronto_log_debug_regs(void)
 	reg = readl_relaxed(penv->alarms_tactl);
 	pr_err("ALARMS_TACTL %08x\n", reg);
 }
-EXPORT_SYMBOL(wcnss_pronto_log_debug_regs);
+EXPORT_SYMBOL(wcnss_pronto_dump_regs);
 
 #ifdef CONFIG_WCNSS_REGISTER_DUMP_ON_BITE
 
@@ -1075,7 +1106,9 @@ void wcnss_log_debug_regs_on_bite(void)
 	struct platform_device *pdev = wcnss_get_platform_device();
 	struct clk *measure;
 	struct clk *wcnss_debug_mux;
-	unsigned long clk_rate;
+
+	if (pdev == NULL)
+		return;
 
 	if (wcnss_hardware_type() != WCNSS_PRONTO_HW)
 		return;
@@ -1094,10 +1127,10 @@ void wcnss_log_debug_regs_on_bite(void)
 			return;
 		}
 
-		clk_rate = clk_get_rate(measure);
-		pr_debug("wcnss: clock frequency is: %luHz\n", clk_rate);
+		penv->clk_rate = clk_get_rate(measure);
+		pr_info("wcnss: clock frequency is: %luHz\n", penv->clk_rate);
 
-		if (clk_rate) {
+		if (penv->clk_rate) {
 			wcnss_pronto_log_debug_regs();
 			if (wcnss_get_mux_control())
 				wcnss_log_iris_regs();
@@ -1114,6 +1147,7 @@ void wcnss_log_debug_regs_on_bite(void)
 /* interface to reset wcnss by sending the reset interrupt */
 void wcnss_reset_fiq(bool clk_chk_en)
 {
+    pr_err("%s: Enter\n", __func__);
 	if (wcnss_hardware_type() == WCNSS_PRONTO_HW) {
 		if (clk_chk_en) {
 			wcnss_log_debug_regs_on_bite();
@@ -1227,6 +1261,8 @@ void wcnss_disable_pc_add_req(void)
 static void wcnss_smd_notify_event(void *data, unsigned int event)
 {
 	int len = 0;
+
+    printk(KERN_ERR"%s(), Event = %d\n", __func__, event);
 
 	if (penv != data) {
 		pr_err("wcnss: invalid env pointer in smd callback\n");
@@ -1379,6 +1415,7 @@ gpio_probe:
 	return rc;
 
 fail:
+    pr_err("%s: error\n", __func__);
 	for (j = WCNSS_WLAN_NUM_GPIOS-1; j >= 0; j--) {
 		int gpio = of_get_gpio(pdev->dev.of_node, i);
 		gpio_free(gpio);
@@ -1429,7 +1466,7 @@ wcnss_wlan_ctrl_remove(struct platform_device *pdev)
 	if (penv)
 		penv->smd_channel_ready = 0;
 
-	pr_info("%s: SMD ctrl channel down\n", __func__);
+    pr_err("%s: SMD ctrl channel down\n", __func__);
 
 	return 0;
 }
@@ -2146,6 +2183,8 @@ static void wcnss_process_smd_msg(int len)
 
 	phdr = (struct smd_msg_hdr *)buf;
 
+    pr_err("%s(), msg_type = %d\n", __func__, phdr->msg_type);
+
 	switch (phdr->msg_type) {
 
 	case WCNSS_VERSION_RSP:
@@ -2354,9 +2393,24 @@ static void wcnss_nvbin_dnld(void)
 	const struct firmware *nv = NULL;
 	struct device *dev = &penv->pdev->dev;
 
-	down_read(&wcnss_pm_sem);
+// 2014.04.11 Add log for crash issue on NV download, CASE Num : 01509265
+    pr_err("wcnss: wcnss_nvbin_dnld \n");
 
-	ret = request_firmware(&nv, NVBIN_FILE, dev);
+    down_read(&wcnss_pm_sem);
+
+// 2014.04.11 Add log for crash issue on NV download, CASE Num : 01509265
+    pr_err("wcnss: request_firmware \n");
+
+    ret = request_firmware(&nv, NVBIN_FILE, dev);
+
+    // for LGE 1 binary from GPIO
+    if (LGE_WIFI_DYNAMIC_NV) {
+        if (ret || !nv || !nv->data || !nv->size) {
+            pr_err("wcnss: [Error!!] request_firmware Error !! must check these model using LAOP.\n");
+            ret = request_firmware(&nv, NVBIN_BKUP_FILE, dev);
+        }
+    }
+    // for LGE 1 binary from GPIO
 
 	if (ret || !nv || !nv->data || !nv->size) {
 		pr_err("wcnss: %s: request_firmware failed for %s (ret = %d)\n",
@@ -2371,6 +2425,9 @@ static void wcnss_nvbin_dnld(void)
 	nv_blob_size = nv->size - 4;
 
 	total_fragments = TOTALFRAGMENTS(nv_blob_size);
+
+// 2014.04.11 Add log for crash issue on NV download, CASE Num : 01509265
+    pr_err("wcnss: NV bin size: %d, total_fragments: %d\n", nv_blob_size, total_fragments);
 
 	pr_info("wcnss: NV bin size: %d, total_fragments: %d\n",
 		nv_blob_size, total_fragments);
@@ -2617,7 +2674,9 @@ void process_usr_ctrl_cmd(u8 *buf, size_t len)
 {
 	u16 cmd = buf[0] << 8 | buf[1];
 
-	switch (cmd) {
+    pr_err("wcnss: process_usr_ctrl_cmd(), 0x%x\n", cmd);
+
+    switch (cmd) {
 
 	case WCNSS_USR_SERIAL_NUM:
 		if (WCNSS_MIN_SERIAL_LEN > len) {
@@ -2730,7 +2789,7 @@ wcnss_trigger_config(struct platform_device *pdev)
 	int pil_retry = 0;
 	int has_pronto_hw = of_property_read_bool(pdev->dev.of_node,
 							"qcom,has-pronto-hw");
-
+    pr_err("wcnss: wcnss_trigger_config()\n");
 	is_pronto_vadc = of_property_read_bool(pdev->dev.of_node,
 					       "qcom,is-pronto-vadc");
 
@@ -2873,6 +2932,7 @@ wcnss_trigger_config(struct platform_device *pdev)
 	if (ret) {
 		dev_err(&pdev->dev, "WCNSS gpios config failed.\n");
 		goto fail_gpio_res;
+    printk(KERN_ERR"%s : wcnss_wlan_power called\n", __func__);
 	}
 
 	/* allocate resources */
@@ -2893,7 +2953,7 @@ wcnss_trigger_config(struct platform_device *pdev)
 	INIT_WORK(&penv->wcnss_pm_config_work, wcnss_send_pm_config);
 	INIT_WORK(&penv->wcnssctrl_nvbin_dnld_work, wcnss_nvbin_dnld_main);
 	INIT_DELAYED_WORK(&penv->wcnss_pm_qos_del_req, wcnss_pm_qos_enable_pc);
-
+    printk(KERN_ERR"%s : wake_lock_init() called\n", __func__);
 	wake_lock_init(&penv->wcnss_wake_lock, WAKE_LOCK_SUSPEND, "wcnss");
 	/* Add pm_qos request to disable power collapse for DDR */
 	wcnss_disable_pc_add_req();
@@ -3170,7 +3230,7 @@ wcnss_trigger_config(struct platform_device *pdev)
 			dev_err(&pdev->dev, "Peripheral Loader failed on WCNSS.\n");
 			ret = PTR_ERR(penv->pil);
 			wcnss_disable_pc_add_req();
-			wcnss_pronto_log_debug_regs();
+			wcnss_pronto_dump_regs();
 		}
 	} while (pil_retry++ < WCNSS_MAX_PIL_RETRY && IS_ERR(penv->pil));
 
@@ -3299,16 +3359,18 @@ static int wcnss_node_open(struct inode *inode, struct file *file)
 	struct platform_device *pdev;
 	int rc = 0;
 
-	if (!penv)
-		return -EFAULT;
-
-	if (!penv->triggered) {
-		pr_info(DEVICE " triggered by userspace\n");
-		pdev = penv->pdev;
-		rc = wcnss_trigger_config(pdev);
-		if (rc)
-			return -EFAULT;
-	}
+    pr_err("wcnss: wcnss_node_open()\n");
+    if (!penv) {
+        pr_err("wcnss: return \n");
+        return -EFAULT;
+    }
+    if (!penv->triggered) {
+        pr_info(DEVICE " triggered by userspace\n");
+        pdev = penv->pdev;
+        rc = wcnss_trigger_config(pdev);
+        if (rc)
+            return -EFAULT;
+    }
 
 	return rc;
 }
@@ -3318,8 +3380,9 @@ static ssize_t wcnss_wlan_read(struct file *fp, char __user
 {
 	int rc = 0;
 
-	if (!penv)
-		return -EFAULT;
+	pr_err("wcnss: wcnss_wlan_read()\n");
+    	if (!penv)
+        	return -EFAULT;
 
 	rc = wait_event_interruptible(penv->read_wait, penv->fw_cal_rcvd
 			> penv->user_cal_read || penv->fw_cal_available);
@@ -3357,6 +3420,7 @@ static ssize_t wcnss_wlan_write(struct file *fp, const char __user
 	int rc = 0;
 	char *cal_data = NULL;
 
+	pr_err("wcnss: wcnss_wlan_write()\n");
 	if (!penv || penv->user_cal_available)
 		return -EFAULT;
 
@@ -3372,7 +3436,6 @@ static ssize_t wcnss_wlan_write(struct file *fp, const char __user
 			mutex_unlock(&penv->dev_lock);
 			return -EFAULT;
 		}
-
 		mutex_unlock(&penv->dev_lock);
 		return count;
 	} else if (!penv->user_cal_rcvd && count < 4) {
@@ -3417,7 +3480,6 @@ static int wcnss_node_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-
 static int wcnss_notif_cb(struct notifier_block *this, unsigned long code,
 				void *ss_handle)
 {
@@ -3426,7 +3488,7 @@ static int wcnss_notif_cb(struct notifier_block *this, unsigned long code,
 	struct notif_data *data = (struct notif_data *)ss_handle;
 	int ret, xo_mode;
 
-	pr_info("%s: wcnss notification event: %lu\n", __func__, code);
+	pr_debug("%s: wcnss notification event: %lu\n", __func__, code);
 
 	if (code == SUBSYS_PROXY_VOTE) {
 		if (pdev && pwlanconfig) {
@@ -3457,7 +3519,7 @@ static int wcnss_notif_cb(struct notifier_block *this, unsigned long code,
 		if (pdev && pwlanconfig)
 			wcnss_wlan_power(&pdev->dev, pwlanconfig,
 					WCNSS_WLAN_SWITCH_OFF, NULL);
-		wcnss_pronto_log_debug_regs();
+		wcnss_pronto_dump_regs();
 		wcnss_disable_pc_remove_req();
 	} else if (SUBSYS_BEFORE_SHUTDOWN == code) {
 		wcnss_disable_pc_add_req();
@@ -3475,7 +3537,7 @@ static const struct file_operations wcnss_node_fops = {
 	.open = wcnss_node_open,
 	.read = wcnss_wlan_read,
 	.write = wcnss_wlan_write,
-    .release = wcnss_node_release,
+	.release = wcnss_node_release,
 };
 
 static struct miscdevice wcnss_misc = {
@@ -3489,6 +3551,7 @@ wcnss_wlan_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 
+    pr_err("wcnss: wcnss_wlan_probe()\n");
 	/* verify we haven't been called more than once */
 	if (penv) {
 		dev_err(&pdev->dev, "cannot handle multiple devices.\n");
@@ -3503,7 +3566,7 @@ wcnss_wlan_probe(struct platform_device *pdev)
 	}
 	penv->pdev = pdev;
 
-    penv->user_cal_data =
+	penv->user_cal_data =
 		devm_kzalloc(&pdev->dev, MAX_CALIBRATED_DATA_SIZE, GFP_KERNEL);
 	if (!penv->user_cal_data) {
 		dev_err(&pdev->dev, "Failed to alloc memory for cal data.\n");
@@ -3513,6 +3576,7 @@ wcnss_wlan_probe(struct platform_device *pdev)
 	/* register sysfs entries */
 	ret = wcnss_create_sysfs(&pdev->dev);
 	if (ret) {
+        pr_err("wcnss: error in wcnss_create_sysfs()\n");
 		penv = NULL;
 		return -ENOENT;
 	}

@@ -884,9 +884,6 @@ static int synaptics_change_landing_frame(struct device *dev)
 
 	buffer[8] = FINGER_LANDING_MAX_FRAME_LPWG;	// lpwg landing max frame is '1'
 
-	if( synaptics_is_product(d, "PLG632", 6) || synaptics_is_product(d, "PLG643", 6) ) // only SF3
-		buffer[10] = SMALL_FINGER_LANDING_MAX_FRAME_LPWG; // lpwg small finger landing max frame is '2'
-
 	ret = synaptics_write(dev, d->f12_reg.ctrl[11], buffer, sizeof(buffer));
 	if (ret < 0) {
 		TOUCH_E("failed to write i2c - ret:%d\n", ret);

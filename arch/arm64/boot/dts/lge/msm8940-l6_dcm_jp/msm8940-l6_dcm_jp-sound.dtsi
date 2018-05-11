@@ -1,0 +1,157 @@
+/*
+ * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&pm8937_cajon_dig {
+	status = "okay";
+	qcom,cdc-micbias-cfilt-mv = <2100000>;
+};
+
+&pm8937_cajon_analog {
+	status = "okay";
+};
+
+&int_codec {
+	qcom,msm-hs-micbias-type = "internal";
+	lge,msm-mbhc-extn-cable = <1>;
+	dac,es9218-codec;
+	qcom,cdc-us-euro-gpios;
+	qcom,audio-routing =
+		"RX_BIAS", "MCLK",
+		"SPK_RX_BIAS", "MCLK",
+		"INT_LDO_H", "MCLK",
+		"MIC BIAS Internal2", "Headset Mic",
+		"AMIC2", "MIC BIAS Internal2",
+		"MIC BIAS Internal1", "Digital Mic1",
+		"DMIC1", "MIC BIAS Internal1",
+		"MIC BIAS Internal1", "Digital Mic2",
+		"DMIC2", "MIC BIAS Internal1";
+
+	qcom,msm-gpios =
+		"pri_i2s",
+		"us_eu_gpio",
+		"quin_i2s",
+		"dmic_gpio";
+
+	qcom,pinctrl-names =
+		"all_off",
+		"pri_i2s_act",
+		"us_eu_gpio_act",
+		"pri_i2s_us_eu_gpio_act",
+		"quin_act",
+		"quin_pri_i2s_act",
+		"quin_us_eu_gpio_act",
+		"quin_us_eu_gpio_pri_i2s_act",
+		"dmic_act",
+		"dmic_pri_i2s_act",
+		"dmic_us_eu_gpio_act",
+		"dmic_us_eu_gpio_pri_i2s_act",
+		"dmic_quin_act",
+		"dmic_quin_pri_i2s_act",
+		"dmic_quin_us_eu_gpio_act",
+		"dmic_quin_us_eu_gpio_pri_i2s_act";
+
+	pinctrl-names =
+		"all_off",
+		"pri_i2s_act",
+		"us_eu_gpio_act",
+		"pri_i2s_us_eu_gpio_act",
+		"quin_act",
+		"quin_pri_i2s_act",
+		"quin_us_eu_gpio_act",
+		"quin_us_eu_gpio_pri_i2s_act",
+		"dmic_act",
+		"dmic_pri_i2s_act",
+		"dmic_us_eu_gpio_act",
+		"dmic_us_eu_gpio_pri_i2s_act",
+		"dmic_quin_act",
+		"dmic_quin_pri_i2s_act",
+		"dmic_quin_us_eu_gpio_act",
+		"dmic_quin_us_eu_gpio_pri_i2s_act";
+
+	pinctrl-0 = <&cdc_pdm_lines_sus
+			&cdc_pdm_lines_2_sus &cross_conn_det_sus
+			&pri_tlmm_lines_sus &pri_tlmm_ws_sus
+			&cdc_dmic_lines_sus &cdc_dmic_clk_sus>;
+	pinctrl-1 = <&cdc_pdm_lines_act
+			&cdc_pdm_lines_2_act &cross_conn_det_sus
+			&pri_tlmm_lines_sus &pri_tlmm_ws_sus
+			&cdc_dmic_lines_sus &cdc_dmic_clk_sus>;
+	pinctrl-2 = <&cdc_pdm_lines_sus
+			&cdc_pdm_lines_2_sus &cross_conn_det_act
+			&pri_tlmm_lines_sus &pri_tlmm_ws_sus
+			&cdc_dmic_lines_sus &cdc_dmic_clk_sus>;
+	pinctrl-3 = <&cdc_pdm_lines_act
+			&cdc_pdm_lines_2_act &cross_conn_det_act
+			&pri_tlmm_lines_sus &pri_tlmm_ws_sus
+			&cdc_dmic_lines_sus &cdc_dmic_clk_sus>;
+	pinctrl-4 = <&cdc_pdm_lines_sus
+			&cdc_pdm_lines_2_sus &cross_conn_det_sus
+			&pri_tlmm_lines_act &pri_tlmm_ws_act
+			&cdc_dmic_lines_sus &cdc_dmic_clk_sus>;
+	pinctrl-5 = <&cdc_pdm_lines_act
+			&cdc_pdm_lines_2_act &cross_conn_det_sus
+			&pri_tlmm_lines_act &pri_tlmm_ws_act
+			&cdc_dmic_lines_sus &cdc_dmic_clk_sus>;
+	pinctrl-6 = <&cdc_pdm_lines_sus
+			&cdc_pdm_lines_2_sus &cross_conn_det_act
+			&pri_tlmm_lines_act &pri_tlmm_ws_act
+			&cdc_dmic_lines_sus &cdc_dmic_clk_sus>;
+	pinctrl-7 = <&cdc_pdm_lines_act
+			&cdc_pdm_lines_2_act &cross_conn_det_act
+			&pri_tlmm_lines_act &pri_tlmm_ws_act
+			&cdc_dmic_lines_sus &cdc_dmic_clk_sus>;
+	pinctrl-8 = <&cdc_pdm_lines_sus
+			&cdc_pdm_lines_2_sus &cross_conn_det_sus
+			&pri_tlmm_lines_sus &pri_tlmm_ws_sus
+			&cdc_dmic_lines_act &cdc_dmic_clk_act>;
+	pinctrl-9 = <&cdc_pdm_lines_act
+			&cdc_pdm_lines_2_act &cross_conn_det_sus
+			&pri_tlmm_lines_sus &pri_tlmm_ws_sus
+			&cdc_dmic_lines_act &cdc_dmic_clk_act>;
+	pinctrl-10 = <&cdc_pdm_lines_sus
+			&cdc_pdm_lines_2_sus &cross_conn_det_act
+			&pri_tlmm_lines_sus &pri_tlmm_ws_sus
+			&cdc_dmic_lines_act &cdc_dmic_clk_act>;
+	pinctrl-11 = <&cdc_pdm_lines_act
+			&cdc_pdm_lines_2_act &cross_conn_det_act
+			&pri_tlmm_lines_sus &pri_tlmm_ws_sus
+			&cdc_dmic_lines_act &cdc_dmic_clk_act>;
+	pinctrl-12 = <&cdc_pdm_lines_sus
+			&cdc_pdm_lines_2_sus &cross_conn_det_sus
+			&pri_tlmm_lines_act &pri_tlmm_ws_act
+			&cdc_dmic_lines_act &cdc_dmic_clk_act>;
+	pinctrl-13 = <&cdc_pdm_lines_act
+			&cdc_pdm_lines_2_act &cross_conn_det_sus
+			&pri_tlmm_lines_act &pri_tlmm_ws_act
+			&cdc_dmic_lines_act &cdc_dmic_clk_act>;
+	pinctrl-14 = <&cdc_pdm_lines_sus
+			&cdc_pdm_lines_2_sus &cross_conn_det_act
+			&pri_tlmm_lines_act &pri_tlmm_ws_act
+			&cdc_dmic_lines_act &cdc_dmic_clk_act>;
+	pinctrl-15 = <&cdc_pdm_lines_act
+			&cdc_pdm_lines_2_act &cross_conn_det_act
+			&pri_tlmm_lines_act &pri_tlmm_ws_act
+			&cdc_dmic_lines_act &cdc_dmic_clk_act>;
+};
+
+&i2c_2 {
+	es9218-codec@48 {
+		status = "okay";
+		compatible = "dac,es9218-codec";
+		reg = <0x48>;
+		dac,power-gpio = <&pm8937_gpios 2 0x0>;
+		dac,hph-sw = <&pm8937_gpios 1 0x0>;
+		dac,hifi-ldo-comp = <&pm8937_gpios 7 0x0>;
+		dac,reset-gpio = <&tlmm 50 0x0>;
+	};
+};

@@ -53,8 +53,8 @@
 		use_fw_upgrade = <1>;
 		use_fw_recovery = <1>;
 		use_firmware = <0>;
-		fw_image = "touch/sf3f/synaptics/PLG639-V1.07-PR2566329-DS5.12.4.1.1015-50057187.img",
-				   "touch/sf3f/synaptics/PLG639-V1.07-PR2566329-DS5.12.4.1.1015-50057187-iHex.bin";
+		fw_image = "touch/sf3f/synaptics/PLG639-V0.18-PR2540219-DS5.12.4.1.1015-50057112.img",
+				   "touch/sf3f/synaptics/PLG639-V0.18-PR2540219-DS5.12.4.1.1015-50057112-iHex.bin";
 		panel_spec = "touch/sf3f/sf3f_limit.txt";
 		panel_spec_mfts_folder = "touch/sf3f/sf3f_limit.txt";
 

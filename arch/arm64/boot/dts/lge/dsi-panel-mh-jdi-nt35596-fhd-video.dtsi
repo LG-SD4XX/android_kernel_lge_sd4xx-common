@@ -3146,7 +3146,7 @@
 
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
-		qcom,esd-check-enabled;
+//		qcom,esd-check-enabled;
 		qcom,mdss-dsi-panel-status-command = [06 01 00 01 05 00 02 0A 08];
 		qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-panel-status-check-mode = "reg_read";
@@ -3171,11 +3171,6 @@
 
 		/* KYH 20150904 modified from none to trigger_sw */
 		qcom,mdss-dsi-mdp-trigger = "trigger_sw";
-
-		qcom,mdss-dsi-pan-enable-dynamic-fps;
-		qcom,mdss-dsi-pan-fps-update = "dfps_immediate_porch_mode_vfp";
-		qcom,mdss-dsi-min-refresh-rate = <50>;
-		qcom,mdss-dsi-max-refresh-rate = <60>;
 
 		qcom,cont-splash-enabled;
 		//qcom,mdss-dsi-force-clock-lane-hs;

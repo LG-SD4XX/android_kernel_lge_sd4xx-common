@@ -23,6 +23,9 @@ struct lge_mdss_dsi_ctrl_pdata {
 	/* esc_clk_rate */
 	int esc_clk_rate;
 
+	/* lp11 during lcd power off */
+	char lp11_off;
+
 	/* delay */
 	int pre_on_cmds_delay;
 	int post_ldo_on_delay;
@@ -35,12 +38,16 @@ struct lge_mdss_dsi_ctrl_pdata {
 	/* extra power */
 	struct dss_module_power extra_power_data;
 	int extra_power_state;
+
+	/* multi support panel */
+	int panel_id;
 };
 
 #define LGE_MDELAY(m) do { if ( m > 0) usleep_range((m)*1000,(m)*1000); } while(0)
 #define LGE_OVERRIDE_VALUE(x, v) do { if ((v)) (x) = (v); } while(0)
 
 #include "lge/lge_mdss_dsi_panel.h"
+#include "lge/lge_mdss_sysfs.h"
 
 int lge_mdss_dsi_parse_extra_params(struct platform_device *ctrl_pdev,
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata);

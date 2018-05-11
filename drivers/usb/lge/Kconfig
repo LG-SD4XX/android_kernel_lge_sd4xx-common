@@ -1,3 +1,15 @@
+config LGE_USB_MOISTURE_DETECT
+	bool "enable usb moisture detect"
+	default n
+	help
+	  usb moisture detect
+
+config LGE_USB_MOISTURE_CORROSION_DETECT
+        bool "enable usb moisture corrosion detect"
+        default n
+        help
+          usb moisture corrosion detect
+
 config LGE_USB_HOST_SUPPORT_LIST_HID
 	bool "enable usb host compatible hid devices list"
 	default n
@@ -163,7 +175,7 @@ config LGE_USB_HOST_SUPPORT_LIST_VIDEO
 	select USB_VIDEO_CLASS
 	select USB_VIDEO_CLASS_INPUT_EVDEV
 	help
-	  video devices include specials, change to yes here to support high
+	  sound devices include specials, change to yes here to support high
 	  compatiblily usb host devices
 
 config LGE_USB_HOST_SUPPORT_LIST_STORAGE
@@ -186,7 +198,7 @@ config LGE_USB_HOST_SUPPORT_LIST_STORAGE
 #	select USB_STORAGE_ENE_UB6250
 #	select USB_UAS
 	help
-	  storage devices include specials, change to yes here to support high
+	  sound devices include specials, change to yes here to support high
 	  compatiblily usb host devices
 
 config LGE_USB_HOST_SUPPORT_LIST_SERIAL

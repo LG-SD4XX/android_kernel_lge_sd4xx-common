@@ -83,7 +83,7 @@ void kgsl_dump_syncpoints(struct kgsl_device *device,
 			spin_lock_irqsave(&event->handle_lock, flags);
 
 			if (event->handle)
-				dev_err(device->dev, "  fence: [%pK] %s\n",
+				dev_err(device->dev, "  fence: [%p] %s\n",
 					event->handle->fence,
 					event->handle->name);
 			else
@@ -133,9 +133,12 @@ static void _kgsl_cmdbatch_timer(unsigned long data)
 			spin_lock_irqsave(&event->handle_lock, flags);
 
 			if (event->handle != NULL) {
-				dev_err(device->dev, "       [%d] FENCE %s\n",
-				i, event->handle->fence ?
-					event->handle->fence->name : "NULL");
+				dev_err(device->dev, " [%d] [%p]FENCE %s\n",
+					i, (event->handle->fence ?
+					event->handle->fence : NULL),
+					(event->handle->fence ?
+					event->handle->fence->name : "NULL"));
+
 				kgsl_sync_fence_log(event->handle->fence);
 			}
 

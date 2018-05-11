@@ -599,7 +599,6 @@ static ssize_t show_sd(struct device *dev, char *buf)
 	}
 
 	mutex_lock(&ts->lock);
-	synaptics_irq_clear(dev);
 	touch_interrupt_control(ts->dev, INTERRUPT_DISABLE);
 	/* file create , time log */
 	write_file(dev, "\nShow_sd Test Start", TIME_INFO_SKIP);
@@ -621,7 +620,6 @@ static ssize_t show_sd(struct device *dev, char *buf)
 	TOUCH_I("Show_sd Test End\n");
 	log_file_size_check(dev);
 	touch_interrupt_control(ts->dev, INTERRUPT_ENABLE);
-	synaptics_irq_clear(dev);
 	mutex_unlock(&ts->lock);
 
 	return ret;

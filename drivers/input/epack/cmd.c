@@ -11,34 +11,43 @@
 #include "I2CMain.h"
 #include "cmd.h"
 
+u8 *imageBegin;
+u8 *imageEnd;
+uint8_t rcvbuf[PACKET_SIZE];
+uint8_t sendbuf[PACKET_SIZE];
+uint8_t aprom_buf[PAGE_SIZE_EPACK];
+uint8_t FileBuffer[FILE_BUFFER];
+//uint8_t FileBuffer2[FILE_BUFFER];
+
+
 unsigned int g_packno = 1;
 unsigned short gcksum;
 
 void print_array(u8* buf,int size)
 {
-	int i=0;
-	for(i=0;i<size;i++)
-		pr_err("%x ", buf[i]);
+		int i=0;
+	    for(i=0;i<size;i++)
+        pr_err("%x ", buf[i]);
 	return;
 }
 
 void print_array2(const u8* buf,int size)
 {
-	int i=0;
-	for(i=0;i<size;i++)
-		pr_err("%x ", buf[i]);
+		int i=0;
+	    for(i=0;i<size;i++)
+        pr_err("%x ", buf[i]);
 	return;
 }
 
 int check_sum (unsigned char *buf, int len)
 {
-	int i;
-	int c;
+    int i;
+    int c;
 
-	for (c=0, i=0; i < len; i++) {
-		c += buf[i];
-	}
-	return (c);
+    for (c=0, i=0; i < len; i++) {
+        c += buf[i];
+    }
+    return (c);
 }
 
 static int CalCheckSum(u8 *buf, int len)
@@ -67,22 +76,14 @@ bool cmd_sync_packno(struct i2c_client *client)
 {
 	bool result;
 	unsigned long cmdData;
-	struct epack_dev_data *epack = i2c_get_clientdata(client);
-
-	if(epack == NULL)
-	{
-		epack_log("%s: epack struct is null\n", __func__);
-		return 0;
-	}
 	g_packno=1;
 	epack_log("[CMD]%s start \n",__func__);
 	//sync send&recv packno
-
-	memset(epack->sendbuf, 0, PACKET_SIZE); // 0 reset, PACKET_SIZE=64
+	memset(sendbuf, 0, PACKET_SIZE); // 0 reset, PACKET_SIZE=64
 	cmdData = CMD_SYNC_PACKNO;//CMD_SYNC_PACKNO
-	memcpy(epack->sendbuf+0, &cmdData, 4);
-	memcpy(epack->sendbuf+4, &g_packno, 4);
-	memcpy(epack->sendbuf+8, &g_packno, 4);
+	memcpy(sendbuf+0, &cmdData, 4);
+	memcpy(sendbuf+4, &g_packno, 4);
+	memcpy(sendbuf+8, &g_packno, 4);
 	g_packno++;
 
 	result = send_data(client);
@@ -99,22 +100,12 @@ bool cmd_hw_version(struct i2c_client *client, int flag, unsigned int *hwver)
 	bool result;
 	unsigned long cmdData;
 	unsigned int lhwver;
-	struct epack_dev_data *epack = i2c_get_clientdata(client);
-
-	if(epack == NULL)
-	{
-		epack_log("%s: epack struct is null\n", __func__);
-		return 0;
-	}
 	g_packno=1;
 	epack_log("[CMD]%s start \n",__func__);
-
-	memset(epack->sendbuf, 0, PACKET_SIZE);
-
+	memset(sendbuf, 0, PACKET_SIZE);
 	cmdData = CMD_GET_HWVER;
-
-	memcpy(epack->sendbuf+0, &cmdData, 4);
-	memcpy(epack->sendbuf+4, &g_packno, 4);
+	memcpy(sendbuf+0, &cmdData, 4);
+	memcpy(sendbuf+4, &g_packno, 4);
 	g_packno++;
 
 	result = send_data(client);
@@ -124,7 +115,7 @@ bool cmd_hw_version(struct i2c_client *client, int flag, unsigned int *hwver)
 	result = RcvData(client);
 	if(result > 0)
 	{
-		memcpy(&lhwver, epack->rcvbuf+8, 1);
+		memcpy(&lhwver, rcvbuf+8, 4);
 		*hwver = lhwver;
 	}
 
@@ -138,19 +129,12 @@ bool cmd_fw_version(struct i2c_client *client, int flag, unsigned int *fwver)
 	bool result;
 	unsigned long cmdData;
 	unsigned int lfwver;
-	struct epack_dev_data *epack = i2c_get_clientdata(client);
-
-	if(epack == NULL)
-	{
-		epack_log("%s: epack struct is null\n", __func__);
-		return 0;
-	}
 	g_packno=1;
 	epack_log("[CMD]%s start \n",__func__);
-	memset(epack->sendbuf, 0, PACKET_SIZE);
+	memset(sendbuf, 0, PACKET_SIZE);
 	cmdData = CMD_GET_FWVER;
-	memcpy(epack->sendbuf+0, &cmdData, 4);
-	memcpy(epack->sendbuf+4, &g_packno, 4);
+	memcpy(sendbuf+0, &cmdData, 4);
+	memcpy(sendbuf+4, &g_packno, 4);
 	g_packno++;
 
 	result = send_data(client);
@@ -160,7 +144,7 @@ bool cmd_fw_version(struct i2c_client *client, int flag, unsigned int *fwver)
 	result = RcvData(client);
 	if(result > 0)
 	{
-		memcpy(&lfwver, epack->rcvbuf+8, 1);
+		memcpy(&lfwver, rcvbuf+8, 4);
 		*fwver = lfwver;
 	}
 
@@ -172,24 +156,17 @@ bool cmd_run_cmd(struct i2c_client *client,unsigned int  cmd, int *data)
 {
 	bool result;
 	unsigned int cmdData;
-	struct epack_dev_data *epack = i2c_get_clientdata(client);
-
-	if(epack == NULL)
-	{
-		epack_log("%s: epack struct is null\n", __func__);
-		return 0;
-	}
 	g_packno=1;
 	epack_log("[CMD]%s start cmd : 0x%x\n",__func__, cmd);
 	//sync send&recv packno
-	memset(epack->sendbuf, 0, PACKET_SIZE);
+	memset(sendbuf, 0, PACKET_SIZE);
 	cmdData = cmd;
-	memcpy(epack->sendbuf+0, &cmdData, 4);
-	memcpy(epack->sendbuf+4, &g_packno, 4);
+	memcpy(sendbuf+0, &cmdData, 4);
+	memcpy(sendbuf+4, &g_packno, 4);
 	if(cmd == CMD_WRITE_CHECKSUM)
 	{
-		memcpy(epack->sendbuf+8, &data[0], 4);
-		memcpy(epack->sendbuf+12, &data[1], 4);
+		memcpy(sendbuf+8, &data[0], 4);
+		memcpy(sendbuf+12, &data[1], 4);
 	}
 	g_packno++;
 
@@ -206,7 +183,7 @@ bool cmd_run_cmd(struct i2c_client *client,unsigned int  cmd, int *data)
 		{
 			if(cmd == CMD_GET_FLASHMODE)
 			{
-				memcpy(&cmdData, epack->rcvbuf+8, 4);
+				memcpy(&cmdData, rcvbuf+8, 4);
 				*data = cmdData;
 			}
 		}
@@ -225,20 +202,13 @@ bool cmd_get_deviceID(struct i2c_client *client, int flag, unsigned int *devid)
 	bool result;
 	unsigned long cmdData;
 	unsigned int ldevid;
-	struct epack_dev_data *epack = i2c_get_clientdata(client);
-
-	if(epack == NULL)
-	{
-		epack_log("%s: epack struct is null\n", __func__);
-		return 0;
-	}
 	g_packno=1;
 	epack_log("[CMD]%s start \n",__func__);
 	//sync send&recv packno
-	memset(epack->sendbuf, 0, PACKET_SIZE);
+	memset(sendbuf, 0, PACKET_SIZE);
 	cmdData = CMD_GET_DEVICEID;
-	memcpy(epack->sendbuf+0, &cmdData, 4);
-	memcpy(epack->sendbuf+4, &g_packno, 4);
+	memcpy(sendbuf+0, &cmdData, 4);
+	memcpy(sendbuf+4, &g_packno, 4);
 	g_packno++;
 
 	result = send_data(client);
@@ -248,7 +218,7 @@ bool cmd_get_deviceID(struct i2c_client *client, int flag, unsigned int *devid)
 	result = RcvData(client);
 	if(result>0)
 		{
-			memcpy(&ldevid, epack->rcvbuf+8, 4);
+			memcpy(&ldevid, rcvbuf+8, 4);
 			*devid = ldevid;
 		}
 
@@ -260,20 +230,13 @@ bool cmd_get_config(struct i2c_client *client, int flag, unsigned int *config)
 	bool result;
 	unsigned long cmdData;
 	unsigned int lconfig[2];
-	struct epack_dev_data *epack = i2c_get_clientdata(client);
-
-	if(epack == NULL)
-	{
-		epack_log("%s: epack struct is null\n", __func__);
-		return 0;
-	}
 	g_packno=1;
 	epack_log("[CMD]%s start \n",__func__);
 	//sync send&recv packno
-	memset(epack->sendbuf, 0, PACKET_SIZE);
+	memset(sendbuf, 0, PACKET_SIZE);
 	cmdData = CMD_READ_CONFIG;
-	memcpy(epack->sendbuf+0, &cmdData, 4);
-	memcpy(epack->sendbuf+4, &g_packno, 4);
+	memcpy(sendbuf+0, &cmdData, 4);
+	memcpy(sendbuf+4, &g_packno, 4);
 	g_packno++;
 
 	result = send_data(client);
@@ -283,8 +246,8 @@ bool cmd_get_config(struct i2c_client *client, int flag, unsigned int *config)
 	result = RcvData(client);
 	if(result>0)
 		{
-		memcpy(&lconfig[0], epack->rcvbuf+8, 4);
-		memcpy(&lconfig[1], epack->rcvbuf+12, 4);
+		memcpy(&lconfig[0], rcvbuf+8, 4);
+		memcpy(&lconfig[1], rcvbuf+12, 4);
 		config[0] = lconfig[0];
 		config[1] = lconfig[1];
 	}
@@ -336,15 +299,6 @@ bool cmd_update_aprom(struct i2c_client *client, int flag, const char *filename,
 	loff_t file_size = 0;
 	const struct firmware *fw;
 	static u8 line[98304] = {0};
-	struct epack_dev_data *epack = i2c_get_clientdata(client);
-	u8 *imageBegin;
-	uint8_t FileBuffer[FILE_BUFFER];
-
-	if(epack == NULL)
-	{
-		epack_log("%s: epack struct is null\n", __func__);
-		return 0;
-	}
 
 	epack_log("[CMD]%s start \n",__func__);
 	if(flag)
@@ -394,16 +348,16 @@ bool cmd_update_aprom(struct i2c_client *client, int flag, const char *filename,
 		}
 
 	// send updata aprom command
-	memset(epack->sendbuf, 0, PACKET_SIZE);
+	memset(sendbuf, 0, PACKET_SIZE);
 	//cmdData = CMD_UPDATE_APROM;//CMD_UPDATE_APROM
 	cmdData = CMD_UPDATE_DATE_FLASH;//CMD_UPDATE_APROM
 
-	memcpy(epack->sendbuf+0, &cmdData, 4);
-	memcpy(epack->sendbuf+4, &g_packno, 4);
+	memcpy(sendbuf+0, &cmdData, 4);
+	memcpy(sendbuf+4, &g_packno, 4);
 	g_packno++;
 	//start address
 	startaddr = 0;
-	memcpy(epack->sendbuf+8, &startaddr, 4);
+	memcpy(sendbuf+8, &startaddr, 4);
 
 	// Try to obtain hFile's size
 	if(flag)
@@ -417,7 +371,7 @@ bool cmd_update_aprom(struct i2c_client *client, int flag, const char *filename,
 			totallen = (fw->size)-2;  // excluding version info
 		}
 	epack_log("imageBegin: %p\n", imageBegin);
-	memcpy(epack->sendbuf+12, &totallen, 4);
+	memcpy(sendbuf+12, &totallen, 4);
 
 	//read data from aprom.bin
 	pos = 0;
@@ -427,7 +381,7 @@ bool cmd_update_aprom(struct i2c_client *client, int flag, const char *filename,
 
 	readcn = FILE_BUFFER;
 	sendcn = PACKET_SIZE - 16;
-	memcpy(epack->sendbuf+16, FileBuffer, sendcn);
+	memcpy(sendbuf+16, FileBuffer, sendcn);
 
 	//send CMD_UPDATE_APROM
 	result = send_data(client);
@@ -444,12 +398,12 @@ bool cmd_update_aprom(struct i2c_client *client, int flag, const char *filename,
 		//WriteFile
 		while(sendcn < readcn)
 		{
-			epack->sendbuf[0] = 0x00;
+			sendbuf[0] = 0x00;
 			cmdData = 0x00000000;//continue
-			memcpy(epack->sendbuf+0, &cmdData, 4);
-			memcpy(epack->sendbuf+4, &g_packno, 4);
+			memcpy(sendbuf+0, &cmdData, 4);
+			memcpy(sendbuf+4, &g_packno, 4);
 			g_packno++;
-			memcpy(epack->sendbuf+8, FileBuffer+sendcn, PACKET_SIZE-8);
+			memcpy(sendbuf+8, FileBuffer+sendcn, PACKET_SIZE-8);
 			result = send_data(client);
 			if(result == 0)
 				return result;
@@ -476,6 +430,7 @@ bool cmd_update_aprom(struct i2c_client *client, int flag, const char *filename,
 		if(readcn)
 			{
 				memcpy(FileBuffer + sendcn, imageBegin+pos, readcn);
+		//memcpy(FileBuffer + sendcn, (char*)FileBuffer2+pos, readcn);
 			}pos += readcn;
 
 		if(sendcn == 0)
@@ -489,7 +444,7 @@ bool cmd_update_aprom(struct i2c_client *client, int flag, const char *filename,
 		sendcn = 0;
 	}
 	epack_log("%s get checksum\n", __func__);
-	memcpy(&get_cksum, epack->rcvbuf+8, 2);
+	memcpy(&get_cksum, rcvbuf+8, 2);
 	lcksum = CalCheckSum((uint8_t*)imageBegin, totallen);
 	if(result > 0)
 	{
@@ -539,7 +494,7 @@ bool cmd_get_pack_voltage(struct epack_dev_data *epack, int *pack_voltage)
 		epack_log("[CMD]%s is failed\n",__func__);
 		return 0;
 	}
-
+	epack_log("[CMD]%s : raw_data 0x%x\n",__func__,value);
 	*pack_voltage = value;
 
 	return 1;
@@ -557,7 +512,7 @@ bool cmd_get_pack_temp(struct epack_dev_data *epack, int *pack_temp)
 		epack_log("[CMD]%s is failed\n",__func__);
 		return 0;
 	}
-
+	epack_log("[CMD]%s : raw_data 0x%x \n",__func__,value);
 	*pack_temp = value;
 
 	return 1;
@@ -575,7 +530,7 @@ bool cmd_get_pack_chg_status(struct epack_dev_data *epack, int *chg_status)
 		epack_log("[CMD]%s is failed\n",__func__);
 		return 0;
 	}
-
+	epack_log("[CMD]%s : raw_data 0x%x \n",__func__,value);
 	*chg_status = value;
 	return 1;
 }
@@ -592,7 +547,7 @@ bool cmd_get_pack_fault_status(struct epack_dev_data *epack, int *fault_status)
 		epack_log("[CMD]%s is failed\n",__func__);
 		return 0;
 	}
-
+	epack_log("[CMD]%s : raw_data 0x%x \n",__func__,value);
 	*fault_status = value;
 	return 1;
 }
@@ -614,7 +569,7 @@ bool cmd_get_pack_output_status(struct epack_dev_data *epack, int *output_status
 		epack_log("[CMD]%s is failed\n",__func__);
 		return 0;
 	}
-
+	epack_log("[CMD]%s : raw_data 0x%x \n",__func__,value);
 	*output_status = value;
 	return 1;
 }

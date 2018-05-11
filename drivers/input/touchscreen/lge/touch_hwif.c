@@ -18,7 +18,6 @@
 #include <linux/gpio.h>
 /*#include <linux/regulator/machine.h>*/
 #include <linux/regulator/consumer.h>
-//#include <soc/qcom/lge/board_lge.h>
 
 /*
  *  Include to touch core Header File
@@ -61,11 +60,6 @@ void touch_gpio_direction_output(int pin, int value)
 
 	if (gpio_is_valid(pin))
 		gpio_direction_output(pin, value);
-}
-
-void touch_gpio_set_pull(int pin, int value)
-{
-	return;
 }
 
 /* -- power -- */
@@ -111,7 +105,7 @@ void touch_power_vdd(struct device *dev, int value)
 	}
 
 	if (ret)
-		TOUCH_E("ret = %d", ret);
+		TOUCH_E("ret = %d\n", ret);
 }
 
 void touch_power_vio(struct device *dev, int value)
@@ -131,7 +125,7 @@ void touch_power_vio(struct device *dev, int value)
 	}
 
 	if (ret)
-		TOUCH_E("ret = %d", ret);
+		TOUCH_E("ret = %d\n", ret);
 }
 
 
@@ -322,7 +316,7 @@ int touch_boot_mode_check(struct device *dev)
 
 	ret = lge_get_factory_boot();
 
-	if (ret != NORMAL_BOOT) {
+	if (ret != TOUCH_NORMAL_BOOT) {
 		switch (atomic_read(&ts->state.mfts)) {
 			case MFTS_NONE :
 				ret = MINIOS_AAT;
@@ -342,25 +336,30 @@ int touch_boot_mode_check(struct device *dev)
 		}
 	}
 	else
-		ret = NORMAL_BOOT;
+		ret = TOUCH_NORMAL_BOOT;
 
 	return ret;
 }
 
-int touch_get_device_type(void)
+/* Function deprecated
+ * lge_get_panel_maker_id();
+ * lge_get_panel();
+ * Using above two function, Configure dualization code each driver side.
+ * Please see the touch_lg4894.c device_init code.
+ *
+enum touch_device_type touch_get_device_type(void)
 {
-	int ret = 0;
+	enum touch_device_type ret = 0;
 
-	ret = lge_get_panel_type();
-	TOUCH_I("%s [lge_get_panel_type] = [%d]\n", __func__, ret);
+	TOUCH_I("%s = [%d]\n", __func__, ret);
 
 	return ret;
 }
+*/
 
 int touch_bus_device_init(struct touch_hwif *hwif, void *driver)
 {
 	TOUCH_TRACE();
-
 
 	if (hwif->bus_type == HWIF_I2C)
 		return touch_i2c_device_init(hwif, driver);

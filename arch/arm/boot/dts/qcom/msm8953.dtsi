@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -287,8 +287,10 @@
 		reg-names = "tsens_physical", "tsens_eeprom_physical";
 		interrupts = <0 184 0>, <0 314 0>;
 		interrupt-names = "tsens-upper-lower", "tsens-critical";
-		qcom,sensors = <16>;
-		qcom,slope = <3200 3200 3200 3200 3200 3200 3200 3200 3200
+		qcom,client-id = <1 2 3 4 5 6 7 8 9 10 11 12 13 14 15>;
+		qcom,sensor-id = <1 2 3 4 5 6 7 8 9 10 11 12 13 14 15>;
+		qcom,sensors = <15>;
+		qcom,slope = <3200 3200 3200 3200 3200 3200 3200 3200
 					3200 3200 3200 3200 3200 3200 3200>;
 		qcom,valid-status-check;
 	};
@@ -871,7 +873,7 @@
 			< 1036800000 2>,
 			< 1401600000 3>,
 			< 1689600000 4>,
-			< 1843200000 5>,
+			< 1804800000 5>,
 			< 1958400000 6>,
 			< 2016000000 7>;
 		qcom,speed0-bin-v0-cci =
@@ -880,7 +882,7 @@
 			<  414720000 2>,
 			<  560640000 3>,
 			<  675840000 4>,
-			<  737280000 5>,
+			<  721920000 5>,
 			<  783360000 6>,
 			<  806400000 7>;
 		qcom,speed2-bin-v0-cl =
@@ -889,7 +891,7 @@
 			< 1036800000 2>,
 			< 1401600000 3>,
 			< 1689600000 4>,
-			< 1843200000 5>,
+			< 1804800000 5>,
 			< 1958400000 6>,
 			< 2016000000 7>;
 		qcom,speed2-bin-v0-cci =
@@ -898,7 +900,7 @@
 			<  414720000 2>,
 			<  560640000 3>,
 			<  675840000 4>,
-			<  737280000 5>,
+			<  721920000 5>,
 			<  783360000 6>,
 			<  806400000 7>;
 		qcom,speed7-bin-v0-cl =
@@ -907,7 +909,7 @@
 			< 1036800000 2>,
 			< 1401600000 3>,
 			< 1689600000 4>,
-			< 1843200000 5>,
+			< 1804800000 5>,
 			< 1958400000 6>,
 			< 2016000000 7>,
 			< 2150400000 8>,
@@ -918,11 +920,25 @@
 			<  414720000 2>,
 			<  560640000 3>,
 			<  675840000 4>,
-			<  737280000 5>,
+			<  721920000 5>,
 			<  783360000 6>,
 			<  806400000 7>,
 			<  860160000 8>,
 			<  883200000 9>;
+		qcom,speed6-bin-v0-cl =
+			<          0 0>,
+			<  652800000 1>,
+			< 1036800000 2>,
+			< 1401600000 3>,
+			< 1689600000 4>,
+			< 1804800000 5>;
+		qcom,speed6-bin-v0-cci =
+			<          0 0>,
+			<  261120000 1>,
+			<  414720000 2>,
+			<  560640000 3>,
+			<  675840000 4>,
+			<  721920000 5>;
 		#clock-cells = <1>;
 	};
 
@@ -946,7 +962,7 @@
 			 < 1036800 >,
 			 < 1401600 >,
 			 < 1689600 >,
-			 < 1843200 >,
+			 < 1804800 >,
 			 < 1958400 >,
 			 < 2016000 >,
 			 < 2150400 >,
@@ -1008,7 +1024,7 @@
 			 < 1036800  3221>,
 			 < 1401600  5859>,
 			 < 1689600  6445>,
-			 < 1843200  7104>,
+			 < 1804800  7104>,
 			 < 1958400  7104>,
 			 < 2208000  7104>;
 		};
@@ -2006,7 +2022,6 @@
 		interrupt-names = "hs_phy_irq", "ss_phy_irq", "pwr_event_irq";
 
 		USB3_GDSC-supply = <&gdsc_usb30>;
-		vbus_dwc3-supply = <&smbcharger_charger_otg>;
 		qcom,usb-dbm = <&dbm_1p5>;
 		qcom,msm-bus,name = "usb3";
 		qcom,msm-bus,num-cases = <2>;
@@ -2282,7 +2297,6 @@
 #include "msm-pm8953-rpm-regulator.dtsi"
 #include "msm-pm8953.dtsi"
 #include "msm8953-regulator.dtsi"
-#include "msm-pmi8950.dtsi"
 #include "msm-audio.dtsi"
 #include "msm8953-audio.dtsi"
 #include "msm-gdsc-8916.dtsi"

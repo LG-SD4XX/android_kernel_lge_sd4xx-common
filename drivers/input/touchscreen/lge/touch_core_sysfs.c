@@ -27,9 +27,7 @@
 static char ime_str[3][8] = {"OFF", "ON", "SWYPE"};
 static char incoming_call_str[3][8] = {"IDLE", "RINGING", "OFFHOOK"};
 static char mfts_str[4][8] = {"NONE", "FOLDER", "FLAT", "CURVED"};
-int mfts_lpwg = 0;
-int mfts_lpwg_on = 0;
-
+int mfts_lpwg;
 static ssize_t show_platform_data(struct device *dev, char *buf)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
@@ -48,7 +46,8 @@ static ssize_t show_platform_data(struct device *dev, char *buf)
 	TOUCH_SHOW(ret, buf, "\t%25s = %d\n", "max_y", ts->caps.max_y);
 	TOUCH_SHOW(ret, buf, "\t%25s = %d\n", "max_pressure",
 		   ts->caps.max_pressure);
-	TOUCH_SHOW(ret, buf, "\t%25s = %d\n", "max_width", ts->caps.max_width);
+	TOUCH_SHOW(ret, buf, "\t%25s = %d\n", "max_width_major", ts->caps.max_width_major);
+	TOUCH_SHOW(ret, buf, "\t%25s = %d\n", "max_width_minor", ts->caps.max_width_minor);
 	TOUCH_SHOW(ret, buf, "\t%25s = %d\n", "max_orientation",
 		   ts->caps.max_orientation);
 	TOUCH_SHOW(ret, buf, "\t%25s = %d\n", "max_id", ts->caps.max_id);
@@ -59,14 +58,10 @@ static ssize_t show_platform_data(struct device *dev, char *buf)
 
 	TOUCH_SHOW(ret, buf, "role:\n");
 	TOUCH_SHOW(ret, buf, "\t%25s = %d\n", "use_lpwg", ts->role.use_lpwg);
-	TOUCH_SHOW(ret, buf, "\t%25s = %d\n", "use_firmware",
-		   ts->role.use_firmware);
 	TOUCH_SHOW(ret, buf, "\t%25s = %d\n", "hide_coordinate",
 		   ts->role.hide_coordinate);
 	TOUCH_SHOW(ret, buf, "\t%25s = %d\n", "use_fw_upgrade",
 		   ts->role.use_fw_upgrade);
-	TOUCH_SHOW(ret, buf, "\t%25s = %d\n", "use_fw_recovery",
-		   ts->role.use_fw_recovery);
 
 	TOUCH_SHOW(ret, buf, "power:\n");
 	TOUCH_SHOW(ret, buf, "\t%25s = %d\n", "vdd-gpio", ts->vdd_pin);
@@ -203,29 +198,6 @@ static ssize_t store_lpwg_notify(struct device *dev,
 	return count;
 }
 
-/* Sysfs - tap_to_wake (Low Power Wake-up Gesture Compatibility device)
- *
- * write
- * 0 : DISABLE
- * 1 : ENABLE
- */
-static ssize_t store_tap_to_wake(struct device *dev, const char *buf, size_t count)
-{
-    struct touch_core_data *ts = to_touch_core(dev);
-    int status = 0;
-    
-    sscanf(buf, "%d", &status);
-    
-    if (ts->driver->lpwg) {
-        mutex_lock(&ts->lock);
-        TOUCH_I("%s : TAP2WAKE: %s\n", __func__, (status) ? "Enabled" : "Disabled");
-        ts->driver->lpwg(ts->dev, 3, status);
-        mutex_unlock(&ts->lock);
-    }
-   
-    return count;
-}
-
 static ssize_t show_lockscreen_state(struct device *dev, char *buf)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
@@ -346,43 +318,6 @@ static ssize_t store_quick_cover_state(struct device *dev,
 	return count;
 }
 
-static ssize_t store_use_quick_window(struct device *dev,
-		const char *buf, size_t count)
-{
-	int value = 0;
-	struct touch_core_data *ts = to_touch_core(dev);
-
-	TOUCH_TRACE();
-
-	if (sscanf(buf, "%d", &value) <= 0)
-		return count;
-
-	if ((value == 1) && (ts->use_qcover == COVER_SETTING_OFF))
-		ts->use_qcover = COVER_SETTING_ON;
-	else if ((value == 0) && (ts->use_qcover == COVER_SETTING_ON))
-		ts->use_qcover = COVER_SETTING_OFF;
-	else
-		return count;
-
-	TOUCH_I("quick cover setting = %s\n",
-		(ts->use_qcover == COVER_SETTING_ON) ? "ON" : "OFF");
-
-	return count;
-}
-
-static ssize_t show_use_quick_window(struct device *dev, char *buf)
-{
-	struct touch_core_data *ts = to_touch_core(dev);
-	int ret = 0;
-
-	TOUCH_TRACE();
-
-	ret = snprintf(buf, PAGE_SIZE, "%s : quick cover setting %s!(%d)\n", __func__,
-		(ts->use_qcover == COVER_SETTING_ON) ? "ON" : "OFF", ts->use_qcover);
-
-	return ret;
-}
-
 static ssize_t show_incoming_call_state(struct device *dev, char *buf)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
@@ -422,96 +357,6 @@ static ssize_t store_incoming_call_state(struct device *dev,
 
 		TOUCH_I("%s : %s(%d)\n", __func__,
 				incoming_call_str[value], value);
-	} else {
-		TOUCH_I("%s : Unknown %d\n", __func__, value);
-	}
-
-	return count;
-}
-
-static ssize_t show_qmemo_state(struct device *dev, char *buf)
-{
-	struct touch_core_data *ts = to_touch_core(dev);
-	int value = 0;
-	int ret = 0;
-
-	TOUCH_TRACE();
-
-	value = atomic_read(&ts->state.qmemo);
-
-	ret = snprintf(buf, PAGE_SIZE, "%s : %s(%d)\n", __func__,
-		value ? "Running" : "Not Running", value);
-
-	return ret;
-}
-
-static ssize_t store_qmemo_state(struct device *dev,
-		const char *buf, size_t count)
-{
-	int value = 0;
-	int ret = 0;
-	struct touch_core_data *ts = to_touch_core(dev);
-
-	TOUCH_TRACE();
-
-	if (sscanf(buf, "%d", &value) <= 0)
-		return count;
-
-	if (value == QMEMO_NOT_RUNNING || value == QMEMO_RUNNING) {
-		if (atomic_read(&ts->state.qmemo) == value)
-			return count;
-
-		atomic_set(&ts->state.qmemo, value);
-
-		ret = touch_blocking_notifier_call(NOTIFY_QMEMO_STATE,
-					&ts->state.qmemo);
-		TOUCH_I("%s : %s(%d)\n", __func__,
-				value ? "Running" : "Not Running", value);
-	} else {
-		TOUCH_I("%s : Unknown %d\n", __func__, value);
-	}
-
-	return count;
-}
-
-static ssize_t show_pmemo_state(struct device *dev, char *buf)
-{
-	struct touch_core_data *ts = to_touch_core(dev);
-	int value = 0;
-	int ret = 0;
-
-	TOUCH_TRACE();
-
-	value = atomic_read(&ts->state.pmemo);
-
-	ret = snprintf(buf, PAGE_SIZE, "%s : %s(%d)\n", __func__,
-		value ? "Running" : "Not Running", value);
-
-	return ret;
-}
-
-static ssize_t store_pmemo_state(struct device *dev,
-		const char *buf, size_t count)
-{
-	int value = 0;
-	int ret = 0;
-	struct touch_core_data *ts = to_touch_core(dev);
-
-	TOUCH_TRACE();
-
-	if (sscanf(buf, "%d", &value) <= 0)
-		return count;
-
-	if (value == PMEMO_NOT_RUNNING || value == PMEMO_RUNNING) {
-		if (atomic_read(&ts->state.pmemo) == value)
-			return count;
-
-		atomic_set(&ts->state.pmemo, value);
-
-		ret = touch_blocking_notifier_call(NOTIFY_PMEMO_STATE,
-					&ts->state.pmemo);
-		TOUCH_I("%s : %s(%d)\n", __func__,
-				value ? "Running" : "Not Running", value);
 	} else {
 		TOUCH_I("%s : Unknown %d\n", __func__, value);
 	}
@@ -581,6 +426,7 @@ static ssize_t store_mfts_state(struct device *dev,
 		TOUCH_I("%s : Unknown %d\n", __func__, value);
 	}
 
+	ts->boot_mode = touch_boot_mode_check(ts->dev);
 	return count;
 }
 
@@ -607,7 +453,7 @@ static ssize_t store_mfts_lpwg(struct device *dev,
 	if (sscanf(buf, "%d", &value) <= 0)
 		return count;
 
-	ts->role.mfts_lpwg = mfts_lpwg_on = value;
+	ts->role.mfts_lpwg = value;
 	mfts_lpwg = value;
 	TOUCH_I("mfts_lpwg:%d\n", ts->role.mfts_lpwg);
 
@@ -679,7 +525,8 @@ static ssize_t store_debug_tool_state(struct device *dev,
 		(data == DEBUG_TOOL_ENABLE) ?
 		"Debug Tool Enabled" : "Debug Tool Disabled");
 	} else {
-		TOUCH_I("%s : Unknown debug tool set value %d\n", __func__, data);
+		TOUCH_I("%s : Unknown debug tool set value %d\n",
+			__func__, data);
 	}
 
 	return count;
@@ -717,7 +564,8 @@ static ssize_t store_debug_option_state(struct device *dev,
 		TOUCH_I("%s : Input masking value = %d\n",
 			__func__, new_mask);
 	} else {
-		TOUCH_I("%s : Unknown debug option set value %d\n", __func__, new_mask);
+		TOUCH_I("%s : Unknown debug option set value %d\n",
+			__func__, new_mask);
 	}
 
 	data[0] = new_mask ^ old_mask; //Changed mask
@@ -728,6 +576,7 @@ static ssize_t store_debug_option_state(struct device *dev,
 	return count;
 }
 
+/*
 #if defined(CONFIG_LGE_MODULE_DETECT)
 static ssize_t show_module_id(struct device *dev, char *buf)
 {
@@ -737,23 +586,19 @@ static ssize_t show_module_id(struct device *dev, char *buf)
 
 	return ret;
 }
-#endif /* CONFIG_LGE_MODULE_DETECT */
+#endif CONFIG_LGE_MODULE_DETECT */
 
 static TOUCH_ATTR(platform_data, show_platform_data, NULL);
 static TOUCH_ATTR(fw_upgrade, show_upgrade, store_upgrade);
 static TOUCH_ATTR(lpwg_data, show_lpwg_data, store_lpwg_data);
 static TOUCH_ATTR(lpwg_notify, NULL, store_lpwg_notify);
-static TOUCH_ATTR(tap_to_wake, NULL, store_tap_to_wake);
 static TOUCH_ATTR(keyguard,
 	show_lockscreen_state, store_lockscreen_state);
 static TOUCH_ATTR(ime_status, show_ime_state, store_ime_state);
 static TOUCH_ATTR(quick_cover_status,
 	show_quick_cover_state, store_quick_cover_state);
-static TOUCH_ATTR(use_quick_window, show_use_quick_window, store_use_quick_window);
 static TOUCH_ATTR(incoming_call,
 	show_incoming_call_state, store_incoming_call_state);
-static TOUCH_ATTR(qmemo_status, show_qmemo_state, store_qmemo_state);
-static TOUCH_ATTR(pmemo_status, show_pmemo_state, store_pmemo_state);
 static TOUCH_ATTR(firmware, show_version_info, NULL);
 static TOUCH_ATTR(version, show_version_info, NULL);
 static TOUCH_ATTR(testmode_ver, show_atcmd_version_info, NULL);
@@ -762,24 +607,22 @@ static TOUCH_ATTR(mfts_lpwg, show_mfts_lpwg, store_mfts_lpwg);
 static TOUCH_ATTR(sp_link_touch_off,
 	show_sp_link_touch_off, store_sp_link_touch_off);
 static TOUCH_ATTR(debug_tool, show_debug_tool_state, store_debug_tool_state);
-static TOUCH_ATTR(debug_option, show_debug_option_state, store_debug_option_state);
+static TOUCH_ATTR(debug_option, show_debug_option_state,
+				store_debug_option_state);
+/*
 #if defined(CONFIG_LGE_MODULE_DETECT)
 static TOUCH_ATTR(module_id, show_module_id, NULL);
-#endif /* CONFIG_LGE_MODULE_DETECT */
+#endif CONFIG_LGE_MODULE_DETECT */
 
 static struct attribute *touch_attribute_list[] = {
 	&touch_attr_platform_data.attr,
 	&touch_attr_fw_upgrade.attr,
 	&touch_attr_lpwg_data.attr,
 	&touch_attr_lpwg_notify.attr,
-    &touch_attr_tap_to_wake.attr,
 	&touch_attr_keyguard.attr,
 	&touch_attr_ime_status.attr,
 	&touch_attr_quick_cover_status.attr,
-	&touch_attr_use_quick_window.attr,
 	&touch_attr_incoming_call.attr,
-	&touch_attr_qmemo_status.attr,
-	&touch_attr_pmemo_status.attr,
 	&touch_attr_firmware.attr,
 	&touch_attr_version.attr,
 	&touch_attr_testmode_ver.attr,
@@ -788,9 +631,10 @@ static struct attribute *touch_attribute_list[] = {
 	&touch_attr_sp_link_touch_off.attr,
 	&touch_attr_debug_tool.attr,
 	&touch_attr_debug_option.attr,
+/*
 #if defined(CONFIG_LGE_MODULE_DETECT)
 	&touch_attr_module_id.attr,
-#endif /* CONFIG_LGE_MODULE_DETECT */
+#endif CONFIG_LGE_MODULE_DETECT */
 	NULL,
 };
 

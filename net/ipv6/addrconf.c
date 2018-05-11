@@ -3343,11 +3343,28 @@ static void addrconf_dad_kick(struct inet6_ifaddr *ifp)
 	unsigned long rand_num;
 	struct inet6_dev *idev = ifp->idev;
 
-	if (ifp->flags & IFA_F_OPTIMISTIC)
+	if (ifp->flags & IFA_F_OPTIMISTIC) {
 		rand_num = 0;
-	else
+		printk("addrconf_dad_kick no wait rand_num 0\n");
+	}
+	else {
 		rand_num = prandom_u32() % (idev->cnf.rtr_solicit_delay ? : 1);
-
+        printk("addrconf_dad_kick wait rand_num\n");
+#ifdef CONFIG_IPV6_OPTIMISTIC_DAD
+#ifdef CONFIG_LGP_DATA_IMPROVE_QCT_EPDG_CONNECTION_TIME2
+        if(idev->dev != NULL && strlen(idev->dev->name)>5 && !strncmp(idev->dev->name,"rmnet",5)){
+            printk("addrconf_dad_kick it's rmnet!\n");
+            if(ifp && !dev_net(idev->dev)->ipv6.devconf_all->forwarding){
+                printk("addrconf_dad_kick forwarding disabled\n");
+                if(ipv6_addr_type(&(ifp->addr)) & IPV6_ADDR_LINKLOCAL){
+                    printk("addrconf_dad_kick rmnet linklocal case. set rand_num 0 !!\n");
+                    rand_num = 0;
+                }
+            }
+        }
+#endif
+#endif
+    }
 	ifp->dad_probes = idev->cnf.dad_transmits;
 // LGE_CHANGE_S, [LGE_DATA][LGP_DATA_TCPIP_SLAAC_IPV6_ALLOCATION_BOOSTER], heeyeon.nah@lge.com, 2013-05-21
 #ifdef CONFIG_LGP_DATA_TCPIP_SLAAC_IPV6_ALLOCATION_BOOSTER

@@ -35,18 +35,9 @@ endif
 
 ifdef CONFIG_MACH_MSM8940_TF8_TMO_US
 	fw-shipped-$(CONFIG_SENSOR_ATMF04) += atmf04/atmf04_V0.66.fw
-	fw-shipped-$(CONFIG_SENSOR_ATMF04) += atmf04/atmf04_V0.70.fw
-endif
-ifdef CONFIG_MACH_MSM8940_TF8_LGU_KR
-	fw-shipped-$(CONFIG_SENSOR_ATMF04) += atmf04/atmf04_V0.66.fw
-	fw-shipped-$(CONFIG_SENSOR_ATMF04) += atmf04/atmf04_V0.70.fw
-endif
-ifdef CONFIG_MACH_MSM8940_TF8_GLOBAL_CA
-	fw-shipped-$(CONFIG_SENSOR_ATMF04) += atmf04/atmf04_V0.66.fw
-	fw-shipped-$(CONFIG_SENSOR_ATMF04) += atmf04/atmf04_V0.70.fw
 endif
 
-ifdef CONFIG_INPUT_EPACK
+ifdef CONFIG_MACH_MSM8940_TF8_TMO_US
 epack_fw_file := $(wildcard $(srctree)/firmware/epack/tf8/*)
 epack_firmware := $(subst $(srctree)/firmware/,,$(epack_fw_file))
 fw-shipped-$(CONFIG_INPUT_EPACK) += $(epack_firmware)

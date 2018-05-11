@@ -50,6 +50,8 @@
 
 #define  FC8180_FREQ_XTAL  BBM_XTAL_FREQ
 
+extern unsigned int freq_xtal;
+
 /*static OAL_SEMAPHORE hBbmMutex;*/
 
 static s32 WaitForXfer(HANDLE handle)
@@ -191,8 +193,9 @@ static s32 fci_i2c_transfer(HANDLE handle, u8 cmd_type, u8 chip, u8 addr[],
 
 s32 fci_i2c_init(HANDLE handle, s32 speed, s32 slaveaddr)
 {
-	u16 r = FC8180_FREQ_XTAL % (5 * speed);
-	u16 pr = (FC8180_FREQ_XTAL - r) / (5 * speed) - 1;
+
+	u16 r = freq_xtal % (5 * speed);
+	u16 pr = (freq_xtal - r) / (5 * speed) - 1;
 
 	if (((5 * speed) >> 1) <= r)
 		pr++;

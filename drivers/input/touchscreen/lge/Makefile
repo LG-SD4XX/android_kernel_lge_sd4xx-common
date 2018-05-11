@@ -26,7 +26,7 @@ obj-$(CONFIG_LGE_TOUCH_CORE_BASE)	+= touch_spi.o
 obj-$(CONFIG_LGE_TOUCH_CORE_BASE)	+= touch_model.o
 obj-$(CONFIG_LGE_TOUCH_CORE_BASE)	+= touch_notify.o
 
-obj-$(CONFIG_LGE_TOUCH_CORE)		+= touch_hwif.o
+obj-$(CONFIG_LGE_TOUCH_CORE_QCT)	+= touch_hwif.o
 obj-$(CONFIG_LGE_TOUCH_CORE_MTK)	+= touch_hwif_mtk.o
 obj-$(CONFIG_LGE_TOUCH_CORE_MTK_LEGACY)	+= touch_hwif_mtk_legacy.o
 

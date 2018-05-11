@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -74,7 +74,7 @@
 #define QPNP_HAP_VMAX_MIN_MV		116
 /* LGE Add DIRECT MODE Over Drive, Reverse Brake voltage */
 #ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
-#define QPNP_HAP_VMAX_MAX_MV		2784   //2784 (vmax after overdrive)
+#define QPNP_HAP_VMAX_MAX_MV		2088   //(vmax after overdrive)
 #else /* QCT original */
 #define QPNP_HAP_VMAX_MAX_MV		3596
 #endif
@@ -145,7 +145,7 @@
 #define QPNP_HAP_CYCLS			5
 #define QPNP_TEST_TIMER_MS		5
 #ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
-#define QPNP_HAP_OV_RB_MV 2668 //Overdrive voltage
+#define QPNP_HAP_OV_RB_MV 2900 //Overdrive voltage
 #endif
 
 #define QPNP_HAP_TIME_REQ_FOR_BACK_EMF_GEN 20000
@@ -365,6 +365,7 @@ struct qpnp_hap {
 	u8 lra_res_cal_period;
 	u8 sc_duration;
 	u8 ext_pwm_dtest_line;
+	bool vcc_pon_enabled;
 	bool state;
 	bool use_play_irq;
 	bool use_sc_irq;
@@ -530,7 +531,7 @@ static int qpnp_hap_play(struct qpnp_hap *hap, int on)
 	if (rc < 0)
 		return rc;
 
-	dev_info(&hap->spmi->dev, "qpnp_hap_play: on = %d, voltage = %d \n", on, hap->vmax_mv);
+	pr_debug("qpnp_hap_play: on = %d, voltage = %d \n", on, hap->vmax_mv);
 
 	hap->reg_play = val;
 
@@ -1348,7 +1349,7 @@ static ssize_t qpnp_hap_amp_store(struct device *dev,
 	/* Changed Vmax have to save to hap->vmax_mv to
 						recover vmax that changed here */
 	hap->vmax_mv = temp * QPNP_HAP_VMAX_MIN_MV;
-	#endif 
+	#endif
 	reg |= (temp << QPNP_HAP_VMAX_SHIFT);
 
 	ret = qpnp_hap_write_reg(hap, &reg, QPNP_HAP_VMAX_REG(hap->base));
@@ -1803,7 +1804,7 @@ static void qpnp_hap_td_enable(struct timed_output_dev *dev, int value)
 				 hap->timeout_ms : value);
 #ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
 #ifdef CONFIG_LGE_QPNP_REMOVE_OV_RB
-		if (value < 810){  //To skip overdrive in normal Haptic mode. 
+		if (value < 810){  //To skip overdrive in normal Haptic mode.
 			hap->bSkipOv = 1;
 		} else {
 			hap->bSkipOv = 0;
@@ -1912,7 +1913,7 @@ static void qpnp_hap_worker(struct work_struct *work)
 
 				qpnp_hap_set(hap, 1);
 				/* LGE add Over Drive time rate*/
-				sleep_time = hap->wave_play_rate_us * 4;  // 4 means 20ms (4*5715us)
+				sleep_time = hap->wave_play_rate_us * 2;  // 2 means 10ms (2*5715us)
 				usleep_range(sleep_time, sleep_time);
 				hap->vmax_mv =QPNP_HAP_OV_RB_MV;
 #ifdef CONFIG_LGE_QPNP_REMOVE_OV_RB
@@ -1930,13 +1931,15 @@ static void qpnp_hap_worker(struct work_struct *work)
 	qpnp_hap_set(hap, hap->state);
 #else
 	u8 val = 0x00;
-	int rc, reg_en;
+	int rc;
 
-	if (hap->vcc_pon) {
-		reg_en = regulator_enable(hap->vcc_pon);
-		if (reg_en)
-			pr_err("%s: could not enable vcc_pon regulator\n",
-				 __func__);
+	if (hap->vcc_pon && hap->state && !hap->vcc_pon_enabled) {
+		rc = regulator_enable(hap->vcc_pon);
+		if (rc < 0)
+			pr_err("%s: could not enable vcc_pon regulator rc=%d\n",
+				 __func__, rc);
+		else
+			hap->vcc_pon_enabled = true;
 	}
 
 	/* Disable haptics module if the duration of short circuit
@@ -1951,11 +1954,13 @@ static void qpnp_hap_worker(struct work_struct *work)
 		qpnp_hap_set(hap, hap->state);
 	}
 
-	if (hap->vcc_pon && !reg_en) {
+	if (hap->vcc_pon && !hap->state && hap->vcc_pon_enabled) {
 		rc = regulator_disable(hap->vcc_pon);
 		if (rc)
-			pr_err("%s: could not disable vcc_pon regulator\n",
-				 __func__);
+			pr_err("%s: could not disable vcc_pon regulator rc=%d\n",
+				 __func__, rc);
+		else
+			hap->vcc_pon_enabled = false;
 	}
 #endif
 }

@@ -203,3 +203,8 @@ kernelconfig: $(KERNEL_CONFIG) | $(KERNEL_OUT)
 
 endif
 endif
+
+ifeq ($(LGE_USB_DIAG_LOCK_TRF), y)
+    KERNEL_CONFIG_OVERRIDE := \
+    CONFIG_LGE_USB_DIAG_LOCK_TRF=y
+endif

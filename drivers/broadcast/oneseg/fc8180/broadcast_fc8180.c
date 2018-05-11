@@ -9,16 +9,17 @@
 
 #include <linux/kthread.h>
 #include <linux/irq.h>
-
 #include <linux/platform_device.h>
 
 #include <linux/gpio.h>
 #include <linux/delay.h>
 #include <linux/workqueue.h>
-#include <linux/wakelock.h>
+#include <linux/wakelock.h>         /* wake_lock, unlock */
+#include <linux/version.h>          /* check linux version */
 
 #include <linux/err.h>
 #include <linux/of_gpio.h>
+
 #include <linux/clk.h>
 
 #include "broadcast_dmb_typedef.h"
@@ -31,33 +32,14 @@
 #include "fc8180_isr.h"
 #include "fci_ringbuffer.h"
 
-#if (!defined(CONFIG_ARCH_MSM8996) && !defined(CONFIG_ARCH_MSM8937) && !defined(CONFIG_ARCH_MSM8940))
-#define FEATURE_DTV_USE_XO
-#define FEATURE_DTV_USE_REGULATOR
-#endif
-
-#if defined(CONFIG_ARCH_MSM8937) 
-#define FEATURE_DTV_USE_EXTLNA
-#endif
-
 #define FEATURE_DTV_USE_PINCTRL
 #undef _NOT_USE_WAKE_LOCK_
-
-#if defined(CONFIG_LGE_BROADCAST_SBTVD_LATIN) && (defined(CONFIG_ARCH_MSM8937) || defined(CONFIG_ARCH_MSM8940))
-#undef FEATURE_DTV_USE_EXTLNA
-#define FEATURE_DTV_USE_XO
-
-// Modified by harold.kim 20170207 for bring-up temporary
-#define FEATURE_DTV_USE_REGULATOR
-#endif
 
 #ifdef FEATURE_DTV_USE_PINCTRL
 #include <linux/pinctrl/consumer.h>
 #endif
 
-#ifdef FEATURE_DTV_USE_REGULATOR
 #include <linux/regulator/consumer.h>
-#endif
 
 #if defined(CONFIG_ARCH_MT6582) || defined(CONFIG_ARCH_MT6753) || defined(CONFIG_ARCH_MT6755)
 #include <linux/of.h>
@@ -83,6 +65,8 @@
 #define GPIO_DTV_SPI_MISO_PIN         (GPIO97 | 0x80000000)
 #define GPIO_DTV_SPI_MOSI_PIN         (GPIO96 | 0x80000000)
 #define GPIO_DTV_INT_PIN         (GPIO61 | 0x80000000)
+
+#define LGE_FC8180_DRV_VER "1.00.00"
 
 static struct mt_chip_conf mtk_spi_config = {
     .setuptime = 3,
@@ -120,7 +104,7 @@ static u8 isdbt_isr_start=0;
 u32 totalTS=0;
 u32 totalErrTS=0;
 
-u8 module_init_flag;
+u8 module_init_flag  = 0;
 
 enum ISDBT_MODE{
 	ISDBT_POWERON       = 0,
@@ -134,31 +118,34 @@ static DEFINE_MUTEX(ringbuffer_lock);
 unsigned int isr_flag;
 
 struct broadcast_fc8180_ctrl_data {
-	int                     pwr_state;
-	struct wake_lock        wake_lock;
-	struct spi_device*      spi_dev;
-	struct i2c_client*      pclient;
-    struct platform_device* pdev;
-    uint32                  enable_gpio;
-    //uint32                  reset_gpio;
+    int                                   pwr_state;
+    struct wake_lock             wake_lock;
+    struct spi_device*           spi_dev;
+    struct i2c_client*             pclient;
+    struct platform_device*   pdev;
+    uint32                             isdbt_en;
+    //uint32                          isdbt_reset;
     /* Interrupt pin is not used in TSIF mode */
-    uint32                  interrupt_gpio;
-    struct device_node*     dtv_irq_node;
+    uint32                             isdbt_irq;
+    struct device_node*       dtv_irq_node;
 
-    uint32                  tdmb_ant_gpio;
+    uint32                             isdbt_use_ant_sw;
+    uint32                             isdbt_ant_active_mode;
+    uint32                             isdbt_ant;
 
-#ifdef FEATURE_DTV_USE_XO
-    struct clk*             xo_clk;
-#endif
-#ifdef FEATURE_DTV_USE_REGULATOR
-    // Modified by harold.kim 20170207 for bring-up temporary
-    //struct regulator*       vdd_io;
-    struct regulator*       ant_io;
-#endif
-#ifdef FEATURE_DTV_USE_EXTLNA
-    uint32                  ext_lna0_gpio;
-	uint32                  ext_lna1_gpio;
-#endif
+    uint32                              isdbt_use_xtal;
+    struct clk*                      xo_clk;
+    uint32                              isdbt_xtal_freq;
+
+    uint32                              ctrl_isdbt_ldo;
+    struct regulator*             vdd_io;
+    uint32                              ctrl_lna_ldo;
+    struct regulator*             ant_io;
+
+    uint32                             isdbt_use_lna_ctrl;
+    uint32                             isdbt_lna_ctrl; //gain control
+    uint32                             isdbt_use_lna_en;
+    uint32                             isdbt_lna_en; //enable
 };
 
 static struct broadcast_fc8180_ctrl_data  IsdbCtrlInfo;
@@ -191,36 +178,18 @@ static Device_drv device_fc8180 = {
     &broadcast_fc8180_drv_if_read_control,
     &broadcast_fc8180_drv_if_get_mode,
 };
-
+// TODO: del for qct
 #ifdef FEATURE_DTV_USE_PINCTRL
 static int isdbt_pinctrl_init(void)
 {
-	struct pinctrl *isdbt_pinctrl;
-	struct pinctrl_state *gpio_state_suspend;
+    struct pinctrl *isdbt_pinctrl;
+    isdbt_pinctrl = devm_pinctrl_get(&(IsdbCtrlInfo.pdev->dev));
 
-	isdbt_pinctrl = devm_pinctrl_get(&(IsdbCtrlInfo.pdev->dev));
-
-	if(IS_ERR_OR_NULL(isdbt_pinctrl)) {
-		pr_err("%s: Getting pinctrl handle failed\n", __func__);
-		return -EINVAL;
-	}
-	gpio_state_suspend
-	 = pinctrl_lookup_state(isdbt_pinctrl, "isdbt_gpio");
-
-	 if(IS_ERR_OR_NULL(gpio_state_suspend)) {
-	 	pr_err("%s: [dtv]Failed to get the suspend state pinctrl handle\n", __func__);
-	 	return -EINVAL;
-	}
-
-	if(pinctrl_select_state(isdbt_pinctrl, gpio_state_suspend)) {
-		pr_err("%s: [dtv]error on pinctrl_select_state DTV GPIOs\n", __func__);
-		return -EINVAL;
-	}
-	else {
-		printk("%s: success to set pinctrl_select_state for DTV GPIOs\n", __func__);
-	}
-
-	return 0;
+    if(IS_ERR_OR_NULL(isdbt_pinctrl)) {
+    	pr_err("%s: Getting pinctrl handle failed\n", __func__);
+    	return -EINVAL;
+    }
+    return 0;
 }
 #endif
 
@@ -316,111 +285,156 @@ void tunerbb_drv_hw_deinit(void)
 }
 #endif
 
-#ifdef FEATURE_DTV_USE_REGULATOR
 static int broadcast_isdbt_set_regulator(int onoff)
 {
     int rc = -1;
 
-// Modified by harold.kim 20170207 for bring-up temporary
-#if 0
-    if(!IsdbCtrlInfo.vdd_io)
+    if(!IsdbCtrlInfo.vdd_io && IsdbCtrlInfo.ctrl_isdbt_ldo)
     {
-        IsdbCtrlInfo.vdd_io = devm_regulator_get(&(IsdbCtrlInfo.pdev->dev), "isdbt_vdd_io");
+        IsdbCtrlInfo.vdd_io = regulator_get(&(IsdbCtrlInfo.pdev->dev), "isdbt_vdd_io");
         if(IS_ERR(IsdbCtrlInfo.vdd_io)){
-            dev_err(&(IsdbCtrlInfo.pdev->dev), "[dtv] could not get regulator %s \n", "isdbt_vdd_io-supply");
+            dev_err(&(IsdbCtrlInfo.pdev->dev), "[dtv] Could not get regulator %s \n", "isdbt_vdd_io-supply");
 
             return rc;
         }
+        else {
+            printk("[dtv] get regulator %s \n", "isdbt_ldo-supply");
+        }
     }
-#endif
-#if 1
-    if(!IsdbCtrlInfo.ant_io)
+
+    if(!IsdbCtrlInfo.ant_io && IsdbCtrlInfo.ctrl_lna_ldo)
     {
-        IsdbCtrlInfo.ant_io = devm_regulator_get(&(IsdbCtrlInfo.pdev->dev), "isdbt_ant_io");
+        IsdbCtrlInfo.ant_io = regulator_get(&(IsdbCtrlInfo.pdev->dev), "isdbt_ant_io");
         if(IS_ERR(IsdbCtrlInfo.ant_io)){
-            dev_err(&(IsdbCtrlInfo.pdev->dev), "[dtv] could not get regulator %s \n", "isdbt_ant_io-supply");
+            dev_err(&(IsdbCtrlInfo.pdev->dev), "[dtv] Could not get regulator %s \n", "isdbt_ant_io-supply");
 
             return rc;
         }
+        else {
+            printk("[dtv] get regulator %s \n", "isdbt_ant_io-supply");
+        }
     }
-#endif
 
     if(onoff)
     {
-// Modified by harold.kim 20170207 for bring-up temporary
-#if 0
-        rc = regulator_set_voltage(IsdbCtrlInfo.vdd_io, 1800000, 2950000);
-        if(rc)
+        if(IsdbCtrlInfo.ctrl_isdbt_ldo)
         {
-            dev_err(&(IsdbCtrlInfo.pdev->dev), "[dtv] could not set regulator vdd_io, ret=%d \n", rc);
+            if(regulator_count_voltages(IsdbCtrlInfo.vdd_io) > 0)
+            {
+                rc = regulator_set_voltage(IsdbCtrlInfo.vdd_io, 1800000UL, 1800000UL);
+                if(rc)
+                {
+                    dev_err(&(IsdbCtrlInfo.pdev->dev), "[dtv] Could not set regulator vdd_io, ret=%d \n", rc);
+                }
+            }
 
-            return rc;
+            rc = regulator_set_optimum_mode(IsdbCtrlInfo.vdd_io, 6000);
+            if(rc < 0)
+            {
+                dev_err(&(IsdbCtrlInfo.pdev->dev), "[dtv] Unable to set current on vdd_io, ret=%d \n", rc);
+            }
+
+            rc = regulator_enable(IsdbCtrlInfo.vdd_io);
+            if(rc)
+            {
+                dev_err(&(IsdbCtrlInfo.pdev->dev), "[dtv] Could not enable regulator vdd_io, ret=%d\n", rc);
+
+                regulator_put(IsdbCtrlInfo.vdd_io);
+    			IsdbCtrlInfo.vdd_io = NULL;
+            }
+            else		
+            {
+                dev_dbg(&(IsdbCtrlInfo.pdev->dev), "[dtv] Enabled regulator vdd_io\n");
+            }
         }
 
-        rc = regulator_enable(IsdbCtrlInfo.vdd_io);
-        if(rc)
+        if(IsdbCtrlInfo.ctrl_lna_ldo)
         {
-            dev_err(&(IsdbCtrlInfo.pdev->dev), "[dtv] could not enable regulator vdd_io, ret=%d\n", rc);
+            if(regulator_count_voltages(IsdbCtrlInfo.ant_io) > 0)
+            {
+                rc = regulator_set_voltage(IsdbCtrlInfo.ant_io, 2850000UL, 2850000UL);
+                if(rc)
+                {
+                    dev_err(&(IsdbCtrlInfo.pdev->dev), "[dtv] Could not set regulator ant_io, ret=%d \n", rc);
+                }
+            }
 
-            return rc;
-        }
-#endif
-#if 1
-        rc = regulator_set_voltage(IsdbCtrlInfo.ant_io, 2850000, 2950000);
-        if(rc)
-        {
-            dev_err(&(IsdbCtrlInfo.pdev->dev), "[dtv] could not set regulator ant_io, ret=%d \n", rc);
+            rc = regulator_set_optimum_mode(IsdbCtrlInfo.ant_io, 6000);
+            if(rc < 0)
+            {
+                dev_err(&(IsdbCtrlInfo.pdev->dev), "[dtv] Unable to set current on ant_io, ret=%d \n", rc);
+            }
 
-            return rc;
-        }
+            rc = regulator_enable(IsdbCtrlInfo.ant_io);
+            if(rc)
+            {
+                dev_err(&(IsdbCtrlInfo.pdev->dev), "[dtv] Could not enable regulator ant_io, ret=%d\n", rc);
 
-        rc = regulator_enable(IsdbCtrlInfo.ant_io);
-        if(rc)
-        {
-            dev_err(&(IsdbCtrlInfo.pdev->dev), "[dtv] could not enable regulator ant_io, ret=%d\n", rc);
-            return rc;
+                regulator_put(IsdbCtrlInfo.ant_io);
+    			IsdbCtrlInfo.ant_io = NULL;
+            }
+            else		
+            {
+                dev_dbg(&(IsdbCtrlInfo.pdev->dev), "[dtv] Enabled regulator ant_io\n");
+            }
         }
-#endif
     }
     else
     {
-// Modified by harold.kim 20170207 for bring-up temporary
-#if 0
-        rc = regulator_disable(IsdbCtrlInfo.vdd_io);
-        if(rc)
+        if(IsdbCtrlInfo.vdd_io && IsdbCtrlInfo.ctrl_isdbt_ldo)
         {
-            dev_err(&(IsdbCtrlInfo.pdev->dev), "[dtv]could not disable regulator vdd_io, ret=%d \n", rc);
+            if(regulator_is_enabled(IsdbCtrlInfo.vdd_io))
+            {
+                rc = regulator_disable(IsdbCtrlInfo.vdd_io);
+                if(rc)
+                {
+                    dev_err(&(IsdbCtrlInfo.pdev->dev), "[dtv] Could not disable regulator vdd_io, ret=%d \n", rc);
+                }
+                else
+                {
+                    dev_dbg(&(IsdbCtrlInfo.pdev->dev), "[dtv] Disabled regulator vdd_io\n");
+                }
+            }
+            regulator_put(IsdbCtrlInfo.vdd_io);
+            IsdbCtrlInfo.vdd_io = NULL;
 
-            return rc;
+            mdelay(5);
         }
-#endif
-#if 0
-        rc = regulator_disable(IsdbCtrlInfo.ant_io);
-        if(rc)
+
+        if(IsdbCtrlInfo.ant_io && IsdbCtrlInfo.ctrl_lna_ldo)
         {
-            dev_err(&(IsdbCtrlInfo.pdev->dev), "[dtv]could not disable regulator ant_id, ret=%d \n", rc);
+            if(regulator_is_enabled(IsdbCtrlInfo.ant_io))
+            {
+                rc = regulator_disable(IsdbCtrlInfo.ant_io);
 
-            return rc;
+                if(rc)
+                {
+                    dev_err(&(IsdbCtrlInfo.pdev->dev), "[dtv] Could not disable regulator ant_io, ret=%d \n", rc);
+                }
+                else
+                {
+                    dev_dbg(&(IsdbCtrlInfo.pdev->dev), "[dtv] Disabled regulator ant_io\n");
+                }
+            }
+            regulator_put(IsdbCtrlInfo.ant_io);
+            IsdbCtrlInfo.ant_io = NULL;
+
+            mdelay(5);
         }
-#endif
     }
-// Modified by harold.kim 20170221 for bring-up temporary
-#if 1
-    printk("%s: success to set pm8994 voltage control(mode:%d)\n", __func__, onoff);
-#else
-    rc = 0;
-#endif
+
+    printk("[dtv] Set PMIC voltage control(mode:%d) = %d\n", onoff, rc);
+
     return rc;
 }
-#endif
 
 int fc8180_power_on(void)
 {
-	int i = 0;
+    int i = 0;
     int rc = OK;
 
-	if(IsdbCtrlInfo.pwr_state != 1)
-	{
+    if(IsdbCtrlInfo.pwr_state != 1)
+    {
 #ifndef _NOT_USE_WAKE_LOCK_
         wake_lock(&IsdbCtrlInfo.wake_lock);
 #endif
@@ -435,61 +449,63 @@ int fc8180_power_on(void)
 #if defined(CONFIG_ARCH_MT6582) || defined(CONFIG_ARCH_MT6753) || defined(CONFIG_ARCH_MT6755)
         tunerbb_drv_hw_init();
 #else
-        if(IsdbCtrlInfo.tdmb_ant_gpio != 0) {
-            printk("[dtv]fc8180_power_on() TDMB_FM_SW(%d : DMB mode)\n", IsdbCtrlInfo.tdmb_ant_gpio);
+        if(IsdbCtrlInfo.isdbt_use_ant_sw) {
+            printk("[dtv] fc8180_power_on() TDMB_FM_SW(%d : DMB mode)\n", IsdbCtrlInfo.isdbt_ant);
 
-            gpio_set_value(IsdbCtrlInfo.tdmb_ant_gpio, 1);
+            gpio_set_value(IsdbCtrlInfo.isdbt_ant, IsdbCtrlInfo.isdbt_ant_active_mode);
         }
 
-        //gpio_set_value(IsdbCtrlInfo.reset_gpio, 0);
-        gpio_set_value(IsdbCtrlInfo.enable_gpio, 1);
+        //gpio_set_value(IsdbCtrlInfo.isdbt_reset, 0);
+        gpio_set_value(IsdbCtrlInfo.isdbt_en, 1);
         //mdelay(3);
-        //gpio_set_value(IsdbCtrlInfo.reset_gpio, 1);
+        //gpio_set_value(IsdbCtrlInfo.isdbt_reset, 1);
         //mdelay(2);
 
-#ifdef FEATURE_DTV_USE_REGULATOR
-        broadcast_isdbt_set_regulator(1);
-#endif
-
-        //gpio_direction_input(IsdbCtrlInfo.interrupt_gpio);
+        if(IsdbCtrlInfo.ctrl_isdbt_ldo || IsdbCtrlInfo.ctrl_lna_ldo) {
+            broadcast_isdbt_set_regulator(1);
+        }
 #endif
 
         msleep(30);
-		
-#ifdef FEATURE_DTV_USE_XO
-        if(IsdbCtrlInfo.xo_clk != NULL) {
-            printk("[dtv]fc8180_power_on() clk enable\n");
+    	
+        if(!IsdbCtrlInfo.isdbt_use_xtal) {
+            if(IsdbCtrlInfo.xo_clk != NULL) {
+                printk("[dtv] fc8180_power_on() clk enable\n");
 
-            rc = clk_prepare_enable(IsdbCtrlInfo.xo_clk);
-            if(rc) {
-                gpio_set_value(IsdbCtrlInfo.enable_gpio, 0);
-                msleep(30);
-                dev_err(&IsdbCtrlInfo.spi_dev->dev, "could not enable clock\n");
-                return rc;
+                rc = clk_prepare_enable(IsdbCtrlInfo.xo_clk);
+                if(rc) {
+                    gpio_set_value(IsdbCtrlInfo.isdbt_en, 0);
+                    msleep(30);
+                    dev_err(&IsdbCtrlInfo.spi_dev->dev, "[dtv] could not enable clock\n");
+                    return rc;
+                }
             }
         }
-#endif
 
-#ifdef FEATURE_DTV_USE_EXTLNA
-        gpio_set_value(IsdbCtrlInfo.ext_lna0_gpio, 1); /* EN */
-        gpio_set_value(IsdbCtrlInfo.ext_lna1_gpio, 0); /* GS */
-#endif
+        if(IsdbCtrlInfo.isdbt_use_lna_en || IsdbCtrlInfo.isdbt_use_lna_ctrl) {
+            gpio_set_value(IsdbCtrlInfo.isdbt_lna_en, 1); /* EN */
+            gpio_set_value(IsdbCtrlInfo.isdbt_lna_ctrl, 0); /* GS */
+        }
 
         driver_mode = ISDBT_POWERON;
-	}
+    }
     else
-	{
-		printk("[dtv]already on!! \n");
-	}
+    {
+	printk("[dtv] already on!! \n");
+    }
 
-	IsdbCtrlInfo.pwr_state = 1;
-
-	return rc;
+    IsdbCtrlInfo.pwr_state = 1;
+    return rc;
 }
 
 int fc8180_is_power_on()
 {
-	return (int)IsdbCtrlInfo.pwr_state;
+    return (int)IsdbCtrlInfo.pwr_state;
+}
+
+unsigned int fc8180_get_xtal_freq(void)
+{
+    return (unsigned int)IsdbCtrlInfo.isdbt_xtal_freq;
 }
 
 int fc8180_stop(void)
@@ -505,168 +521,183 @@ int fc8180_stop(void)
 
 int fc8180_power_off(void)
 {
-	driver_mode = ISDBT_POWEROFF;
+    driver_mode = ISDBT_POWEROFF;
 
-	if (IsdbCtrlInfo.pwr_state == 0)	{
-		print_log(NULL, "[FC8180] power is immediately off\n");
+    if (IsdbCtrlInfo.pwr_state == 0) {
+	print_log(NULL, "[FC8180] power is immediately off\n");
 
-		return OK;
-	} else {
-		print_log(NULL, "[FC8180] power_off\n");
+	return OK;
+    } 
+    else {
+	print_log(NULL, "[FC8180] power_off\n");
 
-#ifdef FEATURE_DTV_USE_EXTLNA
-        gpio_set_value(IsdbCtrlInfo.ext_lna0_gpio, 0); /* EN */
-        gpio_set_value(IsdbCtrlInfo.ext_lna1_gpio, 0); /* GS */
-#endif
-
-#ifdef FEATURE_DTV_USE_XO
-        if(IsdbCtrlInfo.xo_clk != NULL)
-        {
-            clk_disable_unprepare(IsdbCtrlInfo.xo_clk);
+        if(IsdbCtrlInfo.isdbt_use_lna_en || IsdbCtrlInfo.isdbt_use_lna_ctrl) {
+            gpio_set_value(IsdbCtrlInfo.isdbt_lna_en, 0); /* EN */
+            gpio_set_value(IsdbCtrlInfo.isdbt_lna_ctrl, 0); /* GS */
         }
-#endif
 
-#ifdef FEATURE_DTV_USE_REGULATOR
-        broadcast_isdbt_set_regulator(0);
-#endif
+        if(!IsdbCtrlInfo.isdbt_use_xtal) {
+            if(IsdbCtrlInfo.xo_clk != NULL)
+            {
+                clk_disable_unprepare(IsdbCtrlInfo.xo_clk);
+            }
+        }
+
+        if(IsdbCtrlInfo.ctrl_isdbt_ldo || IsdbCtrlInfo.ctrl_lna_ldo) {
+            broadcast_isdbt_set_regulator(0);
+        }            
 
 #if defined(CONFIG_ARCH_MT6582) || defined(CONFIG_ARCH_MT6753) || defined(CONFIG_ARCH_MT6755)
         tunerbb_drv_hw_deinit();
 #else
-	    //gpio_direction_output(IsdbCtrlInfo.interrupt_gpio, 0);
-        gpio_set_value(IsdbCtrlInfo.enable_gpio, 0);
+        gpio_set_value(IsdbCtrlInfo.isdbt_en, 0);
         //mdelay(1);
-        //gpio_set_value(IsdbCtrlInfo.reset_gpio, 0);
+        //gpio_set_value(IsdbCtrlInfo.isdbt_reset, 0);
         //mdelay(5);
 #endif
         msleep(10);
     }
 
 #ifndef _NOT_USE_WAKE_LOCK_
-	wake_unlock(&IsdbCtrlInfo.wake_lock);
+    wake_unlock(&IsdbCtrlInfo.wake_lock);
 #endif
-	IsdbCtrlInfo.pwr_state = 0;
-
-	return OK;
+    IsdbCtrlInfo.pwr_state = 0;
+    return OK;
 }
 
-static int broadcast_Isdb_config_gpios(void)
+static int broadcast_isdbt_config_gpios(void)
 {
     int rc = OK;
     int err_count = 0;
 
-    IsdbCtrlInfo.tdmb_ant_gpio = of_get_named_gpio(IsdbCtrlInfo.pdev->dev.of_node, "fci_spi_fc8180,ant-gpio", 0);
+    IsdbCtrlInfo.isdbt_en = of_get_named_gpio(IsdbCtrlInfo.pdev->dev.of_node, "isdbt_fc8180,en-gpio", 0);
+    rc =  gpio_request(IsdbCtrlInfo.isdbt_en, "ISDBT_EN");
 
-    printk("[dtv]tdmb_ant_gpio =(%d)\n", IsdbCtrlInfo.tdmb_ant_gpio);
+    if(rc < 0) {
+        err_count++;
+        printk("[dtv] Failed ISDBT_EN GPIO request\n");
+    }
+    gpio_direction_output(IsdbCtrlInfo.isdbt_en, 0);
+    udelay(10);
 
-    IsdbCtrlInfo.enable_gpio = of_get_named_gpio(IsdbCtrlInfo.pdev->dev.of_node, "fci_spi_fc8180,en-gpio", 0);
-    //IsdbCtrlInfo.reset_gpio = of_get_named_gpio(IsdbCtrlInfo.pdev->dev.of_node, "fci_spi_fc8180,reset-gpio" ,0);
+    printk("[dtv] isdbt_en =(%d)\n", IsdbCtrlInfo.isdbt_en);
 
-    printk("[dtv]enable_gpio =(%d), reset_gpio =(%d)\n", IsdbCtrlInfo.enable_gpio, /*IsdbCtrlInfo.reset_gpio*/0);
+    IsdbCtrlInfo.isdbt_irq = of_get_named_gpio(IsdbCtrlInfo.pdev->dev.of_node, "isdbt_fc8180,irq-gpio", 0);
 
-    //IsdbCtrlInfo.interrupt_gpio = of_get_named_gpio(IsdbCtrlInfo.pdev->dev.of_node, "fci_spi_fc8180,irq-gpio", 0);
+    rc =  gpio_request(IsdbCtrlInfo.isdbt_irq, "ISDBT_INT");
+    if(rc < 0) {
+        err_count++;
+        printk("[dtv]Failed ISDBT_INT GPIO request\n");
+    }
+    gpio_direction_input(IsdbCtrlInfo.isdbt_irq);
+    udelay(10);
 
-    //printk("[dtv]interrupt_gpio =(%d)\n", IsdbCtrlInfo.interrupt_gpio);
+    printk("[dtv] isdbt_irq =(%d)\n", IsdbCtrlInfo.isdbt_irq);
 
-#ifdef FEATURE_DTV_USE_EXTLNA
-    IsdbCtrlInfo.ext_lna0_gpio = of_get_named_gpio(IsdbCtrlInfo.pdev->dev.of_node, "fci_spi_fc8180,ext_lna0-gpio",0); /* EN */
-    IsdbCtrlInfo.ext_lna1_gpio = of_get_named_gpio(IsdbCtrlInfo.pdev->dev.of_node, "fci_spi_fc8180,ext_lna1-gpio",0); /* GS */
+    of_property_read_u32(IsdbCtrlInfo.pdev->dev.of_node, "use-ant-sw", &IsdbCtrlInfo.isdbt_use_ant_sw);
+    printk("[dtv] isdbt_use_ant_sw : %d\n", IsdbCtrlInfo.isdbt_use_ant_sw);
 
-    printk("[dtv]ext_lna0_gpio =(%d), ext_lna1_gpio =(%d)", IsdbCtrlInfo.ext_lna0_gpio, IsdbCtrlInfo.ext_lna1_gpio);
+    if(IsdbCtrlInfo.isdbt_use_ant_sw) {
+        of_property_read_u32(IsdbCtrlInfo.pdev->dev.of_node, "ant-active-mode", &IsdbCtrlInfo.isdbt_ant_active_mode);
+    	printk("[dtv] isdbt_ant_active_mode : %d\n", IsdbCtrlInfo.isdbt_ant_active_mode);
+
+        IsdbCtrlInfo.isdbt_ant = of_get_named_gpio(IsdbCtrlInfo.pdev->dev.of_node, "isdbt_fc8180,ant-gpio", 0);
+        rc =  gpio_request(IsdbCtrlInfo.isdbt_ant, "ISDBT_ANT");
+
+        if(rc < 0) {
+            err_count++;
+            printk("[dtv] Failed ISDBT_ANT GPIO request\n");
+        }
+        gpio_direction_output(IsdbCtrlInfo.isdbt_ant, 0);
+        udelay(10);
+
+        printk("[dtv] isdbt_ant =(%d)\n", IsdbCtrlInfo.isdbt_ant);
+    }
+
+    of_property_read_u32(IsdbCtrlInfo.pdev->dev.of_node, "use-xtal", &IsdbCtrlInfo.isdbt_use_xtal);
+    printk("[dtv] use_xtal : %d\n", IsdbCtrlInfo.isdbt_use_xtal);
+
+    of_property_read_u32(IsdbCtrlInfo.pdev->dev.of_node, "xtal-freq", &IsdbCtrlInfo.isdbt_xtal_freq);
+    IsdbCtrlInfo.spi_dev->max_speed_hz     = (IsdbCtrlInfo.isdbt_xtal_freq*1000);
+    printk("[dtv] isdbt_xtal_freq : %d\n", IsdbCtrlInfo.isdbt_xtal_freq);
+
+#if 0
+    IsdbCtrlInfo.isdbt_reset = of_get_named_gpio(IsdbCtrlInfo.pdev->dev.of_node, "isdbt_fc8180,reset-gpio" ,0);
+
+    rc =  gpio_request(IsdbCtrlInfo.isdbt_reset, "ISDBT_RESET");
+    if(rc < 0) {
+        err_count++;
+        printk("[dtv] Failed ISDBT_RESET GPIO request\n");
+    }
+    gpio_direction_output(IsdbCtrlInfo.isdbt_reset, 0);
+    udelay(10);
+
+    printk("[dtv] isdbt_reset =(%d)\n", IsdbCtrlInfo.isdbt_reset);
 #endif
 
-    rc =  gpio_request(IsdbCtrlInfo.tdmb_ant_gpio, "TDMB_ANT");
-    if(rc < 0) {
-        err_count++;
-        printk("[dtv]Failed TDMB_ANT GPIO request\n");
+    of_property_read_u32(IsdbCtrlInfo.pdev->dev.of_node, "ctrl-isdbt-ldo", &IsdbCtrlInfo.ctrl_isdbt_ldo);
+    printk("[dtv] ctrl-isdbt-ldo : %d\n", IsdbCtrlInfo.ctrl_isdbt_ldo);
+
+    of_property_read_u32(IsdbCtrlInfo.pdev->dev.of_node, "ctrl-lna-ldo", &IsdbCtrlInfo.ctrl_lna_ldo);
+    printk("[dtv] ctrl-lna-ldo : %d\n", IsdbCtrlInfo.ctrl_lna_ldo);
+
+    of_property_read_u32(IsdbCtrlInfo.pdev->dev.of_node, "use-lna-en", &IsdbCtrlInfo.isdbt_use_lna_en);
+    printk("[dtv] isdbt_use_lna_en : %d\n", IsdbCtrlInfo.isdbt_use_lna_en);
+
+    if(IsdbCtrlInfo.isdbt_use_lna_en) {
+        IsdbCtrlInfo.isdbt_lna_en = of_get_named_gpio(IsdbCtrlInfo.pdev->dev.of_node, "isdbt_fc8180,lna-en-gpio",0); /* EN */
+        rc =  gpio_request(IsdbCtrlInfo.isdbt_lna_en, "ISDBT_LNA_EN");
+        if(rc < 0) {
+            err_count++;
+            printk("[dtv] Failed ISDBT_LNA_EN GPIO request\n");
+        }
+        gpio_direction_output(IsdbCtrlInfo.isdbt_lna_en, 0); /* EN */
+        udelay(10);
     }
-    udelay(10);
 
-    rc =  gpio_request(IsdbCtrlInfo.enable_gpio, "1SEG_EN");
-    if(rc < 0) {
-        err_count++;
-        printk("[dtv]Failed 1SEG_EN GPIO request\n");
+    of_property_read_u32(IsdbCtrlInfo.pdev->dev.of_node, "use-lna-ctrl", &IsdbCtrlInfo.isdbt_use_lna_ctrl);
+    printk("[dtv] isdbt_use_lna_ctrl : %d\n", IsdbCtrlInfo.isdbt_use_lna_ctrl);
+
+    if(IsdbCtrlInfo.isdbt_use_lna_ctrl) {
+        IsdbCtrlInfo.isdbt_lna_ctrl = of_get_named_gpio(IsdbCtrlInfo.pdev->dev.of_node, "isdbt_fc8180,lna-ctrl-gpio",0); /* GC */
+        rc =  gpio_request(IsdbCtrlInfo.isdbt_lna_ctrl, "ISDBT_LNA_GC");
+        if(rc < 0) {
+            err_count++;
+            printk("[dtv] Failed ISDBT_LNA_GC GPIO request\n");
+        }
+        gpio_direction_output(IsdbCtrlInfo.isdbt_lna_ctrl, 0); /* GS */
+        udelay(10);
     }
-    udelay(10);
-
-    //rc =  gpio_request(IsdbCtrlInfo.reset_gpio, "1SEG_RESET");
-    //if(rc < 0) {
-    //    err_count++;
-    //    printk("[dtv]Failed 1SEG_RESET GPIO request\n");
-    //}
-    //udelay(10);
-
-    //rc =  gpio_request(IsdbCtrlInfo.interrupt_gpio, "1SEG_INT");
-    //if(rc < 0) {
-    //    err_count++;
-    //    printk("[dtv]Failed 1SEG_INT GPIO request\n");
-    //}
-    //udelay(10);
-
-#ifdef FEATURE_DTV_USE_EXTLNA
-    rc =  gpio_request(IsdbCtrlInfo.ext_lna0_gpio, "1SEG_LNA_EN");
-    if(rc < 0) {
-        err_count++;
-        printk("[dtv]Failed 1SEG_LNA_GS GPIO request\n");
-    }
-    udelay(10);
-
-    rc =  gpio_request(IsdbCtrlInfo.ext_lna1_gpio, "1SEG_LNA_GS");
-    if(rc < 0) {
-        err_count++;
-        printk("[dtv]Failed 1SEG_LNA_EN GPIO request\n");
-    }
-    udelay(10);
-#endif
-
-    /* We set IRQ GPIO Output,0 for preven IRQ PIN from being current leakage */
-    /* This IRQ Pin must be Input when DTV start or power on */
-    gpio_direction_output(IsdbCtrlInfo.tdmb_ant_gpio, 0);
-    udelay(10);
-    gpio_direction_output(IsdbCtrlInfo.enable_gpio, 0);
-    udelay(10);
-    //gpio_direction_output(IsdbCtrlInfo.interrupt_gpio, 0);
-    //udelay(10);
-
-#ifdef FEATURE_DTV_USE_EXTLNA
-    gpio_direction_output(IsdbCtrlInfo.ext_lna0_gpio, 0); /* EN */
-    udelay(10);
-    gpio_direction_output(IsdbCtrlInfo.ext_lna1_gpio, 0); /* GS */
-    udelay(10);
-#endif
 
     if(err_count > 0){
-        printk("[dtv]config gpios err_count =(%d)", err_count);
+        printk("[dtv] config gpios err_count =(%d)\n", err_count);
     }
-    
-	//udelay(10);
-    //gpio_direction_output(IsdbCtrlInfo.reset_gpio, 0);
 
     return rc;
 }
 
 unsigned int fc8180_get_ts(void *buf, unsigned int size)
 {
-	s32 avail;
-	ssize_t len, total_len = 0;
+    s32 avail;
+    ssize_t len, total_len = 0;
 
-	if (fci_ringbuffer_empty(&RingBuffer))
-		return 0;
+    if (fci_ringbuffer_empty(&RingBuffer))
+        return 0;
 
-	mutex_lock(&ringbuffer_lock);
-	
-	avail = fci_ringbuffer_avail(&RingBuffer);
+    mutex_lock(&ringbuffer_lock);
 
-	if (size >= avail)
-		len = avail;
-	else
-		len = size - (size % 188);
+    avail = fci_ringbuffer_avail(&RingBuffer);
 
-	total_len = fci_ringbuffer_read_user(&RingBuffer, buf, len);
-	
-	mutex_unlock(&ringbuffer_lock);
+    if (size >= avail)
+        len = avail;
+    else
+        len = size - (size % 188);
 
-	return total_len;
+    total_len = fci_ringbuffer_read_user(&RingBuffer, buf, len);
+
+    mutex_unlock(&ringbuffer_lock);
+
+    return total_len;
 }
 
 static irqreturn_t isdbt_irq(int irq, void *dev_id)
@@ -737,7 +768,7 @@ static int isdbt_thread(void *hDevice)
 
 	set_user_nice(current, -20);
 
-	print_log(hInit, "isdbt_kthread enter\n");
+	print_log(hInit, "[dtv] isdbt_kthread enter\n");
 
 	bbm_com_ts_callback_register((u32)hInit, data_callback);
 
@@ -792,7 +823,7 @@ static int isdbt_thread(void *hDevice)
 
 	bbm_com_ts_callback_deregister();
 
-	print_log(NULL, "isdbt_kthread exit\n");
+	print_log(NULL, "[dtv] isdbt_kthread exit\n");
 
 	return 0;
 }
@@ -845,7 +876,7 @@ static int broadcast_spi_remove(struct spi_device *spi)
     mt_set_gpio_mode(GPIO_DTV_EN_PIN, GPIO_MODE_00);
     mt_set_gpio_dir(GPIO_DTV_EN_PIN, GPIO_DIR_IN);
 #else
-    //free_irq(IsdbCtrlInfo.interrupt_gpio, NULL);
+    free_irq(IsdbCtrlInfo.isdbt_irq, NULL);
 #endif
 
     if (isdbt_kthread) {
@@ -864,11 +895,41 @@ static int broadcast_spi_probe(struct spi_device *spi)
     int rc = 0;
     //int ret = OK;
 
+    print_log(NULL, "[FC8180] broadcast_spi_probe start\n");
+
+    if(spi == NULL) {
+        printk("[dtv] spi is NULL, so spi can not be set\n");
+        return -1;
+    }
+
     spi->mode 			= SPI_MODE_0;
+    IsdbCtrlInfo.spi_dev = spi;
     spi->bits_per_word	= 8;
     IsdbCtrlInfo.pdev = to_platform_device(&spi->dev);
 
     print_log(NULL, "[FC8180] broadcast_spi_probe start\n");
+
+#if defined(CONFIG_ARCH_MT6582) || defined(CONFIG_ARCH_MT6753) || defined(CONFIG_ARCH_MT6755)
+    tunerbb_drv_hw_setting();
+
+    IsdbCtrlInfo.dtv_irq_node = of_find_compatible_node(NULL, NULL, "mediatek,dtv");
+    if (IsdbCtrlInfo.dtv_irq_node) {
+        IsdbCtrlInfo.interrupt_gpio = irq_of_parse_and_map(IsdbCtrlInfo.dtv_irq_node, 0);
+
+        if(IsdbCtrlInfo.interrupt_gpio < 0) {
+            print_log(NULL, "[1seg] irq_of_parse_and_map IRQ can't parsing!.\n");
+        }
+
+        rc = request_irq(IsdbCtrlInfo.interrupt_gpio, isdbt_irq
+            , IRQF_DISABLED | IRQF_TRIGGER_FALLING, "dtv", NULL);
+
+        if (rc){
+            print_log(NULL, "[1seg] dmb request irq fail : %d\n", rc);
+        }
+    }
+#else
+    /* Config GPIOs : IRQ PIN Output and 0 set at initial */
+    broadcast_isdbt_config_gpios();
 
     rc = spi_setup(spi);
     if (rc) {
@@ -876,25 +937,25 @@ static int broadcast_spi_probe(struct spi_device *spi)
         return rc;
     }
 
-    IsdbCtrlInfo.spi_dev = spi;
+    printk("[dbg][dtv] IsdbCtrlInfo.isdbt_use_xtal %d, %d\n", IsdbCtrlInfo.isdbt_use_xtal, IsdbCtrlInfo.isdbt_xtal_freq);
 
-#ifdef FEATURE_DTV_USE_XO
-    IsdbCtrlInfo.xo_clk = clk_get(&IsdbCtrlInfo.spi_dev->dev, "isdbt_xo");
-	
-    if(IS_ERR(IsdbCtrlInfo.xo_clk)){
-        rc = PTR_ERR(IsdbCtrlInfo.xo_clk);
-        dev_err(&IsdbCtrlInfo.spi_dev->dev, "[dtv] could not get clock\n");
-        return rc;
-    }
+    if(!IsdbCtrlInfo.isdbt_use_xtal) {
+        IsdbCtrlInfo.xo_clk = clk_get(&IsdbCtrlInfo.spi_dev->dev, "isdbt_xo");
+  	
+        if(IS_ERR(IsdbCtrlInfo.xo_clk)){
+            rc = PTR_ERR(IsdbCtrlInfo.xo_clk);
+            dev_err(&IsdbCtrlInfo.spi_dev->dev, "[dtv] could not get clock\n");
+            return rc;
+        }
 
-    /* We enable/disable the clock only to assure it works */
-    rc = clk_prepare_enable(IsdbCtrlInfo.xo_clk);
-    if (rc) {
-        dev_err(&IsdbCtrlInfo.spi_dev->dev, "[dtv] could not enable clock\n");
-        return rc;
+        /* We enable/disable the clock only to assure it works */
+        rc = clk_prepare_enable(IsdbCtrlInfo.xo_clk);
+        if (rc) {
+            dev_err(&IsdbCtrlInfo.spi_dev->dev, "[dtv] could not enable clock\n");
+            return rc;
+        }
+        clk_disable_unprepare(IsdbCtrlInfo.xo_clk);
     }
-    clk_disable_unprepare(IsdbCtrlInfo.xo_clk);
-#endif
 
 #ifndef _NOT_USE_WAKE_LOCK_
     wake_lock_init(&IsdbCtrlInfo.wake_lock, WAKE_LOCK_SUSPEND,
@@ -908,48 +969,26 @@ static int broadcast_spi_probe(struct spi_device *spi)
         isdbt_kthread = kthread_run(isdbt_thread, NULL, "isdbt_thread");
     }
 
-#if defined(CONFIG_ARCH_MT6582) || defined(CONFIG_ARCH_MT6753) || defined(CONFIG_ARCH_MT6755)
-    tunerbb_drv_hw_setting();
-
-    IsdbCtrlInfo.dtv_irq_node = of_find_compatible_node(NULL, NULL, "mediatek,dtv");
-        if (IsdbCtrlInfo.dtv_irq_node) {
-            IsdbCtrlInfo.interrupt_gpio = irq_of_parse_and_map(IsdbCtrlInfo.dtv_irq_node, 0);
-
-            if(IsdbCtrlInfo.interrupt_gpio < 0) {
-                print_log(NULL, "[1seg] irq_of_parse_and_map IRQ can't parsing!.\n");
-            }
-
-            rc = request_irq(IsdbCtrlInfo.interrupt_gpio, isdbt_irq
-                , IRQF_DISABLED | IRQF_TRIGGER_FALLING, "dtv", NULL);
-
-            if (rc){
-                print_log(NULL, "[1seg] dmb request irq fail : %d\n", rc);
-            }
-        }
-#else
-    /* Config GPIOs : IRQ PIN Output and 0 set at initial */
-    broadcast_Isdb_config_gpios();
-
 #ifdef FEATURE_DTV_USE_PINCTRL
     isdbt_pinctrl_init();
 #endif
 
-#ifdef FEATURE_DTV_USE_REGULATOR
-    broadcast_isdbt_set_regulator(1);
-    broadcast_isdbt_set_regulator(0);
-#endif
+    if(IsdbCtrlInfo.ctrl_isdbt_ldo || IsdbCtrlInfo.ctrl_lna_ldo) {
+        broadcast_isdbt_set_regulator(1);
+        broadcast_isdbt_set_regulator(0);
+    }        
 
     rc = request_irq(spi->irq, isdbt_irq
         , IRQF_DISABLED | IRQF_TRIGGER_FALLING, FC8180_NAME, NULL);
 
     if (rc){
-        print_log(NULL, "[1seg] dmb request irq fail : %d\n", rc);
+        print_log(NULL, "[dtv] dmb request irq fail : %d\n", rc);
     }
 #endif
 
     rc = broadcast_dmb_drv_start(&device_fc8180);
     if (rc) {
-        print_log(NULL, "[1seg] Failed to load Device (%d)\n", rc);
+        print_log(NULL, "[dtv] Failed to load Device (%d)\n", rc);
         rc = ERROR;
     }
 
@@ -972,14 +1011,14 @@ free_irq:
 struct spi_device_id spi_dtv_id_table = {"dtv_spi", 0};
 
 static struct spi_driver broadcast_spi_driver = {
+	.probe = broadcast_spi_probe,
+	.remove= __exit_p(broadcast_spi_remove),
+	.id_table = &spi_dtv_id_table,
 	.driver = {
 		.name = "dtv_spi",
 		.bus = &spi_bus_type,
 		.owner = THIS_MODULE,
 	},
-	.probe = broadcast_spi_probe,
-	.remove= __exit_p(broadcast_spi_remove),
-	.id_table = &spi_dtv_id_table,
 };
 
 static struct spi_board_info spi_board_devs[] __initdata = {
@@ -994,7 +1033,7 @@ static struct spi_board_info spi_board_devs[] __initdata = {
 };
 #else
 //#ifdef CONFIG_OF //Open firmware must be defined for dts useage
-static struct of_device_id fci_spi_fc8180_table[] = {
+static struct of_device_id isdbt_fc8180_table[] = {
 {
 	.compatible = "fci,fc8180-spi",}, //Compatible node must match dts
 	{ },
@@ -1005,7 +1044,7 @@ static struct spi_driver broadcast_spi_driver = {
 		.name = "fc8180-spi",
 		.bus	= &spi_bus_type,
 		.owner = THIS_MODULE,
-		.of_match_table = fci_spi_fc8180_table,
+		.of_match_table = isdbt_fc8180_table,
 	},
 
 	.probe = broadcast_spi_probe,
@@ -1017,12 +1056,10 @@ static struct spi_driver broadcast_spi_driver = {
 
 static int __init broadcast_dmb_fc8180_drv_init(void)
 {
-	int ret = 0;
+    int ret = 0;
 
-	if (module_init_flag)
-		return ret;
-
-    // Todo(add revision check rountine)
+    if (module_init_flag)
+    	return ret;
 
     if(broadcast_dmb_drv_check_module_init() != OK) {
         ret = ERROR;
@@ -1037,6 +1074,9 @@ static int __init broadcast_dmb_fc8180_drv_init(void)
     if (ret < 0)
         print_log(NULL, "[FC8180] SPI driver register failed\n");
 
+    printk("Linux Version : %d\n", LINUX_VERSION_CODE);
+//    printk("LGE_FC8180_DRV_VER : %s\n", LGE_FC8180_DRV_VER);
+
     return ret;
 }
 
@@ -1046,12 +1086,12 @@ static void __exit broadcast_dmb_fc8180_drv_exit(void)
 }
 
 #if 0
-static int broadcast_Isdb_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
+static int broadcast_isdbt_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	int rc = 0;
 	int addr = 0;
 
-	print_log(NULL, "broadcast_Isdb_i2c_probe client:0x%X\n", (unsigned int)client);
+	print_log(NULL, "broadcast_isdbt_i2c_probe client:0x%X\n", (unsigned int)client);
 
 	if(!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		print_log(NULL, "need I2C_FUNC_I2C\n");
@@ -1065,33 +1105,33 @@ static int broadcast_Isdb_i2c_probe(struct i2c_client *client, const struct i2c_
 	IsdbCtrlInfo.pclient = client;
 	//i2c_set_clientdata(client, (void*)&IsdbCtrlInfo.pclient);
 
-#ifdef FEATURE_DTV_USE_XO
-    IsdbCtrlInfo.xo_clk = clk_get(&IsdbCtrlInfo.pclient->dev, "isdbt_xo");
-    if(IS_ERR(IsdbCtrlInfo.xo_clk)){
-        rc = PTR_ERR(IsdbCtrlInfo.xo_clk);
-        dev_err(&IsdbCtrlInfo.pclient->dev, "[dtv]could not get clock\n");
-        return rc;
+    if(!IsdbCtrlInfo.isdbt_use_xtal) {
+        IsdbCtrlInfo.xo_clk = clk_get(&IsdbCtrlInfo.pclient->dev, "isdbt_xo");
+        if(IS_ERR(IsdbCtrlInfo.xo_clk)){
+            rc = PTR_ERR(IsdbCtrlInfo.xo_clk);
+            dev_err(&IsdbCtrlInfo.pclient->dev, "[dtv]could not get clock\n");
+            return rc;
+        }
+        /* We enable/disable the clock only to assure it works */
+        rc = clk_prepare_enable(IsdbCtrlInfo.xo_clk);
+        if(rc) {
+            dev_err(&IsdbCtrlInfo.pclient->dev, "[dtv] could not enable clock\n");
+            return rc;
+        }
+        clk_disable_unprepare(IsdbCtrlInfo.xo_clk);
     }
-    /* We enable/disable the clock only to assure it works */
-    rc = clk_prepare_enable(IsdbCtrlInfo.xo_clk);
-    if(rc) {
-        dev_err(&IsdbCtrlInfo.pclient->dev, "[dtv] could not enable clock\n");
-        return rc;
-    }
-    clk_disable_unprepare(IsdbCtrlInfo.xo_clk);
-#endif
 
 #ifdef FEATURE_DTV_USE_PINCTRL
     isdbt_pinctrl_init();
 #endif
 
     /* Config GPIOs */
-    broadcast_Isdb_config_gpios();
+    broadcast_isdbt_config_gpios();
 
-#ifdef FEATURE_DTV_USE_REGULATOR
-    broadcast_isdbt_set_regulator(1);
-    broadcast_isdbt_set_regulator(0);
-#endif
+    if(IsdbCtrlInfo.ctrl_isdbt_ldo || IsdbCtrlInfo.ctrl_lna_ldo) {
+        broadcast_isdbt_set_regulator(1);
+        broadcast_isdbt_set_regulator(0);
+    }
 
 #ifndef _NOT_USE_WAKE_LOCK_
 	wake_lock_init(&IsdbCtrlInfo.wake_lock, WAKE_LOCK_SUSPEND,
@@ -1107,7 +1147,7 @@ static int broadcast_Isdb_i2c_probe(struct i2c_client *client, const struct i2c_
 	return rc;
 }
 
-static int broadcast_Isdb_i2c_remove(struct i2c_client* client)
+static int broadcast_isdbt_i2c_remove(struct i2c_client* client)
 {
 	int rc = 0;
 
@@ -1120,14 +1160,14 @@ static int broadcast_Isdb_i2c_remove(struct i2c_client* client)
 	return rc;
 }
 
-static int broadcast_Isdb_i2c_suspend(struct i2c_client* client, pm_message_t mesg)
+static int broadcast_isdbt_i2c_suspend(struct i2c_client* client, pm_message_t mesg)
 {
 	int rc = 0;
 	print_log(NULL, "[%s]\n", __func__);
 	return rc;
 }
 
-static int broadcast_Isdb_i2c_resume(struct i2c_client* client)
+static int broadcast_isdbt_i2c_resume(struct i2c_client* client)
 {
 	int rc = 0;
 	print_log(NULL, "[%s]\n", __func__);
@@ -1147,17 +1187,17 @@ static struct of_device_id tcc3535_i2c_table[] = {
 { },
 };
 
-static struct i2c_driver broadcast_Isdb_driver = {
+static struct i2c_driver broadcast_isdbt_driver = {
 	.driver = {
 		.name = "tcc3535_i2c",
 		.owner = THIS_MODULE,
 		.of_match_table = tcc3535_i2c_table,
 	},
-	.probe = broadcast_Isdb_i2c_probe,
-	.remove	= __devexit_p(broadcast_Isdb_i2c_remove),
+	.probe = broadcast_isdbt_i2c_probe,
+	.remove	= __devexit_p(broadcast_isdbt_i2c_remove),
 	.id_table = isdbt_fc8180_id,
-	.suspend = broadcast_Isdb_i2c_suspend,
-	.resume  = broadcast_Isdb_i2c_resume,
+	.suspend = broadcast_isdbt_i2c_suspend,
+	.resume  = broadcast_isdbt_i2c_resume,
 };
 
 int __devinit broadcast_dmb_drv_init(void)
@@ -1170,14 +1210,14 @@ int __devinit broadcast_dmb_drv_init(void)
 		return rc;
 	}
 	print_log(NULL, "[%s add i2c driver]\n", __func__);
-	rc = i2c_add_driver(&broadcast_Isdb_driver);
+	rc = i2c_add_driver(&broadcast_isdbt_driver);
 	print_log(NULL, "broadcast_add_driver rc = (%d)\n", rc);
 	return rc;
 }
 
 static void __exit broadcast_dmb_drv_exit(void)
 {
-	i2c_del_driver(&broadcast_Isdb_driver);
+	i2c_del_driver(&broadcast_isdbt_driver);
 }
 #endif // 0
 

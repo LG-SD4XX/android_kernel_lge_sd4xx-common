@@ -327,7 +327,6 @@ static ssize_t rmidev_read(struct file *filp, char __user *buf,
 		retval = -ENOMEM;
 		goto unlock;
 	}
-
 	retval = rmidev->fn_ptr->read(rmidev->rmi4_data,
 			*f_pos,
 			tmpbuf,
@@ -344,7 +343,6 @@ clean_up:
 	kfree(tmpbuf);
 unlock:
 	mutex_unlock(&(dev_data->file_mutex));
-
 	return retval;
 }
 

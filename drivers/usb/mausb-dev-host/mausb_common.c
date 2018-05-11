@@ -1,4 +1,7 @@
 /*
+ * mausb_common.c
+ * - This file is derived form usbip_common.c
+ *
  * Copyright (C) 2003-2008 Takahiro Hirofuchi
  *
  * This is free software; you can redistribute it and/or modify
@@ -31,7 +34,7 @@
 #include "mausb_util.h"
 
 #define DRIVER_AUTHOR "Takahiro Hirofuchi <hirofuchi@users.sourceforge.net>"
-#define DRIVER_DESC "USB/IP Core"
+#define DRIVER_DESC "MAUSB Core"
 
 #ifdef CONFIG_MAUSB_DEBUG
 unsigned long mausb_debug_flag=0xffffffff;
@@ -42,7 +45,6 @@ EXPORT_SYMBOL_GPL(mausb_debug_flag);
 module_param(mausb_debug_flag, ulong, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(mausb_debug_flag, "debug flags (defined in mausb_common.h)");
 
-/* FIXME */
 struct device_attribute dev_attr_mausb_debug;
 EXPORT_SYMBOL_GPL(dev_attr_mausb_debug);
 
@@ -62,8 +64,7 @@ DEVICE_ATTR_RW(mausb_debug);
 
 static void mausb_dump_buffer(char *buff, int bufflen)
 {
-//	print_hex_dump(KERN_DEBUG, "mausb-core", DUMP_PREFIX_OFFSET, 16, 4,
-//		       buff, bufflen, false);
+	/* TODO */
 }
 
 static void mausb_dump_pipe(unsigned int p)
@@ -99,7 +100,7 @@ static void mausb_dump_usb_device(struct usb_device *udev)
 	struct device *dev = &udev->dev;
 	int i;
 
-	dev_dbg(dev, "       devnum(%d) devpath(%s) ",
+	dev_dbg(dev, "devnum(%d) devpath(%s) ",
 		udev->devnum, udev->devpath);
 
 	switch (udev->speed) {
@@ -122,29 +123,28 @@ static void mausb_dump_usb_device(struct usb_device *udev)
 
 	pr_debug("tt %p, ttport %d\n", udev->tt, udev->ttport);
 
-	dev_dbg(dev, "                    ");
 	for (i = 0; i < 16; i++)
 		pr_debug(" %2u", i);
 	pr_debug("\n");
 
-	dev_dbg(dev, "       toggle0(IN) :");
+	dev_dbg(dev, "toggle0(IN) :");
 	for (i = 0; i < 16; i++)
 		pr_debug(" %2u", (udev->toggle[0] & (1 << i)) ? 1 : 0);
 	pr_debug("\n");
 
-	dev_dbg(dev, "       toggle1(OUT):");
+	dev_dbg(dev, "toggle1(OUT):");
 	for (i = 0; i < 16; i++)
 		pr_debug(" %2u", (udev->toggle[1] & (1 << i)) ? 1 : 0);
 	pr_debug("\n");
 
-	dev_dbg(dev, "       epmaxp_in   :");
+	dev_dbg(dev, "epmaxp_in :");
 	for (i = 0; i < 16; i++) {
 		if (udev->ep_in[i])
 			pr_debug(" %2u",
 			    le16_to_cpu(udev->ep_in[i]->desc.wMaxPacketSize));
 	}
 
-	dev_dbg(dev, "       epmaxp_out  :");
+	dev_dbg(dev, "epmaxp_out :");
 	for (i = 0; i < 16; i++) {
 		if (udev->ep_out[i])
 			pr_debug(" %2u",
@@ -152,16 +152,20 @@ static void mausb_dump_usb_device(struct usb_device *udev)
 	}
 	pr_debug("\n");
 
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP, "parent %p, bus %p\n", udev->parent, udev->bus);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"parent %p, bus %p\n", udev->parent, udev->bus);
 
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP, "descriptor %p, config %p, actconfig %p, "
-		"rawdescriptors %p\n", &udev->descriptor, udev->config,
-		udev->actconfig, udev->rawdescriptors);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"descriptor %p, config %p, actconfig %p, "
+			"rawdescriptors %p\n", &udev->descriptor, udev->config,
+			udev->actconfig, udev->rawdescriptors);
 
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP, "have_langid %d, string_langid %d\n",
-		udev->have_langid, udev->string_langid);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"have_langid %d, string_langid %d\n",
+			udev->have_langid, udev->string_langid);
 
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP, "maxchild %d\n", udev->maxchild);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"maxchild %d\n", udev->maxchild);
 }
 
 static void mausb_dump_request_type(__u8 rt)
@@ -192,11 +196,10 @@ static void mausb_dump_usb_ctrlrequest(struct usb_ctrlrequest *cmd)
 		return;
 	}
 
-	pr_debug("       ");
 	pr_debug("bRequestType(%02X) bRequest(%02X) wValue(%04X) wIndex(%04X) "
 		 "wLength(%04X) ", cmd->bRequestType, cmd->bRequest,
 		 cmd->wValue, cmd->wIndex, cmd->wLength);
-	pr_debug("\n       ");
+	pr_debug("\n");
 
 	if ((cmd->bRequestType & USB_TYPE_MASK) == USB_TYPE_STANDARD) {
 		pr_debug("STANDARD ");
@@ -263,35 +266,51 @@ void mausb_dump_urb(struct urb *urb)
 	}
 
 	dev = &urb->dev->dev;
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"---> %s",__func__);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"   urb                   :%p\n", urb);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"   dev                   :%p\n", urb->dev);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"---> %s",__func__);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"   urb                   :%p\n", urb);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"   dev                   :%p\n", urb->dev);
 
 	mausb_dump_usb_device(urb->dev);
 
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"   pipe                  :%08x ", urb->pipe);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"   pipe                  :%08x ", urb->pipe);
 
 	mausb_dump_pipe(urb->pipe);
 
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"   status                :%d\n", urb->status);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"   transfer_flags        :%08X\n", urb->transfer_flags);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"   transfer_buffer       :%p\n", urb->transfer_buffer);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"   transfer_buffer_length:%d\n",
-						urb->transfer_buffer_length);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"   status                :%d\n", urb->status);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"   transfer_flags        :%08X\n", urb->transfer_flags);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"   transfer_buffer       :%p\n", urb->transfer_buffer);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"   transfer_buffer_length:%d\n",
+			urb->transfer_buffer_length);
 	mausb_dump_buffer(urb->transfer_buffer, urb->transfer_buffer_length);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"   actual_length         :%d\n", urb->actual_length);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"   setup_packet          :%p\n", urb->setup_packet);
- 
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"   actual_length         :%d\n", urb->actual_length);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"   setup_packet          :%p\n", urb->setup_packet);
+
 	if (urb->setup_packet && usb_pipetype(urb->pipe) == PIPE_CONTROL)
 		mausb_dump_usb_ctrlrequest(
 			(struct usb_ctrlrequest *)urb->setup_packet);
 
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"   start_frame           :%d\n", urb->start_frame);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"   number_of_packets     :%d\n", urb->number_of_packets);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"   interval              :%d\n", urb->interval);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"   error_count           :%d\n", urb->error_count);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"   context               :%p\n", urb->context);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,"   complete              :%p\n", urb->complete);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"   start_frame           :%d\n", urb->start_frame);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"   number_of_packets     :%d\n", urb->number_of_packets);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"   interval              :%d\n", urb->interval);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"   error_count           :%d\n", urb->error_count);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"   context               :%p\n", urb->context);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_DUMP,
+			"   complete              :%p\n", urb->complete);
 }
 EXPORT_SYMBOL_GPL(mausb_dump_urb);
 
@@ -306,8 +325,6 @@ int mausb_recv(struct socket *sock, void *buf, int size)
 	/* for blocks of if (mausb_dbg_flag_xmit) */
 	char *bp = buf;
 	int osize = size;
- 
-//	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,"--->%s",__func__);
 
 	if (!sock || !buf || !size) {
 		pr_err("invalid arg, sock %p buff %p size %d\n", sock, buf,
@@ -344,54 +361,18 @@ int mausb_recv(struct socket *sock, void *buf, int size)
 		else
 			pr_debug("interrupt  :");
 
-		//pr_debug("receiving....\n");
+		pr_debug("receiving....\n");
 		mausb_dump_buffer(bp, osize);
-		//pr_debug("received, osize %d ret %d size %d total %d\n",
-		//	 osize, result, size, total);
+		pr_debug("received, osize %d ret %d size %d total %d\n",
+			 osize, result, size, total);
 	}
-//	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,"<---%s",__func__);
 	return total;
 
 err:
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_RX,"<---error in %s",__func__);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_RX, "<---error in %s",__func__);
 	return result;
 }
 EXPORT_SYMBOL_GPL(mausb_recv);
-#if 0
-struct socket *sockfd_to_socket(unsigned int sockfd)
-{
-	struct socket *socket;
-	struct file *file;
-	struct inode *inode;
-
-	file = fget(sockfd);
-	if (!file) {
-		pr_err("invalid sockfd\n");
-		return NULL;
-	}
-
-//	inode = file_inode(file);
-	inode = file->f_dentry->d_inode;
-
-	if (!inode || !S_ISSOCK(inode->i_mode)) {
-		fput(file);
-		return NULL;
-	}
-
-	socket = SOCKET_I(inode);
-
-	return socket;
-}
-EXPORT_SYMBOL_GPL(sockfd_to_socket);
-#endif
-#if 0
-/* there may be more cases to tweak the flags. */
-static unsigned int tweak_transfer_flags(unsigned int flags)
-{
-	flags &= ~URB_NO_TRANSFER_DMA_MAP;
-	return flags;
-}
-#endif
 
 /* some members of urb must be substituted before. */
 int mausb_recv_xbuff(struct mausb_device *ud, struct urb *urb)
@@ -440,7 +421,6 @@ static int __init mausb_core_init(void)
 
 static void __exit mausb_core_exit(void)
 {
-	return;
 }
 
 module_init(mausb_core_init);

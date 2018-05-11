@@ -1027,7 +1027,7 @@ int8    tunerbb_drv_fc8080_get_ber(struct broadcast_tdmb_sig_info *dmb_bb_info)
         bbm_com_word_write(0, BBM_BUF_OVERRUN, 0);
     }
     if(overrun != 0) {
-        print_log(0, "======= FC8080 BBM_BUF_OVERRUN =====  0x%x\n", overrun);
+        printk( "======= FC8080 BBM_BUF_OVERRUN =====  0x%x\n", overrun);
     }
 }
 

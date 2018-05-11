@@ -1,4 +1,7 @@
 /*
+ * stub.h
+ * - This file is derived form /drivers/usb/usbip/stub.h
+ *
  * Copyright (C) 2003-2008 Takahiro Hirofuchi
  *
  * This is free software; you can redistribute it and/or modify
@@ -36,9 +39,7 @@
 struct stub_device {
 	struct usb_interface *interface;
 	struct usb_device *udev;
-
 	struct mausb_device ud;
-
 	__u32 devid;
 
 	/*
@@ -60,10 +61,8 @@ struct stub_device {
 	struct list_head mausb_pal_submit;
 	struct list_head mausb_pal_tx;
 	struct list_head mausb_pal_free;
-
 	struct list_head mausb_unlink_tx;
 	struct list_head mausb_unlink_free;
-
 
 	/* see comments for unlinking in stub_rx.c */
 	wait_queue_head_t tx_waitq;
@@ -73,7 +72,6 @@ struct stub_device {
 	wait_queue_head_t pal_out_waitq;
 */
 };
-
 
 struct stub_unlink {
 	unsigned long seqnum;
@@ -103,30 +101,24 @@ struct bus_id_priv {
 	char shutdown_busid;
 };
 
-
 /* stub_dev.c */
 extern struct usb_driver stub_driver;
-
 /* stub_main.c */
 struct bus_id_priv *get_busid_priv(const char *busid);
 int del_match_busid(char *busid);
 void stub_device_cleanup_urbs(struct stub_device *sdev);
-
 /* stub_rx.c */
 int stub_rx_loop(void *data);
-
 /* stub_tx.c */
-
 int stub_tx_loop(void *data);
-/*mausb_main.c*/
 int stub_pal_mgnt_loop(void *data);
 int stub_pal_in_loop(void *data);
 int stub_pal_out_loop(void *data);
 int get_pipe(struct stub_device *sdev, int epnum, int dir);
 void masking_bogus_flags(struct urb *urb);
-int mausb_bind_unbind(const char *buf);
 void stub_free_mausb_pal_and_urb(struct stub_mausb_pal *pal);
-void mausb_enqueue_ret_unlink(struct stub_device *sdev, struct stub_mausb_pal *pal, __u32 seqnum, __u32 status);
+void mausb_enqueue_ret_unlink(struct stub_device *sdev,
+		struct stub_mausb_pal *pal, __u32 seqnum, __u32 status);
 int tweak_special_requests(struct urb *urb);
 
 #endif /* __MAUSB_STUB_H */

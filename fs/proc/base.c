@@ -989,7 +989,23 @@ static ssize_t oom_score_adj_write(struct file *file, const char __user *buf,
 		goto err_sighand;
 	}
 
+#ifdef CONFIG_HSWAP
+	if (!task->signal->oom_score_adj) {
+		long diff_time;
+		diff_time = ((long)jiffies - (long)task->signal->before_time) / HZ;
+		task->signal->top_time += diff_time;
+		if (task->signal->reclaimed && diff_time > 3)
+			task->signal->reclaimed = 0;
+	}
+#endif
+
 	task->signal->oom_score_adj = (short)oom_score_adj;
+
+#ifdef CONFIG_HSWAP
+	if (!task->signal->oom_score_adj)
+		task->signal->before_time = jiffies;
+#endif
+
 	if (has_capability_noaudit(current, CAP_SYS_RESOURCE))
 		task->signal->oom_score_adj_min = (short)oom_score_adj;
 	trace_oom_score_adj_update(task);

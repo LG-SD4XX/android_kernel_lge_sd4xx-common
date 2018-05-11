@@ -238,7 +238,7 @@ static int rmidev_i2c_write(struct device *dev,
 	}
 
 	/* page restore */
-	if (page_changed) {
+	if (page_changed) {	
 		ret = synaptics_write(dev, PAGE_SELECT_REG,
 					&page_old, sizeof(page_old));
 
@@ -631,8 +631,9 @@ static ssize_t rmidev_read(struct file *filp, char __user *buf,
 		size_t count, loff_t *f_pos)
 {
 	struct rmidev_data *dev_data = filp->private_data;
+
 	ssize_t ret;
-	unsigned char *tmpbuf;
+	unsigned char tmpbuf[count + 1];
 
 	TOUCH_TRACE();
 
@@ -641,26 +642,13 @@ static ssize_t rmidev_read(struct file *filp, char __user *buf,
 		return -EBADF;
 	}
 
-	mutex_lock(&(dev_data->file_mutex));
+	if (count == 0)
+		return 0;
 
 	if (count > (REG_ADDR_LIMIT - *f_pos))
 		count = REG_ADDR_LIMIT - *f_pos;
 
-	if (count == 0) {
-		ret = 0;
-		goto unlock;
-	}
-
-	if (*f_pos > REG_ADDR_LIMIT) {
-		ret = -EFAULT;
-		goto unlock;
-	}
-
-	tmpbuf = kzalloc(count + 1, GFP_KERNEL);
-	if (!tmpbuf) {
-		ret = -ENOMEM;
-		goto unlock;
-	}
+	mutex_lock(&(dev_data->file_mutex));
 
 	ret = rmidev_i2c_read(rmidev->ts_dev, *f_pos, tmpbuf, count);
 
@@ -673,8 +661,6 @@ static ssize_t rmidev_read(struct file *filp, char __user *buf,
 		*f_pos += ret;
 
 clean_up:
-	kfree(tmpbuf);
-unlock:
 	mutex_unlock(&(dev_data->file_mutex));
 
 	return ret;
@@ -692,8 +678,9 @@ static ssize_t rmidev_write(struct file *filp, const char __user *buf,
 		size_t count, loff_t *f_pos)
 {
 	struct rmidev_data *dev_data = filp->private_data;
+
+	unsigned char tmpbuf[count + 1];
 	ssize_t ret;
-	unsigned char *tmpbuf;
 
 	TOUCH_TRACE();
 
@@ -702,41 +689,24 @@ static ssize_t rmidev_write(struct file *filp, const char __user *buf,
 		return -EBADF;
 	}
 
-	mutex_lock(&(dev_data->file_mutex));
-
-	if (*f_pos > REG_ADDR_LIMIT) {
-		ret = -EFAULT;
-		goto unlock;
-	}
+	if (count == 0)
+		return 0;
 
 	if (count > (REG_ADDR_LIMIT - *f_pos))
 		count = REG_ADDR_LIMIT - *f_pos;
 
-	if (count == 0) {
-		ret = 0;
-		goto unlock;
-	}
+	if (copy_from_user(tmpbuf, buf, count))
+		return -EFAULT;
 
-	tmpbuf = kzalloc(count + 1, GFP_KERNEL);
-	if (!tmpbuf) {
-		ret = -ENOMEM;
-		goto unlock;
-	}
-
-	if (copy_from_user(tmpbuf, buf, count)) {
-		ret = -EFAULT;
-		goto clean_up;
-	}
+	mutex_lock(&(dev_data->file_mutex));
 
 	ret = rmidev_i2c_write(rmidev->ts_dev, *f_pos, tmpbuf, count);
 
 	if (ret >= 0)
 		*f_pos += ret;
 
-clean_up:
-	kfree(tmpbuf);
-unlock:
 	mutex_unlock(&(dev_data->file_mutex));
+
 	return ret;
 }
 

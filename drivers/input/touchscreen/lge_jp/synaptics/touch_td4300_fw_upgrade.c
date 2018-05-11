@@ -44,7 +44,7 @@
 #include <linux/firmware.h>
 
 #include <touch_core.h>
-#include "touch_td4300.h"
+#include <touch_td4300.h>
 
 unsigned short SynaF35QueryBase;
 unsigned short SynaF35ControlBase;

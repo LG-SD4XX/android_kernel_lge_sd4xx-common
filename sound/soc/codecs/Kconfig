@@ -34,6 +34,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_ADAU1701 if I2C
 	select SND_SOC_ADS117X
 	select SND_SOC_AK4104 if SPI_MASTER
+	select SND_SOC_AK4376 if I2C
 	select SND_SOC_AK4535 if I2C
 	select SND_SOC_AK4554
 	select SND_SOC_AK4641 if I2C
@@ -61,6 +62,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_BT_SCO
 	select SND_SOC_ES8328_SPI if SPI_MASTER
 	select SND_SOC_ES8328_I2C if I2C
+	select SND_SOC_ES9218P if I2C
 	select SND_SOC_ISABELLE if I2C
 	select SND_SOC_JZ4740_CODEC
 	select SND_SOC_LM4857 if I2C
@@ -164,6 +166,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_WM9705 if SND_SOC_AC97_BUS
 	select SND_SOC_WM9712 if SND_SOC_AC97_BUS
 	select SND_SOC_WM9713 if SND_SOC_AC97_BUS
+	select SND_SOC_USE_DMIC
         help
           Normally ASoC codec drivers are only built if a machine driver which
           uses them is also built since they are only usable with a machine
@@ -298,6 +301,9 @@ config SND_SOC_ADS117X
 config SND_SOC_AK4104
 	tristate "AKM AK4104 CODEC"
 	depends on SPI_MASTER
+
+config SND_SOC_AK4376
+	tristate "AKM AK4376 CODEC"
 
 config SND_SOC_AK4535
 	tristate
@@ -448,10 +454,23 @@ config SND_SOC_MAX98925
 config SND_SOC_MAX98927
     tristate "Speaker Protection IC"
 
-config SND_SOC_USE_QUIN_MI2S
-    bool "Maxim spk protection use quinary mi2s"
+config SND_SOC_ES9218P
+    tristate "es9218P Hi-Fi headphones amp"
     default n
-    depends on (SND_SOC_MAX98925 || SND_SOC_MAX98927)
+
+config SND_SOC_QUIN_HIFI
+    tristate "Quanary MI2S backend configuration"
+    default n
+    depends on SND_SOC_ES9218P
+
+config SND_SOC_LGE_ESS_DIGITAL_FILTER
+    tristate "Digital filter setting of ess"
+    default n
+    depends on SND_SOC_ES9218P
+
+config SND_SOC_USE_QUIN_MI2S
+    bool "Use quinary mi2s"
+    default n
 
 config SND_SOC_MAXIM_DSM
     bool "Maxim spk protection library"
@@ -887,6 +906,10 @@ config SND_SOC_TPA6130A2
 config SND_SOC_MSM_STUB
 	tristate
 
+config SND_USE_MBHC_EXTN_CABLE
+        tristate "MBHC EXTN CABLE USECASE"
+        depends on MACH_LGE
+        default n
 config SND_SOC_MSM_HDMI_CODEC_RX
 	bool "HDMI Audio Playback"
 	depends on FB_MSM_MDSS_HDMI_PANEL && (SND_SOC_APQ8084 || SND_SOC_MSM8994 || SND_SOC_MSM8996)
@@ -897,4 +920,8 @@ config SND_SOC_MSM_HDMI_CODEC_RX
 config SND_SOC_MSM_HDMI_DBA_CODEC_RX
 	bool "HDMI DBA Audio Playback"
 	depends on MSM_DBA
+
+config SND_SOC_USE_DMIC
+	tristate "Use Digital MIC"
+	default n
 endmenu

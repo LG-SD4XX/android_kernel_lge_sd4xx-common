@@ -4392,6 +4392,29 @@ __sum16 __skb_gro_checksum_complete(struct sk_buff *skb)
 }
 EXPORT_SYMBOL(__skb_gro_checksum_complete);
 
+//LGP_DATA_QC_CR(2056717) start
+static void net_rps_send_ipi(struct softnet_data *remsd)
+{
+    #ifdef CONFIG_RPS
+	while (remsd) {
+		struct softnet_data *next = remsd->rps_ipi_next;
+
+		if (cpu_online(remsd->cpu)) {
+			smp_call_function_single_async(remsd->cpu,
+						   &remsd->csd);
+		} else {
+			pr_err("%s() cpu offline\n", __func__);
+			rps_lock(remsd);
+			remsd->backlog.state = 0;
+			rps_unlock(remsd);
+		}
+		remsd = next;
+	}
+#endif
+}
+//LGP_DATA_QC_CR(2056717) end
+
+
 /*
  * net_rps_action_and_irq_enable sends any pending IPI's for rps.
  * Note: called with local irq disabled, but exits with local irq enabled.
@@ -4405,22 +4428,10 @@ static void net_rps_action_and_irq_enable(struct softnet_data *sd)
 		sd->rps_ipi_list = NULL;
 
 		local_irq_enable();
-
 		/* Send pending IPI's to kick RPS processing on remote cpus. */
-		while (remsd) {
-			struct softnet_data *next = remsd->rps_ipi_next;
-
-			if (cpu_online(remsd->cpu)) {
-				smp_call_function_single_async(remsd->cpu,
-							   &remsd->csd);
-			} else {
-				pr_err("%s() cpu offline\n", __func__);
-				rps_lock(remsd);
-				remsd->backlog.state = 0;
-				rps_unlock(remsd);
-			}
-			remsd = next;
-		}
+        //LGP_DATA_QC_CR(2056717) start
+        net_rps_send_ipi(remsd);
+        //LGP_DATA_QC_CR(2056717) end
 	} else
 #endif
 		local_irq_enable();
@@ -7082,7 +7093,9 @@ static int dev_cpu_callback(struct notifier_block *nfb,
 	struct sk_buff **list_skb;
 	struct sk_buff *skb;
 	unsigned int cpu, oldcpu = (unsigned long)ocpu;
-	struct softnet_data *sd, *oldsd;
+	//LGP_DATA_QC_CR(2056717) start
+	struct softnet_data *sd, *oldsd, *remsd;
+	//LGP_DATA_QC_CR(2056717) end
 
 	if (action != CPU_DEAD && action != CPU_DEAD_FROZEN)
 		return NOTIFY_OK;
@@ -7123,8 +7136,20 @@ static int dev_cpu_callback(struct notifier_block *nfb,
 			____napi_schedule(sd, napi);
 	}
 
+//LGP_DATA_QC_CR(2056717) start
+#ifdef CONFIG_RPS
+	remsd = oldsd->rps_ipi_list;
+	oldsd->rps_ipi_list = NULL;
+#endif
+//LGP_DATA_QC_CR(2056717) end
+
 	raise_softirq_irqoff(NET_TX_SOFTIRQ);
 	local_irq_enable();
+
+	//LGP_DATA_QC_CR(2056717) start
+	/* send out pending IPI's on offline CPU */
+	net_rps_send_ipi(remsd);
+	//LGP_DATA_QC_CR(2056717) end
 
 	/* Process offline CPU's input_pkt_queue */
 	while ((skb = __skb_dequeue(&oldsd->process_queue))) {

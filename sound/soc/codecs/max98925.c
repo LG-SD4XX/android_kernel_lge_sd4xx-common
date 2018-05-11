@@ -18,16 +18,8 @@
 #include <sound/soc.h>
 #include <sound/tlv.h>
 #include <sound/max98925.h>
-
-#ifdef CONFIG_LGE_EXTERNAL_SPEAKER
 #include <linux/input/epack_audio.h>
-#include <linux/device.h>
-#include <linux/workqueue.h>
-#include <linux/kernel.h>
-#define max98925_connected audio_get_epack_state()
-#else
-#define max98925_connected true
-#endif
+
 #include "max98925.h"
 
 #define DEBUG_MAX98925
@@ -38,21 +30,12 @@ pr_info("[MAX98925_DEBUG] %s: " format "\n", __func__, ## args)
 #define msg_maxim(format, args...)
 #endif /* DEBUG_MAX98925 */
 
-#ifdef CONFIG_LGE_EXTERNAL_SPEAKER
-static int max98925_init_status = 0;
-static int max98925_amp_status = 1;
-
+static int max98925_init_status;
 int max98925_get_init_status(void)
 {
 	return max98925_init_status;
 }
 EXPORT_SYMBOL_GPL(max98925_get_init_status);
-int max98925_get_spk_amp_status(void)
-{
-	return max98925_amp_status;
-}
-EXPORT_SYMBOL_GPL(max98925_get_spk_amp_status);
-#endif
 
 static void max98925_set_slave(struct max98925_priv *max98925);
 static void max98925_handle_pdata(struct snd_soc_codec *codec);
@@ -64,12 +47,11 @@ static int max98925_regmap_write(struct max98925_priv *max98925,
 {
 	int ret = 0;
 
-	if(max98925_connected) {
-		ret = regmap_write(max98925->regmap, reg, val);
+	ret = regmap_write(max98925->regmap, reg, val);
 
-		if (max98925->sub_regmap)
-			ret = regmap_write(max98925->sub_regmap, reg, val);
-	}
+	if (max98925->sub_regmap)
+		ret = regmap_write(max98925->sub_regmap, reg, val);
+
 	return ret;
 }
 
@@ -79,12 +61,10 @@ static int max98925_regmap_update_bits(struct max98925_priv *max98925,
 {
 	int ret = 0;
 
-	if(max98925_connected) {
-		ret = regmap_update_bits(max98925->regmap, reg, mask, val);
+	ret = regmap_update_bits(max98925->regmap, reg, mask, val);
 
-		if (max98925->sub_regmap)
-			ret = regmap_update_bits(max98925->sub_regmap, reg, mask, val);
-	}
+	if (max98925->sub_regmap)
+		ret = regmap_update_bits(max98925->sub_regmap, reg, mask, val);
 
 	return ret;
 }
@@ -207,16 +187,14 @@ static void reg_dump(struct max98925_priv *max98925)
 	};
 
 	i = 0;
-	if(max98925_connected) {
-		while (reg_table[i].count != 0) {
-			for (j = 0; j < reg_table[i].count; j++) {
-				addr = j + reg_table[i].start;
-				regmap_read(max98925->regmap, addr, &val_l);
-				msg_maxim("reg 0x%02X, val_l 0x%02X",
-						addr, val_l);
-			}
-			i++;
+	while (reg_table[i].count != 0) {
+		for (j = 0; j < reg_table[i].count; j++) {
+			addr = j + reg_table[i].start;
+			regmap_read(max98925->regmap, addr, &val_l);
+			msg_maxim("reg 0x%02X, val_l 0x%02X",
+					addr, val_l);
 		}
+		i++;
 	}
 }
 #endif /* USE_REG_DUMP */
@@ -237,16 +215,13 @@ static int max98925_set_dump_status(struct snd_kcontrol *kcontrol,
 
 	int val;
 
-	if(max98925_connected) {
-		regmap_read(max98925->regmap,
-			MAX98925_R038_GLOBAL_ENABLE, &val);
-		msg_maxim("val:%d", val);
+	regmap_read(max98925->regmap,
+		MAX98925_R038_GLOBAL_ENABLE, &val);
+	msg_maxim("val:%d", val);
 
-		if (val != 0)
-			maxdsm_update_param();
-	} else {
-		msg_maxim("EpackSPK connection : %d", max98925_connected);
-	}
+	if (val != 0)
+		maxdsm_update_param();
+
 	return 0;
 }
 static ssize_t max98925_log_show(struct device *dev,
@@ -323,14 +298,10 @@ static int max98925_spk_vol_put(struct snd_kcontrol *kcontrol,
 	struct max98925_priv *max98925 = snd_soc_codec_get_drvdata(codec);
 	unsigned int sel = ucontrol->value.integer.value[0];
 
-	if(max98925_connected) {
-		regmap_update_bits(max98925->regmap, MAX98925_R02D_GAIN,
-				MAX98925_SPK_GAIN_MASK, sel << MAX98925_SPK_GAIN_SHIFT);
+	regmap_update_bits(max98925->regmap, MAX98925_R02D_GAIN,
+			MAX98925_SPK_GAIN_MASK, sel << MAX98925_SPK_GAIN_SHIFT);
 
-		max98925->volume = sel;
-	} else {
-		msg_maxim("EpackSPK connection : %d", max98925_connected);
-	}
+	max98925->volume = sel;
 
 	return 0;
 }
@@ -343,14 +314,11 @@ static int max98925_reg_get(struct snd_kcontrol *kcontrol,
 	struct max98925_priv *max98925 = snd_soc_codec_get_drvdata(codec);
 	int data;
 
-	if(max98925_connected) {
-		regmap_read(max98925->regmap, reg, &data);
+	regmap_read(max98925->regmap, reg, &data);
 
-		ucontrol->value.integer.value[0] =
-			(data & mask) >> shift;
-	} else {
-		msg_maxim("EpackSPK connection : %d", max98925_connected);
-	}
+	ucontrol->value.integer.value[0] =
+		(data & mask) >> shift;
+
 	return 0;
 }
 
@@ -437,14 +405,11 @@ static int max98925_bout_voltage_get(struct snd_kcontrol *kcontrol,
 	struct max98925_priv *max98925 = snd_soc_codec_get_drvdata(codec);
 	unsigned int val;
 
-	if(max98925_connected) {
-		regmap_read(max98925->regmap,
-			MAX98925_R037_CONFIGURATION, &val);
-			ucontrol->value.integer.value[0] =
-			(val & MAX98925_BST_VOUT_MASK)>>MAX98925_BST_VOUT_SHIFT;
-	} else {
-		msg_maxim("EpackSPK connection : %d", max98925_connected);
-	}
+	regmap_read(max98925->regmap,
+		MAX98925_R037_CONFIGURATION, &val);
+		ucontrol->value.integer.value[0] =
+		(val & MAX98925_BST_VOUT_MASK)>>MAX98925_BST_VOUT_SHIFT;
+
 	return 0;
 }
 
@@ -472,16 +437,14 @@ static int max98925_spk_out_get(struct snd_kcontrol *kcontrol,
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct max98925_priv *max98925 = snd_soc_codec_get_drvdata(codec);
 	unsigned int val;
-	if(max98925_connected) {
-		regmap_read(max98925->regmap,
-				MAX98925_R038_GLOBAL_ENABLE, &val);
-		ucontrol->value.integer.value[0] = !!(val & MAX98925_EN_MASK);
 
-		msg_maxim("EpackSPK state '%s'",
-				spk_state_text[ucontrol->value.integer.value[0]]);
-	} else {
-		msg_maxim("EpackSPK connection :%d", max98925_connected);
-	}
+	regmap_read(max98925->regmap,
+			MAX98925_R038_GLOBAL_ENABLE, &val);
+	ucontrol->value.integer.value[0] = !!(val & MAX98925_EN_MASK);
+
+	msg_maxim("The status of speaker is '%s'",
+			spk_state_text[ucontrol->value.integer.value[0]]);
+
 	return 0;
 }
 
@@ -511,16 +474,14 @@ static int max98925_adc_en_get(struct snd_kcontrol *kcontrol,
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct max98925_priv *max98925 = snd_soc_codec_get_drvdata(codec);
 	int data;
-	if(max98925_connected) {
-		regmap_read(max98925->regmap, MAX98925_R036_BLOCK_ENABLE, &data);
 
-		if (data & MAX98925_ADC_VIMON_EN_MASK)
-			ucontrol->value.integer.value[0] = 1;
-		else
-			ucontrol->value.integer.value[0] = 0;
-	} else {
-		msg_maxim("EpackSPK connection :%d", max98925_connected);
-	}
+	regmap_read(max98925->regmap, MAX98925_R036_BLOCK_ENABLE, &data);
+
+	if (data & MAX98925_ADC_VIMON_EN_MASK)
+		ucontrol->value.integer.value[0] = 1;
+	else
+		ucontrol->value.integer.value[0] = 0;
+
 	return 0;
 }
 
@@ -653,196 +614,20 @@ static int max98925_volume_step_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int max98925_check_revID(struct regmap *regmap)
-{
-	int ret = 0;
-	int loop;
-	uint32_t reg = 0x00;
-	uint32_t version_table[] = {
-		MAX98925_VERSION,
-		MAX98925_VERSION1,
-		MAX98925_VERSION2,
-		MAX98925_VERSION3,
-	};
 
-	if (max98925_connected) {
-		regmap_read(regmap, MAX98925_R0FF_VERSION, &reg);
-		for (loop = 0; loop < ARRAY_SIZE(version_table); loop++) {
-			if (reg == version_table[loop])
-				ret = reg;
-		}
-	}
-	return ret;
-}
-
-static int max98925_check_version(struct max98925_priv *max98925)
-{
-	int rev_id = 0;
-
-	rev_id = max98925_check_revID(max98925->regmap);
-	pr_err("%s REV ID:0x%x\n", __func__, rev_id);
-
-	return rev_id;
-}
-
-static void __max98925_dai_digital_mute(
-		struct max98925_priv *max98925, int mute)
-{
-	int val = 0;
-	if (mute) {
-		if (max98925_connected) {
-			regmap_read(max98925->regmap,
-			MAX98925_R038_GLOBAL_ENABLE, &val);
-			msg_maxim("EpackSPK enable register(0x38) val : 0x%x", val);
-		}
-		if(val) {
-			msg_maxim("mute %d, epack_state %d", mute, max98925_connected);
-		max98925_regmap_update_bits(max98925,
-				MAX98925_R02D_GAIN,
-				MAX98925_SPK_GAIN_MASK, 0x00);
-		usleep_range(4999, 5000);
-		max98925_regmap_update_bits(max98925,
-				MAX98925_R038_GLOBAL_ENABLE,
-				MAX98925_EN_MASK, 0x0);
-		}
-	} else  {
-		if (!delayed_work_pending(&max98925->work)){
-			msg_maxim("mute %d, epack_state %d", mute, max98925_connected);
-			max98925_regmap_update_bits(max98925,
-					MAX98925_R02D_GAIN,
-					MAX98925_SPK_GAIN_MASK,
-					max98925->volume);
-			max98925_regmap_update_bits(max98925,
-					MAX98925_R036_BLOCK_ENABLE,
-					MAX98925_BST_EN_MASK |
-					MAX98925_SPK_EN_MASK,
-					MAX98925_BST_EN_MASK |
-					MAX98925_SPK_EN_MASK);
-			max98925_regmap_write(max98925,
-					MAX98925_R038_GLOBAL_ENABLE,
-					MAX98925_EN_MASK);
-		}
-	}
-}
-
-static int max98925_dai_digital_mute(struct snd_soc_dai *codec_dai, int mute)
-{
-	struct max98925_priv *max98925
-		= snd_soc_codec_get_drvdata(codec_dai->codec);
-	struct max98925_pdata *pdata = max98925->pdata;
-	bool action = 1;
-
-	if (pdata->capture_active != codec_dai->capture_active) {
-		pdata->capture_active = codec_dai->capture_active;
-		action = 0;
-	}
-
-	if (pdata->playback_active != codec_dai->playback_active) {
-		pdata->playback_active = codec_dai->playback_active;
-		action = 1;
-	}
-
-	msg_maxim("mute=%d playback_active=%d capture_active=%d action=%d",
-			mute, pdata->playback_active,
-			pdata->capture_active, action);
-
-	if (action)
-		__max98925_dai_digital_mute(max98925, mute);
-
-#ifdef CONFIG_LGE_EXTERNAL_SPEAKER
-	if (action && !mute && (max98925_check_version(max98925) == 0))
-		max98925_amp_status = 0;
-	else
-		max98925_amp_status = 1;
-#endif
-#ifdef USE_REG_DUMP
-	if (action)
-		reg_dump(max98925);
-#endif /* USE_REG_DUMP */
-	return 0;
-}
-#ifdef CONFIG_LGE_EXTERNAL_SPEAKER
-static void max98925_amp_re_enable(struct max98925_priv *max98925)
-{
-	unsigned int val = 0;
-
-	if(max98925_connected) {
-		regmap_read(max98925->regmap,
-			MAX98925_R038_GLOBAL_ENABLE, &val);
-		msg_maxim("EpackSPK enable register(0x38) val : 0x%x", val);
-
-		if (!val) {
-			max98925_regmap_update_bits(max98925,
-					MAX98925_R02D_GAIN,
-					MAX98925_SPK_GAIN_MASK,
-					max98925->volume);
-			max98925_regmap_update_bits(max98925,
-					MAX98925_R036_BLOCK_ENABLE,
-					MAX98925_BST_EN_MASK |
-					MAX98925_SPK_EN_MASK,
-					MAX98925_BST_EN_MASK |
-					MAX98925_SPK_EN_MASK);
-			max98925_regmap_write(max98925,
-					MAX98925_R038_GLOBAL_ENABLE,
-					MAX98925_EN_MASK);
-		}
-	} else {
-		msg_maxim("EpackSPK connection :%d", max98925_connected);
-	}
-}
-
-static void max98925_amp_work(struct work_struct *work)
-{
-	struct max98925_priv *max98925;
-	max98925 = container_of(work, struct max98925_priv, work.work);
-	mutex_lock(&max98925->mutex);
-	max98925_amp_re_enable(max98925);
-	mutex_unlock(&max98925->mutex);
-}
-
-static int maxd98925_amp_enable_check(struct max98925_priv *max98925, int action)
-{
-	int ret = 0;
-	if (delayed_work_pending(&max98925->work))
-		cancel_delayed_work(&max98925->work);
-	if (action) {
-		queue_delayed_work(max98925->wq,
-				&max98925->work,
-				msecs_to_jiffies(0));
-	}
-	return ret;
-}
-#endif
 static int max98925_amp_reinit_put(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct max98925_priv *max98925 = snd_soc_codec_get_drvdata(codec);
-	int ret = 0;
-	int i;
+    int ret = 0;
+    int i;
 	unsigned int ch_size, dai_bclk;
 	int sel = (int)ucontrol->value.integer.value[0];
-#ifndef CONFIG_LGE_EXTERNAL_SPEAKER
-	int reg = 0;
-#endif
 
 	msg_maxim("Reinit in, sel : %d\n", sel);
-#ifdef CONFIG_LGE_EXTERNAL_SPEAKER
-	max98925_init_status = sel;
-	if (!sel) {
-		msg_maxim("EPackSPK Off, epack_state : %d", max98925_connected);
-		__max98925_dai_digital_mute(max98925, 1);
+	if (!sel)
 		return ret;
-	}
-#else
-	reg = max98925_check_version(max98925);
-	if (!reg) {
-		dev_err(codec->dev,
-			"device re-initialization error (0x%02X)\n",
-			reg);
-		return ret;
-	}
-#endif
 	max98925_regmap_write(max98925, MAX98925_R038_GLOBAL_ENABLE, 0x00);
 
 	for (i = 0; i < ARRAY_SIZE(max98925_reg); i++)
@@ -897,7 +682,7 @@ static int max98925_amp_reinit_put(struct snd_kcontrol *kcontrol,
 
 	max98925_set_slave(max98925);
 	max98925_handle_pdata(codec);
-#ifndef CONFIG_LGE_EXTERNAL_SPEAKER
+
 	max98925_regmap_update_bits(max98925,
 			MAX98925_R02D_GAIN,
 			MAX98925_SPK_GAIN_MASK,
@@ -908,7 +693,7 @@ static int max98925_amp_reinit_put(struct snd_kcontrol *kcontrol,
 			MAX98925_SPK_EN_MASK,
 			MAX98925_BST_EN_MASK |
 			MAX98925_SPK_EN_MASK);
-#endif
+
 /* DAI format configuration */
 	if (max98925->ch_size ==32){
 		dai_bclk = MAX98925_DAI_BSEL_64;
@@ -934,11 +719,9 @@ static int max98925_amp_reinit_put(struct snd_kcontrol *kcontrol,
 	if (!max98925->sample_rate)
 		max98925->sample_rate = 48000;
 	max98925_set_clock(max98925, max98925->sample_rate);
-#ifdef CONFIG_LGE_EXTERNAL_SPEAKER
-	maxd98925_amp_enable_check(max98925, sel);
-#else
+
 	max98925_regmap_write(max98925, MAX98925_R038_GLOBAL_ENABLE, 0x80);
-#endif
+
 	msg_maxim("Reinit out\n");
 
     return ret;
@@ -986,12 +769,12 @@ static void max98925_handle_pdata(struct snd_soc_codec *codec)
 			be32_to_cpu(regInfo->reg),
 			be32_to_cpu(regInfo->def));
 		if (be32_to_cpu(regInfo->ch) == PRI_MAX98925
-			&& max98925->regmap && max98925_connected)
+			&& max98925->regmap)
 			regmap_write(max98925->regmap,
 				be32_to_cpu(regInfo->reg),
 				be32_to_cpu(regInfo->def));
 		else if (be32_to_cpu(regInfo->ch) == SEC_MAX98925
-			&& max98925->sub_regmap && max98925_connected)
+			&& max98925->sub_regmap)
 			regmap_write(max98925->sub_regmap,
 				be32_to_cpu(regInfo->reg),
 				be32_to_cpu(regInfo->def));
@@ -1095,7 +878,7 @@ static inline int max98925_rate_value(int rate,
 	}
 
 	msg_maxim("sample rate is %d, returning %d",
-			rate_table[i < ARRAY_SIZE(rate_table) ? i : (ARRAY_SIZE(rate_table)-1)].rate, *value);
+			rate_table[i].rate, *value);
 
 	return ret;
 }
@@ -1409,19 +1192,79 @@ static int max98925_dai_set_sysclk(struct snd_soc_dai *dai,
 
 	return 0;
 }
-#ifdef CONFIG_LGE_EXTERNAL_SPEAKER
+
+static void __max98925_dai_digital_mute(
+		struct max98925_priv *max98925, int mute)
+{
+	msg_maxim("mute %d, epack_state %d", mute, audio_get_epack_state());
+
+	if (mute) {
+		if(audio_get_epack_state()) {
+			max98925_regmap_update_bits(max98925,
+					MAX98925_R02D_GAIN,
+					MAX98925_SPK_GAIN_MASK, 0x00);
+			usleep_range(4999, 5000);
+			max98925_regmap_update_bits(max98925,
+					MAX98925_R038_GLOBAL_ENABLE,
+					MAX98925_EN_MASK, 0x0);
+		}
+	} else  {
+		max98925_regmap_update_bits(max98925,
+				MAX98925_R02D_GAIN,
+				MAX98925_SPK_GAIN_MASK,
+				max98925->volume);
+		max98925_regmap_update_bits(max98925,
+				MAX98925_R036_BLOCK_ENABLE,
+				MAX98925_BST_EN_MASK |
+				MAX98925_SPK_EN_MASK,
+				MAX98925_BST_EN_MASK |
+				MAX98925_SPK_EN_MASK);
+		max98925_regmap_write(max98925,
+				MAX98925_R038_GLOBAL_ENABLE,
+				MAX98925_EN_MASK);
+	}
+}
+
+static int max98925_dai_digital_mute(struct snd_soc_dai *codec_dai, int mute)
+{
+	struct max98925_priv *max98925
+		= snd_soc_codec_get_drvdata(codec_dai->codec);
+	struct max98925_pdata *pdata = max98925->pdata;
+	bool action = 1;
+
+	if (pdata->capture_active != codec_dai->capture_active) {
+		pdata->capture_active = codec_dai->capture_active;
+		action = 0;
+	}
+
+	if (pdata->playback_active != codec_dai->playback_active) {
+		pdata->playback_active = codec_dai->playback_active;
+		action = 1;
+	}
+
+	msg_maxim("mute=%d playback_active=%d capture_active=%d action=%d",
+			mute, pdata->playback_active,
+			pdata->capture_active, action);
+
+	if (action)
+		__max98925_dai_digital_mute(max98925, mute);
+
+#ifdef USE_REG_DUMP
+	if (action)
+		reg_dump(max98925);
+#endif /* USE_REG_DUMP */
+
+	return 0;
+}
+
 static struct max98925_priv *g_max98925;
 void max98925_spk_enable(int enable)
 {
-	msg_maxim("EPackSPK Enable : %d", enable);
-	if (g_max98925->nodsm) {
+	if (g_max98925->nodsm)
 		__max98925_dai_digital_mute(g_max98925, !enable);
-	} else {
-		__max98925_dai_digital_mute(g_max98925, !enable);
-	}
 }
 EXPORT_SYMBOL_GPL(max98925_spk_enable);
-#endif
+
 #define MAX98925_RATES SNDRV_PCM_RATE_8000_48000
 #define MAX98925_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | \
 		SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
@@ -1486,16 +1329,15 @@ static irqreturn_t max98925_interrupt(int irq, void *data)
 	unsigned int flag1;
 	unsigned int flag2;
 
-	if (max98925_connected) {
-		regmap_read(max98925->regmap, MAX98925_R00B_IRQ_ENABLE0, &mask0);
-		regmap_read(max98925->regmap, MAX98925_R008_FLAG0, &flag0);
+	regmap_read(max98925->regmap, MAX98925_R00B_IRQ_ENABLE0, &mask0);
+	regmap_read(max98925->regmap, MAX98925_R008_FLAG0, &flag0);
 
-		regmap_read(max98925->regmap, MAX98925_R00C_IRQ_ENABLE1, &mask1);
-		regmap_read(max98925->regmap, MAX98925_R009_FLAG1, &flag1);
+	regmap_read(max98925->regmap, MAX98925_R00C_IRQ_ENABLE1, &mask1);
+	regmap_read(max98925->regmap, MAX98925_R009_FLAG1, &flag1);
 
-		regmap_read(max98925->regmap, MAX98925_R00D_IRQ_ENABLE2, &mask2);
-		regmap_read(max98925->regmap, MAX98925_R00A_FLAG2, &flag2);
-	}
+	regmap_read(max98925->regmap, MAX98925_R00D_IRQ_ENABLE2, &mask2);
+	regmap_read(max98925->regmap, MAX98925_R00A_FLAG2, &flag2);
+
 	flag0 &= mask0;
 	flag1 &= mask1;
 	flag2 &= mask2;
@@ -1566,6 +1408,38 @@ static irqreturn_t max98925_interrupt(int irq, void *data)
 }
 #endif /* USE_MAX98925_IRQ */
 
+
+static int max98925_check_revID(struct regmap *regmap)
+{
+	int ret = 0;
+	int loop;
+	uint32_t reg = 0x00;
+	uint32_t version_table[] = {
+		MAX98925_VERSION,
+		MAX98925_VERSION1,
+		MAX98925_VERSION2,
+		MAX98925_VERSION3,
+	};
+
+	regmap_read(regmap, MAX98925_R0FF_VERSION, &reg);
+	for (loop = 0; loop < ARRAY_SIZE(version_table); loop++) {
+		if (reg == version_table[loop])
+			ret = reg;
+	}
+	return ret;
+}
+
+static int max98925_check_version(struct max98925_priv *max98925)
+{
+	int rev_id = 0;
+
+	rev_id = max98925_check_revID(max98925->regmap);
+	pr_err("%s REV ID:0x%x\n", __func__, rev_id);
+
+	return rev_id;
+}
+
+
 static int max98925_probe(struct snd_soc_codec *codec)
 {
 	struct max98925_priv *max98925 = snd_soc_codec_get_drvdata(codec);
@@ -1586,7 +1460,7 @@ static int max98925_probe(struct snd_soc_codec *codec)
 	cdata->fmt  = (unsigned)-1;
 
 	reg = max98925_check_version(max98925);
-#ifndef CONFIG_LGE_EXTERNAL_SPEAKER
+#ifndef CONFIG_MACH_MSM8940_TF8_TMO_US
 	if (!reg) {
 		dev_err(codec->dev,
 			"device initialization error (0x%02X)\n",
@@ -1618,19 +1492,17 @@ static int max98925_probe(struct snd_soc_codec *codec)
 	/* Disable ALC muting */
 	max98925_regmap_write(max98925, MAX98925_R03A_BOOST_LIMITER, 0xF8);
 
-	if (max98925_connected) {
-		if (!max98925->sub_regmap) {
-			regmap_update_bits(max98925->regmap,
-					MAX98925_R02D_GAIN, MAX98925_DAC_IN_SEL_MASK,
-					MAX98925_DAC_IN_SEL_DIV2_SUMMED_DAI);
-		} else {
-			regmap_update_bits(max98925->regmap,
-					MAX98925_R02D_GAIN, MAX98925_DAC_IN_SEL_MASK,
-					MAX98925_DAC_IN_SEL_LEFT_DAI);
-			regmap_update_bits(max98925->sub_regmap,
-					MAX98925_R02D_GAIN, MAX98925_DAC_IN_SEL_MASK,
-					MAX98925_DAC_IN_SEL_RIGHT_DAI);
-		}
+	if (!max98925->sub_regmap) {
+		regmap_update_bits(max98925->regmap,
+				MAX98925_R02D_GAIN, MAX98925_DAC_IN_SEL_MASK,
+				MAX98925_DAC_IN_SEL_DIV2_SUMMED_DAI);
+	} else {
+		regmap_update_bits(max98925->regmap,
+				MAX98925_R02D_GAIN, MAX98925_DAC_IN_SEL_MASK,
+				MAX98925_DAC_IN_SEL_LEFT_DAI);
+		regmap_update_bits(max98925->sub_regmap,
+				MAX98925_R02D_GAIN, MAX98925_DAC_IN_SEL_MASK,
+				MAX98925_DAC_IN_SEL_RIGHT_DAI);
 	}
 	/* Enable ADC */
 	if (!max98925->nodsm)
@@ -1677,14 +1549,7 @@ static int max98925_probe(struct snd_soc_codec *codec)
 	max98925->ch_size = 0;
 	max98925->sample_rate = 0;
 #endif /* USE_DSM_LOG || USE_DSM_UPDATE_CAL */
-#ifdef CONFIG_LGE_EXTERNAL_SPEAKER
-	max98925->wq = create_singlethread_workqueue(MA98925_WQ_NAME);
-	if (max98925->wq == NULL) {
-		return -ENOMEM;
-	}
-	INIT_DELAYED_WORK(&max98925->work, max98925_amp_work);
-	mutex_init(&max98925->mutex);
-#else
+#ifndef CONFIG_MACH_MSM8940_TF8_TMO_US
 err_version:
 	msg_maxim("exit %d", ret);
 #endif
@@ -1938,27 +1803,18 @@ go_ahead_next_step:
 			max98925_add_sub_device(i2c->adapter->nr,
 					pdata->sub_reg);
 		if (IS_ERR(max98925->sub_i2c)) {
-			if (max98925->sub_i2c)
-				dev_err(&max98925->sub_i2c->dev,
-						"Second MAX98925 was not found\n");
-			else
-				msg_maxim("Second MAX98925 was not found & max98925->sub_i2c is null");
+			dev_err(&max98925->sub_i2c->dev,
+					"Second MAX98925 was not found\n");
 			ret = -ENODEV;
 			goto err_regmap;
 		} else {
-			if(max98925->sub_i2c) {
-				max98925->sub_regmap = regmap_init_i2c(
-						max98925->sub_i2c, &max98925_regmap);
-				if (IS_ERR(max98925->sub_regmap)) {
-					ret = PTR_ERR(max98925->sub_regmap);
-					dev_err(&max98925->sub_i2c->dev,
-						"Failed to allocate sub_regmap: %d\n",
-						ret);
-					goto err_regmap;
-				}
-			} else {
-				msg_maxim("Second MAX98925 was not found & max98925->sub_i2c is null");
-				ret = -ENODEV;
+			max98925->sub_regmap = regmap_init_i2c(
+					max98925->sub_i2c, &max98925_regmap);
+			if (IS_ERR(max98925->sub_regmap)) {
+				ret = PTR_ERR(max98925->sub_regmap);
+				dev_err(&max98925->sub_i2c->dev,
+					"Failed to allocate sub_regmap: %d\n",
+					ret);
 				goto err_regmap;
 			}
 		}

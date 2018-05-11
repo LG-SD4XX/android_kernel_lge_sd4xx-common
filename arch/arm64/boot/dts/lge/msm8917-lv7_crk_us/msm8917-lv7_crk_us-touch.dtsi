@@ -52,8 +52,8 @@
 		/* Firmware */
 		use_fw_upgrade = <1>;
 		use_firmware = <0>;
-		fw_image = "touch/lv7/synaptics/PLG635-V0.22_PR2559712_DS5.12.3.6.1005_20055116.img",
-				    "touch/lv7/synaptics/PLG635-V0.22_PR2559712_DS5.12.3.6.1005_20055116.bin";
+		fw_image = "touch/lv7/synaptics/PLG635-V0.20_PR2541746_DS5.12.3.6.1005_20055114.img",
+				    "touch/lv7/synaptics/PLG635-V0.20_PR2541746_DS5.12.3.6.1005_20055114.bin";
 		panel_spec = "touch/lv7/synaptics/lv7_limit.txt";
 		panel_spec_mfts_folder = "touch/lv7/synaptics/lv7_limit.txt";
 

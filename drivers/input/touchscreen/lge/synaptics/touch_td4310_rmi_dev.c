@@ -702,23 +702,18 @@ static ssize_t rmidev_read(struct file *filp, char __user *buf,
 		return -EBADF;
 	}
 
-	mutex_lock(&(dev_data->file_mutex));
-
-	if (*f_pos > REG_ADDR_LIMIT) {
-		retval = -EFAULT;
-		goto clean_up;
-	}
+	if (count == 0)
+		return 0;
 
 	if (count > (REG_ADDR_LIMIT - *f_pos))
 		count = REG_ADDR_LIMIT - *f_pos;
-	if (count == 0) {
-		retval = 0;
-		goto clean_up;
-	}
 
 	address = (unsigned short)(*f_pos);
 
 	rmidev_allocate_buffer(count);
+
+	mutex_lock(&(dev_data->file_mutex));
+
 
 	retval = rmidev_i2c_read(rmidev->ts_dev,
 			*f_pos,
@@ -783,26 +778,18 @@ static ssize_t rmidev_write(struct file *filp, const char __user *buf,
 		return -EBADF;
 	}
 
-	mutex_lock(&(dev_data->file_mutex));
-
-	if (*f_pos > REG_ADDR_LIMIT) {
-		retval = -EFAULT;
-		goto unlock;
-	}
+	if (count == 0)
+		return 0;
 
 	if (count > (REG_ADDR_LIMIT - *f_pos))
 		count = REG_ADDR_LIMIT - *f_pos;
-	if (count == 0) {
-		retval = 0;
-		goto unlock;
-	}
 
 	rmidev_allocate_buffer(count);
 
-	if (copy_from_user(rmidev->tmpbuf, buf, count)) {
-		retval = -EFAULT;
-		goto unlock;
-	}
+	if (copy_from_user(rmidev->tmpbuf, buf, count))
+		return -EFAULT;
+
+	mutex_lock(&(dev_data->file_mutex));
 
 	retval = rmidev_i2c_write(rmidev->ts_dev,
 			*f_pos,
@@ -811,7 +798,6 @@ static ssize_t rmidev_write(struct file *filp, const char __user *buf,
 	if (retval >= 0)
 		*f_pos += retval;
 
-unlock:
 	mutex_unlock(&(dev_data->file_mutex));
 
 	return retval;

@@ -19,4 +19,3 @@
 #include "msm8917-lv517n_att_us-pm.dtsi"
 #include "msm8917-lv517n_att_us-touch.dtsi"
 #include "msm8917-lv517n_att_us-nfc.dtsi"
-#include "msm8917-pmi8950-lv517n_att_us-fingerprint.dtsi"

@@ -446,24 +446,11 @@ static u32 qfprom_secdat_read(void)
   struct file *fp;
   struct path root;
   int cnt=0;
+  struct scatterlist sg[FUSEPROV_SEC_STRUCTURE_MAX_NUM];
+  int i=0;
+  int sg_idx=0;
   u32 ret = RET_OK;
   mm_segment_t old_fs=get_fs();
-
-#ifdef CONFIG_LGE_QFPROM_SECHASH
-  struct crypto_hash *tfm = NULL;
-  struct hash_desc desc;
-  struct scatterlist sg[FUSEPROV_SEC_STRUCTURE_MAX_NUM];
-  char result[32]={0};
-  unsigned char temp_buf[4]={0};
-  unsigned char config_hash[32]={0};
-  int i=0;
-  int temp=0;
-  int sg_idx=0;
-  int segment_size=0;
-#else
-  printk(KERN_ERR "[QFUSE]%s : CONFIG_LGE_QFPROM_SECHASH is not exist\n", __func__);
-  return RET_ERR;
-#endif
 
   printk(KERN_INFO "[QFUSE]%s start\n", __func__);
 
@@ -473,7 +460,6 @@ static u32 qfprom_secdat_read(void)
     mutex_unlock(&secdat_lock);
     return RET_OK;
   }
-
 
   set_fs(KERNEL_DS);
   task_lock(&init_task);
@@ -488,21 +474,6 @@ static u32 qfprom_secdat_read(void)
     printk(KERN_ERR "[QFUSE]%s : secdata file open error : %d\n", __func__, temp_err);
     ret = RET_ERR;
     goto err;
-  }
-
-  tfm = crypto_alloc_hash("sha256", 0, CRYPTO_ALG_ASYNC);
-  if (IS_ERR(tfm)){
-    printk(KERN_ERR "[QFUSE]%s :hash alloc error\n", __func__);
-    ret = RET_ERR;
-    goto err_mem;
-  }
-  desc.tfm=tfm;
-  desc.flags=0;
-
-  if (crypto_hash_init(&desc) != 0){
-    printk(KERN_ERR "[QFUSE]%s : hash init error\n", __func__);
-    ret = RET_ERR;
-    goto err_mem;
   }
 
   sg_init_table(sg, ARRAY_SIZE(sg));
@@ -528,7 +499,6 @@ static u32 qfprom_secdat_read(void)
       }
       sg_set_buf(&sg[sg_idx++], (const char*)&secdat.segment, sizeof(fuseprov_secdat_hdr_segment_type));
     }
-    segment_size = cnt;
   }
 
   cnt = vfs_read(fp, (char*)&secdat.list_hdr, sizeof(secdat.list_hdr),&fp->f_pos);
@@ -584,35 +554,7 @@ static u32 qfprom_secdat_read(void)
   }
   sg_set_buf(&sg[sg_idx], (const char*)&secdat.footer, sizeof(fuseprov_secdat_footer_type));
 
-  if(crypto_hash_digest(&desc, sg, sizeof(fuseprov_secdat_hdr_type)+segment_size+secdat.hdr.size, result) != 0){
-    printk(KERN_ERR "[QFUSE]%s : hash_digest error\n", __func__);
-    ret = RET_ERR;
-    goto err_mem;
-  }
-
-  for(i=0;i<64;i=i+2){
-    memset(temp_buf, 0, 4);
-    memcpy(temp_buf, CONFIG_LGE_QFPROM_SECHASH+i, 2);
-    sscanf(temp_buf, "%x", &temp);
-    config_hash[i/2] = temp;
-  }
-
-  if(strncmp(result, config_hash, sizeof(result))!=0){
-    printk(KERN_ERR "[QFUSE]%s : sec hash different\n", __func__);
-    printk(KERN_ERR "[QFUSE]partition hash : %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
-          result[0],result[1],result[2],result[3],result[4],result[5],result[6],result[7],
-          result[8],result[9],result[10],result[11],result[12],result[13],result[14],result[15],
-          result[16],result[17],result[18],result[19],result[20],result[21],result[22],result[23],
-          result[24],result[25],result[26],result[27],result[28],result[29],result[30],result[31]);
-    printk(KERN_ERR "[QFUSE]config hash : %s\n",CONFIG_LGE_QFPROM_SECHASH);
-    ret = RET_ERR;
-    goto err_mem;
-  }
-
 err_mem:
-  if(tfm)
-    crypto_free_hash(tfm);
-
   if(ret == RET_ERR && secdat.pentry){
     kfree(secdat.pentry);
     secdat.pentry=NULL;
@@ -768,5 +710,5 @@ module_init(lge_qfprom_interface_init);
 module_exit(lge_qfprom_interface_exit);
 
 MODULE_DESCRIPTION("LGE QFPROM interface driver");
-MODULE_AUTHOR("lg-security@lge.com");
+MODULE_AUTHOR("dev-security@lge.com");
 MODULE_LICENSE("GPL");

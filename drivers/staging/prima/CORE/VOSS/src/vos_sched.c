@@ -192,34 +192,33 @@ vos_sched_open
   //Create the VOSS Main Controller thread
   pSchedContext->McThread = kthread_create(VosMCThread, pSchedContext,
                                            "VosMCThread");
-  kthread_bind(pSchedContext->McThread, 0);
-  if (IS_ERR(pSchedContext->McThread)) 
+  if (IS_ERR(pSchedContext->McThread))
   {
      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
                "%s: Could not Create VOSS Main Thread Controller",__func__);
      goto MC_THREAD_START_FAILURE;
   }
+  kthread_bind(pSchedContext->McThread, 0);
   wake_up_process(pSchedContext->McThread);
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
             "%s: VOSS Main Controller thread Created",__func__);
 
   pSchedContext->TxThread = kthread_create(VosTXThread, pSchedContext,
                                            "VosTXThread");
-  kthread_bind(pSchedContext->TxThread, 0);
-  if (IS_ERR(pSchedContext->TxThread)) 
+  if (IS_ERR(pSchedContext->TxThread))
   {
      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
                "%s: Could not Create VOSS TX Thread",__func__);
      goto TX_THREAD_START_FAILURE;
   }
+  kthread_bind(pSchedContext->TxThread, 0);
   wake_up_process(pSchedContext->TxThread);
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
              ("VOSS TX thread Created"));
 
   pSchedContext->RxThread = kthread_create(VosRXThread, pSchedContext,
                                            "VosRXThread");
-  kthread_bind(pSchedContext->RxThread, 0);
-  if (IS_ERR(pSchedContext->RxThread)) 
+  if (IS_ERR(pSchedContext->RxThread))
   {
 
      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
@@ -227,6 +226,7 @@ vos_sched_open
      goto RX_THREAD_START_FAILURE;
 
   }
+  kthread_bind(pSchedContext->RxThread, 0);
   wake_up_process(pSchedContext->RxThread);
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
              ("VOSS RX thread Created"));
@@ -300,7 +300,6 @@ VOS_STATUS vos_watchdog_open
   }
   vos_mem_zero(pWdContext, sizeof(VosWatchdogContext));
   pWdContext->pVContext = pVosContext;
-  gpVosWatchdogContext = pWdContext;
 
   //Initialize the helper events and event queues
   init_completion(&pWdContext->WdStartEvent);
@@ -314,16 +313,18 @@ VOS_STATUS vos_watchdog_open
 
   //Create the Watchdog thread
   pWdContext->WdThread = kthread_create(VosWDThread, pWdContext,"VosWDThread");
-  kthread_bind(pWdContext->WdThread, 0);
-  
-  if (IS_ERR(pWdContext->WdThread)) 
+
+  if (IS_ERR(pWdContext->WdThread))
   {
      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
                "%s: Could not Create Watchdog thread",__func__);
      return VOS_STATUS_E_RESOURCES;
-  }  
+  }
   else
   {
+     //QCT Driver Patch(CR 2039337)
+     kthread_bind(pWdContext->WdThread, 0);
+     gpVosWatchdogContext = pWdContext;
      wake_up_process(pWdContext->WdThread);
   }
  /*

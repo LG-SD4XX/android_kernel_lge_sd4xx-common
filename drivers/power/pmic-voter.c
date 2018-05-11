@@ -19,11 +19,7 @@
 #include "pmic-voter.h"
 
 #ifdef CONFIG_LGE_PM
-#if defined(CONFIG_LGE_PM_SMBCHG_STEP_CHG) || defined(CONFIG_LGE_PM_WATERPROOF_PROTECTION)
-#define NUM_MAX_CLIENTS 10
-#else
-#define NUM_MAX_CLIENTS 9
-#endif
+#define NUM_MAX_CLIENTS 12
 #else
 #define NUM_MAX_CLIENTS	8
 #endif
@@ -170,10 +166,15 @@ int vote(struct votable *votable, int client_id, bool state, int val)
 
 	votable->votes[client_id].state = state;
 	votable->votes[client_id].value = val;
-
+#ifdef CONFIG_LGE_PM
+	pr_info("%s-%s: client %d voting for %d - %s\n",
+			__func__,votable->name,
+			client_id, val, state ? "on" : "off");
+#else
 	pr_debug("%s: %d voting for %d - %s\n",
 			votable->name,
 			client_id, val, state ? "on" : "off");
+#endif
 	switch (votable->type) {
 	case VOTE_MIN:
 		effective_id = vote_min(votable);
@@ -208,8 +209,13 @@ int vote(struct votable *votable, int client_id, bool state, int val)
 	if (effective_result != votable->effective_result) {
 		votable->effective_client_id = effective_id;
 		votable->effective_result = effective_result;
+#ifdef CONFIG_LGE_PM
+		pr_info("%s-%s: effective vote is now %d voted by client %d \n",
+				__func__,votable->name, effective_result, effective_id);
+#else
 		pr_debug("%s: effective vote is now %d voted by %d\n",
 				votable->name, effective_result, effective_id);
+#endif
 		rc = votable->callback(votable->dev, effective_result,
 					effective_id, val, client_id);
 	}

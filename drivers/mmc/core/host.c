@@ -26,6 +26,8 @@
 
 #include <linux/mmc/host.h>
 #include <linux/mmc/card.h>
+#include <linux/mmc/ring_buffer.h>
+
 #include <linux/mmc/slot-gpio.h>
 
 #include "core.h"
@@ -815,9 +817,11 @@ int mmc_add_host(struct mmc_host *host)
 	mmc_add_host_debugfs(host);
 #endif
 #ifdef CONFIG_LGE_SHOW_SDCARD_DETECT_PIN_STATUS
-	mmc_host_cd_status_sysfs_init(host);
+    if (!(host->caps & MMC_CAP_NONREMOVABLE))
+	    mmc_host_cd_status_sysfs_init(host);
 #endif
 	mmc_host_clk_sysfs_init(host);
+	mmc_trace_init(host);
 
 	err = sysfs_create_group(&host->class_dev.kobj, &clk_scaling_attr_grp);
 	if (err)

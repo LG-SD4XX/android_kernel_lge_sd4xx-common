@@ -1,4 +1,7 @@
 /*
+ * mausb_event.c
+ * - This file is derived form usbip_event.c
+ *
  * Copyright (C) 2003-2008 Takahiro Hirofuchi
  *
  * This is free software; you can redistribute it and/or modify
@@ -23,8 +26,15 @@
 #include "mausb_common.h"
 #include "mausb_util.h"
 
-int event_handler(struct mausb_device *ud)
+#include <soc/qcom/lge/board_lge.h>
+
+
+extern void android_mausb_connect(int connect);
+
+
+static int event_handler(struct mausb_device *ud)
 {
+	int mausb_disable=0;
 	mausb_dbg_eh("---> event_handler\n");
 
 	/*
@@ -32,11 +42,17 @@ int event_handler(struct mausb_device *ud)
 	 */
 	while (mausb_event_happened(ud)) {
 		mausb_dbg_eh("pending event %lu\n", ud->event);
+		DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN," ---> event_handler %lu",ud->event);
 
 		/*
 		 * NOTE: shutdown must come first.
 		 * Shutdown the device.
 		 */
+		if (ud->event == SDEV_EVENT_ERROR_TCP)//5
+		{
+			mausb_disable=1;
+		}
+
 		if (ud->event & MAUSB_EH_SHUTDOWN) {
 			ud->mausb_eh_ops.shutdown(ud);
 			ud->event &= ~MAUSB_EH_SHUTDOWN;
@@ -60,18 +76,28 @@ int event_handler(struct mausb_device *ud)
 			mausb_dbg_eh("<--- event_handler\n ret -1");
 			return -1;
 		}
+
+		if(mausb_disable==1)
+		{
+			android_mausb_connect(0);
+			mausb_disable=0;           
+		}
+
+		
+		
 	}
 	mausb_dbg_eh("<--- event_handler\n ret 0");
 	return 0;
 }
-EXPORT_SYMBOL_GPL(event_handler);
 
 static int event_handler_loop(void *data)
 {
 	struct mausb_device *ud = data;
 
 	while (!kthread_should_stop()) {
-		wait_event_interruptible(ud->eh_waitq, mausb_event_happened(ud) || kthread_should_stop());
+		wait_event_interruptible(ud->eh_waitq,
+			 mausb_event_happened(ud) ||
+			 kthread_should_stop());
 
 		if (event_handler(ud) < 0)
 			break;
@@ -85,7 +111,7 @@ int mausb_start_eh(struct mausb_device *ud)
 	init_waitqueue_head(&ud->eh_waitq);
 	ud->event = 0;
 
-	ud->eh = kthread_run(event_handler_loop, ud, "mausb_eh");
+	ud->eh = kthread_get_run(event_handler_loop, ud, "mausb_eh");
 	mausb_dbg_eh("---> mausb_start_eh  %p\n", ud->eh);
 	if (IS_ERR(ud->eh)) {
 		return PTR_ERR(ud->eh);
@@ -103,7 +129,7 @@ void mausb_stop_eh(struct mausb_device *ud)
 			return; /* do not wait for myself */
 	if (ud->eh)
 	{
-		kthread_stop(ud->eh);
+		kthread_stop_put(ud->eh);
 		ud->eh = NULL;
 	}
 	mausb_dbg_eh("mausb_eh has finished\n");
@@ -116,8 +142,11 @@ void mausb_event_add(struct mausb_device *ud, unsigned long event)
 	mausb_dbg_eh(" ---> mausb_event_add %ld \n",event);
 	spin_lock_irqsave(&ud->lock, flags);
 	ud->event |= event;
+	if(ud->event !=0)
+	{
+		wake_up(&ud->eh_waitq);
+	}
 	spin_unlock_irqrestore(&ud->lock, flags);
-	//wake_up(&ud->eh_waitq);
 	mausb_dbg_eh(" <-- mausb_event_add  ud->event: %lu \n",ud->event);
 }
 EXPORT_SYMBOL_GPL(mausb_event_add);
@@ -125,14 +154,15 @@ EXPORT_SYMBOL_GPL(mausb_event_add);
 int mausb_event_happened(struct mausb_device *ud)
 {
 	int happened = 0;
-//	unsigned long flags;
+	unsigned long flags;
 	mausb_dbg_eh(" ---> mausb_event_happend %lu \n",ud->event);
-//	spin_lock_irqsave(&ud->lock, flags);
+	spin_lock_irqsave(&ud->lock, flags);
 	if (ud->event != 0) {
 		happened = 1;
 	}
-//	spin_unlock_irqrestore(&ud->lock, flags);
+	spin_unlock_irqrestore(&ud->lock, flags);
 	mausb_dbg_eh(" <-- mausb_event_happened \n");
+
 	return happened;
 }
 EXPORT_SYMBOL_GPL(mausb_event_happened);

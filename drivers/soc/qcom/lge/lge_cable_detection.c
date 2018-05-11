@@ -19,7 +19,13 @@
 #include <linux/qpnp/qpnp-adc.h>
 #include <linux/power_supply.h>
 #include <soc/qcom/smem.h>
+#ifdef CONFIG_LGE_ONE_BINARY_SKU
+#include <soc/qcom/lge/board_lge.h>
+#endif
 #ifdef CONFIG_LGE_PM_ONBINARY_ORANGE
+#include <soc/qcom/lge/board_lge.h>
+#endif
+#ifdef CONFIG_MACH_MSM8940_L6_DCM_JP
 #include <soc/qcom/lge/board_lge.h>
 #endif
 
@@ -37,17 +43,27 @@ struct chg_cable_info_table {
 #define C_NONE_TA_MA        700
 #define C_NONE_USB_MA       500
 
+#define NEW_MAX_CABLE_NUM		5
 #define MAX_CABLE_NUM		15
+
+
 static struct chg_cable_info lge_cable_info;
 static bool cable_type_defined;
 static struct chg_cable_info_table lge_acc_cable_type_data[MAX_CABLE_NUM];
 
+#ifdef CONFIG_MACH_MSM8940_L6_DCM_JP
+static char *lge_cable_type_str[] = {
+	"NOT INIT", "56K", "130K",
+	"910K",  "OPEN"
+};
+#else
 static char *lge_cable_type_str[] = {
 	"NOT INIT", "MHL 1K", "U_28P7K",
 	"28P7K", "56K", "100K",  "130K",
 	"180K", "200K", "220K",  "270K",
 	"330K", "620K", "910K",  "OPEN"
 };
+#endif
 
 bool lge_is_factory_cable(void)
 {
@@ -99,12 +115,117 @@ int lge_smem_cable_type(void)
 		return *cable_smem_type;
 }
 
+#ifdef CONFIG_MACH_MSM8940_L6_DCM_JP
+void get_cable_data_from_dt_new(void *of_node){
+	int i;
+	u32 cable_value[3];
+	struct device_node *node_temp = (struct device_node *)of_node;
+
+	enum hw_rev_type rev;
+
+	const char *propname_1v8_200k[NEW_MAX_CABLE_NUM] = {
+		"lge,no-init-cable",
+		"lge,cable-56k-1v8-200k",
+		"lge,cable-130k-1v8-200k",
+		"lge,cable-910k-1v8-200k",
+		"lge,cable-none-1v8-200k"
+	};
+
+	const char *propname_1v0_100k[NEW_MAX_CABLE_NUM] = {
+		"lge,no-init-cable",
+		"lge,cable-56k-1v0-100k",
+		"lge,cable-130k-1v0-100k",
+		"lge,cable-910k-1v0-100k",
+		"lge,cable-none-1v0-100k"
+	};
+
+	rev = lge_get_board_revno();
+
+	pr_info("get_cable_data_from_dt_new hw_rev = %d\n", rev);
+
+	if (cable_type_defined) {
+		pr_info("Cable type is already defined\n");
+		return;
+	}
+
+	for (i = 0; i < NEW_MAX_CABLE_NUM; i++) {
+
+		if (rev < HW_REV_B_1)
+			of_property_read_u32_array(node_temp, propname_1v8_200k[i],
+					cable_value, 3);
+		else
+			of_property_read_u32_array(node_temp, propname_1v0_100k[i],
+					cable_value, 3);
+
+			lge_acc_cable_type_data[i].threshhold = cable_value[0];
+			lge_acc_cable_type_data[i].type = i;
+			lge_acc_cable_type_data[i].ta_ma = cable_value[1];
+			lge_acc_cable_type_data[i].usb_ma = cable_value[2];
+	}
+	cable_type_defined = 1;
+
+}
+#endif
+
 void get_cable_data_from_dt(void *of_node)
 {
 	int i;
 	u32 cable_value[3];
 	struct device_node *node_temp = (struct device_node *)of_node;
+#ifdef CONFIG_LGE_ONE_BINARY_SKU
+	struct device_node *child;
+	const char *carrier_dt = NULL;
+	static char *carrier = NULL;
+	enum lge_sku_carrier_type lge_sku_carrier;
 
+	const char *propname[MAX_CABLE_NUM] = {
+		"lge,no-init-cable",
+		"lge,cable-mhl-1k",
+		"lge,cable-u-28p7k",
+		"lge,cable-28p7k",
+		"lge,cable-56k",
+		"lge,cable-100k",
+		"lge,cable-130k",
+		"lge,cable-180k",
+		"lge,cable-200k",
+		"lge,cable-220k",
+		"lge,cable-270k",
+		"lge,cable-330k",
+		"lge,cable-620k",
+		"lge,cable-910k",
+		"lge,cable-none"
+	};
+
+	if (cable_type_defined) {
+		pr_info("Cable type is already defined\n");
+		return;
+	}
+
+	lge_sku_carrier = lge_get_sku_carrier();
+
+	if (lge_sku_carrier == TMUS || lge_sku_carrier == TMUS71)
+		carrier = "TMUS";
+	else
+		carrier = "COMMON";
+
+	for_each_child_of_node(node_temp, child) {
+		if(of_property_read_string(child,"lge,sku_carrier", &carrier_dt))
+			continue;
+
+		if (!strcmp(carrier, carrier_dt)) {
+			pr_info("carrier matched : %s\n", carrier_dt);
+			for (i = 0; i < MAX_CABLE_NUM; i++) {
+				of_property_read_u32_array(child, propname[i], cable_value, 3);
+				lge_acc_cable_type_data[i].threshhold = cable_value[0];
+				lge_acc_cable_type_data[i].type = i;
+				lge_acc_cable_type_data[i].ta_ma = cable_value[1];
+				lge_acc_cable_type_data[i].usb_ma = cable_value[2];
+			}
+			cable_type_defined = 1;
+			break;
+		}
+	}
+#else
 	const char *propname[MAX_CABLE_NUM] = {
 		"lge,no-init-cable",
 		"lge,cable-mhl-1k",
@@ -164,6 +285,7 @@ void get_cable_data_from_dt(void *of_node)
 		lge_acc_cable_type_data[i].usb_ma = cable_value[2];
 	}
 	cable_type_defined = 1;
+#endif
 }
 
 int lge_pm_get_cable_info(struct qpnp_vadc_chip *vadc,
@@ -261,16 +383,3 @@ void lge_pm_read_cable_info(struct qpnp_vadc_chip *vadc)
 
 	lge_pm_get_cable_info(vadc, &lge_cable_info);
 }
-
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-static bool moisture_state;
-void lge_set_moisture_state(bool state)
-{
-	moisture_state = state;
-}
-
-bool lge_get_moisture_state(void)
-{
-	return moisture_state;
-}
-#endif

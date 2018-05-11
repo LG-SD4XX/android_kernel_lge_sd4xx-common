@@ -45,7 +45,14 @@
 #include <soc/qcom/restart.h>
 #include <soc/qcom/lge/lge_cable_detection.h>
 #endif
+#ifdef CONFIG_USB_MAUSB
+#include <linux/usb/mausb.h>
+#endif
 
+#ifdef CONFIG_MEDIA_SUPPORT
+#include "f_uvc.h"
+#include "u_uvc.h"
+#endif
 #include "u_fs.h"
 #include "u_ecm.h"
 #include "u_ncm.h"
@@ -84,6 +91,9 @@
 #include "f_mass_storage.h"
 
 USB_ETHERNET_MODULE_PARAMETERS();
+#ifdef CONFIG_MEDIA_SUPPORT
+USB_VIDEO_MODULE_PARAMETERS();
+#endif
 #include "debug.h"
 
 #ifdef CONFIG_LGE_USB_G_LAF
@@ -95,7 +105,10 @@ MODULE_LICENSE("GPL");
 MODULE_VERSION("1.0");
 
 static const char longname[] = "Gadget Android";
-
+#ifdef CONFIG_USB_MAUSB
+extern int is_mausb_enabled(void);
+static int mausb_state=1;
+#endif
 /* Default vendor and product IDs, overridden by userspace */
 #define VENDOR_ID		0x18D1
 #define PRODUCT_ID		0x0001
@@ -275,6 +288,8 @@ static void free_android_config(struct android_dev *dev,
 static void android_lge_factory_bind(struct usb_composite_dev *cdev);
 #endif
 
+static bool video_enabled;
+
 /* string IDs are assigned dynamically */
 #define STRING_MANUFACTURER_IDX		0
 #define STRING_PRODUCT_IDX		1
@@ -334,24 +349,31 @@ enum android_device_state {
 };
 
 // MAUSB
+#ifdef CONFIG_USB_MAUSB
 void android_mausb_connect(int connect)
 {
 	struct android_dev *dev = list_entry(android_dev_list.prev,
 			struct android_dev, list_item);
-	char *configured[2]   = { "MAUSB_STA=CONFIGURED", NULL };
-	char *disconnected[2] = { "MAUSB_STA=DISCONNECTED", NULL };
+	char *configured[2]   = { "USB_STATE=CONFIGURED", NULL };
+	//char *disconnected[2] = { "USB_STATE=DISCONNECTED", NULL };
+	char *tcperror[2]	 = 	{ "USB_STATE=TCPERROR", NULL };
 	char **uevent_envp = NULL;
+	pr_info("%s:connect:%d \n", __func__,connect);
 	if (dev != NULL) {
 		if (connect == 1)
 			uevent_envp	= configured;
 		else
-			uevent_envp = disconnected;
+		{
+			mausb_state=0;
+			uevent_envp = tcperror;
+		}
 		kobject_uevent_env(&dev->dev->kobj, KOBJ_CHANGE,
 								uevent_envp);
+	pr_info("%s:uevent set connect:%d  \n", __func__,connect);							
 	}
 }
 EXPORT_SYMBOL_GPL(android_mausb_connect);
-
+#endif
 static const char *pm_qos_to_string(enum android_pm_qos_state state)
 {
 	switch (state) {
@@ -475,6 +497,41 @@ static void android_pm_qos_work(struct work_struct *data)
 static void android_disable(struct android_dev *);
 static int check_firstboot = 1;
 #endif
+#if defined(CONFIG_LGE_USB_EMBEDDED_BATTERY) && defined(CONFIG_LGE_USB_TYPE_C)
+static bool lge_get_cc_type_debug_accessory(void)
+{
+	struct power_supply *typec_psy;
+	union power_supply_propval val;
+	int rc;
+
+	switch (lge_get_boot_mode()) {
+	case LGE_BOOT_MODE_QEM_56K:
+	case LGE_BOOT_MODE_QEM_130K:
+	case LGE_BOOT_MODE_QEM_910K:
+		return true;
+	default:
+		break;
+	}
+
+	typec_psy = power_supply_get_by_name("usb_pd");
+	if (!typec_psy) {
+		pr_err("%s: typec psy doesn't prepared\n", __func__);
+		return true;
+	}
+
+	rc = typec_psy->get_property(typec_psy, POWER_SUPPLY_PROP_TYPEC_MODE, &val);
+	if (rc) {
+		pr_err("%s: typec psy doesn't support reading PROP_TYPEC_MODE rc=%d\n",
+		       __func__, rc);
+		return true;
+	}
+
+	if (val.intval == POWER_SUPPLY_TYPE_CTYPE_DEBUG_ACCESSORY)
+		return true;
+
+	return false;
+}
+#endif
 
 static void android_work(struct work_struct *data)
 {
@@ -511,7 +568,9 @@ static void android_work(struct work_struct *data)
 	dev->sw_connected = dev->connected;
 	dev->sw_suspended = dev->suspended;
 	spin_unlock_irqrestore(&cdev->lock, flags);
-
+#ifdef CONFIG_USB_MAUSB
+	if (is_mausb_enabled() != 1) {
+#endif
 	if (pdata->pm_qos_latency[0] && pm_qos_vote == 1) {
 		cancel_delayed_work_sync(&dev->pm_qos_work);
 		android_pm_qos_update_latency(dev, pdata->pm_qos_latency[WFI]);
@@ -523,6 +582,9 @@ static void android_work(struct work_struct *data)
 		android_pm_qos_update_latency(dev, PM_QOS_DEFAULT_VALUE);
 		dev->curr_pm_qos_state = NO_USB_VOTE;
 	}
+#ifdef CONFIG_USB_MAUSB
+	}
+#endif
 
 	if (uevent_envp) {
 		/*
@@ -554,18 +616,26 @@ static void android_work(struct work_struct *data)
 			last_uevent = next_state;
 		}
 		pr_info("%s: sent uevent %s\n", __func__, uevent_envp[0]);
+#ifdef CONFIG_USB_MAUSB
+		/* Bind MAUSB if enabled */
+		if (is_mausb_enabled()==1 && uevent_envp == configured)
+		{
+			mausb_state=1;
+			pr_info("%s: mausb enabled mausb_state :%d \n", __func__,mausb_state);
+		}
+#endif
 	} else {
-		pr_info("%s: did not send uevent (%d %d %p)\n", __func__,
+		pr_info("%s: did not send uevent (%d %d %pK)\n", __func__,
 			 dev->connected, dev->sw_connected, cdev->config);
 	}
 
 #ifdef CONFIG_LGE_USB_EMBEDDED_BATTERY
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	if (!lge_get_moisture_state()) {
-#endif
 	if (uevent_envp == connected) {
 		if (lge_pm_get_cable_type() == CABLE_56K &&
 				lge_get_boot_mode() == LGE_BOOT_MODE_NORMAL &&
+#ifdef CONFIG_LGE_USB_TYPE_C
+		    lge_get_cc_type_debug_accessory() &&
+#endif
 				uevent_envp == connected) {
 			android_disable(dev);
 			pr_info("PIF_56K detected with LGE_BOOT_MODE_NORMAL, restart!!!\n");
@@ -574,6 +644,9 @@ static void android_work(struct work_struct *data)
 		}
 
 		else if (lge_pm_get_cable_type() == CABLE_910K &&
+#ifdef CONFIG_LGE_USB_TYPE_C
+		    lge_get_cc_type_debug_accessory() &&
+#endif
 				(lge_smem_cable_type() != 11 || !check_firstboot) &&
 				!lge_get_laf_mode()) {
 					android_disable(dev);
@@ -588,9 +661,6 @@ static void android_work(struct work_struct *data)
 		pr_info("complete down check_firstboot\n");
 		check_firstboot = 0;
 	}
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	}
-#endif
 #endif
 
 #ifdef CONFIG_MACH_MSM8917_B6_LGU_KR
@@ -652,7 +722,11 @@ static int android_enable(struct android_dev *dev)
 			acc_wait_event();
 		}
 #endif
-		usb_gadget_connect(cdev->gadget);
+		/* Userspace UVC driver will trigger connect for video */
+		if (!video_enabled)
+			usb_gadget_connect(cdev->gadget);
+		else
+			pr_debug("defer gadget connect until usersapce opens video device\n");
 	}
 
 	return err;
@@ -662,6 +736,7 @@ static void android_disable(struct android_dev *dev)
 {
 	struct usb_composite_dev *cdev = dev->cdev;
 	struct android_configuration *conf;
+	bool do_put = false;
 
 #ifdef CONFIG_LGE_USB_FACTORY
 	if (dev->check_pif) {
@@ -674,7 +749,10 @@ static void android_disable(struct android_dev *dev)
 	pr_info("%s: checked disable_depth(%d)\n", __func__, dev->disable_depth);
 #endif
 	if (dev->disable_depth++ == 0) {
-		usb_gadget_autopm_get(cdev->gadget);
+		if (cdev->suspended && cdev->config) {
+			usb_gadget_autopm_get(cdev->gadget);
+			do_put = true;
+		}
 		if (gadget_is_dwc3(cdev->gadget)) {
 			/* Cancel pending control requests */
 			usb_ep_dequeue(cdev->gadget->ep0, cdev->req);
@@ -693,7 +771,8 @@ static void android_disable(struct android_dev *dev)
 			list_for_each_entry(conf, &dev->configs, list_item)
 				usb_remove_config(cdev, &conf->usb_config);
 		}
-		usb_gadget_autopm_put_async(cdev->gadget);
+		if (do_put)
+			usb_gadget_autopm_put_async(cdev->gadget);
 	}
 }
 
@@ -1800,6 +1879,185 @@ static struct android_usb_function audio_function = {
 };
 #endif
 
+/* PERIPHERAL uac2 */
+struct uac2_function_config {
+	struct usb_function *func;
+	struct usb_function_instance *fi;
+};
+
+static int uac2_function_init(struct android_usb_function *f,
+			       struct usb_composite_dev *cdev)
+{
+	struct uac2_function_config *config;
+
+	f->config = kzalloc(sizeof(*config), GFP_KERNEL);
+	if (!f->config)
+		return -ENOMEM;
+
+	config = f->config;
+
+	config->fi = usb_get_function_instance("uac2");
+	if (IS_ERR(config->fi))
+		return PTR_ERR(config->fi);
+
+	config->func = usb_get_function(config->fi);
+	if (IS_ERR(config->func)) {
+		usb_put_function_instance(config->fi);
+		return PTR_ERR(config->func);
+	}
+
+	return 0;
+}
+
+static void uac2_function_cleanup(struct android_usb_function *f)
+{
+	struct uac2_function_config *config = f->config;
+
+	if (config) {
+		usb_put_function(config->func);
+		usb_put_function_instance(config->fi);
+	}
+
+	kfree(f->config);
+	f->config = NULL;
+}
+
+static int uac2_function_bind_config(struct android_usb_function *f,
+					  struct usb_configuration *c)
+{
+	struct uac2_function_config *config = f->config;
+
+	return usb_add_function(c, config->func);
+}
+
+static struct android_usb_function uac2_function = {
+	.name		= "uac2_func",
+	.init		= uac2_function_init,
+	.cleanup	= uac2_function_cleanup,
+	.bind_config	= uac2_function_bind_config,
+};
+
+#ifdef CONFIG_MEDIA_SUPPORT
+/* PERIPHERAL VIDEO */
+struct video_function_config {
+	struct usb_function *func;
+	struct usb_function_instance *fi;
+};
+
+static int video_function_init(struct android_usb_function *f,
+			       struct usb_composite_dev *cdev)
+{
+	struct f_uvc_opts *uvc_opts;
+	struct video_function_config *config;
+
+	f->config = kzalloc(sizeof(*config), GFP_KERNEL);
+	if (!f->config)
+		return -ENOMEM;
+
+	config = f->config;
+
+	config->fi = usb_get_function_instance("uvc");
+	if (IS_ERR(config->fi))
+		return PTR_ERR(config->fi);
+
+	uvc_opts = container_of(config->fi, struct f_uvc_opts, func_inst);
+
+	uvc_opts->streaming_interval = streaming_interval;
+	uvc_opts->streaming_maxpacket = streaming_maxpacket;
+	uvc_opts->streaming_maxburst = streaming_maxburst;
+	uvc_set_trace_param(trace);
+
+	uvc_opts->fs_control = uvc_fs_control_cls;
+	uvc_opts->ss_control = uvc_ss_control_cls;
+	uvc_opts->fs_streaming = uvc_fs_streaming_cls;
+	uvc_opts->hs_streaming = uvc_hs_streaming_cls;
+	uvc_opts->ss_streaming = uvc_ss_streaming_cls;
+
+	config->func = usb_get_function(config->fi);
+	if (IS_ERR(config->func)) {
+		usb_put_function_instance(config->fi);
+		return PTR_ERR(config->func);
+	}
+
+	return 0;
+}
+
+static void video_function_cleanup(struct android_usb_function *f)
+{
+	struct video_function_config *config = f->config;
+
+	if (config) {
+		usb_put_function(config->func);
+		usb_put_function_instance(config->fi);
+	}
+
+	kfree(f->config);
+	f->config = NULL;
+}
+
+static int video_function_bind_config(struct android_usb_function *f,
+					  struct usb_configuration *c)
+{
+	struct video_function_config *config = f->config;
+
+	return usb_add_function(c, config->func);
+}
+
+static void video_function_enable(struct android_usb_function *f)
+{
+	video_enabled = true;
+}
+
+static void video_function_disable(struct android_usb_function *f)
+{
+	video_enabled = false;
+}
+
+static struct android_usb_function video_function = {
+	.name		= "video",
+	.init		= video_function_init,
+	.cleanup	= video_function_cleanup,
+	.bind_config	= video_function_bind_config,
+	.enable		= video_function_enable,
+	.disable	= video_function_disable,
+};
+
+int video_ready_callback(struct usb_function *function)
+{
+	struct android_dev *dev = video_function.android_dev;
+	struct usb_composite_dev *cdev;
+
+	if (!dev) {
+		pr_err("%s: dev is NULL\n", __func__);
+		return -ENODEV;
+	}
+
+	cdev = dev->cdev;
+
+	pr_debug("%s: connect\n", __func__);
+	usb_gadget_connect(cdev->gadget);
+
+	return 0;
+}
+
+int video_closed_callback(struct usb_function *function)
+{
+	struct android_dev *dev = video_function.android_dev;
+	struct usb_composite_dev *cdev;
+
+	if (!dev) {
+		pr_err("%s: dev is NULL\n", __func__);
+		return -ENODEV;
+	}
+
+	cdev = dev->cdev;
+
+	pr_debug("%s: disconnect\n", __func__);
+	usb_gadget_disconnect(cdev->gadget);
+
+	return 0;
+}
+#endif
 
 /* DIAG */
 static char diag_clients[32];	    /*enabled DIAG clients- "diag[,diag_mdm]" */
@@ -2237,6 +2495,7 @@ static int serial_function_bind_config(struct android_usb_function *f,
 	err = gport_setup(c);
 	if (err) {
 		pr_err("serial: Cannot setup transports");
+		gserial_deinit_port();
 		goto out;
 	}
 
@@ -3627,6 +3886,10 @@ static struct android_usb_function *default_functions[] = {
 	&ecm_qc_function,
 #ifdef CONFIG_SND_PCM
 	&audio_function,
+	&uac2_function,
+#endif
+#ifdef CONFIG_MEDIA_SUPPORT
+	&video_function,
 #endif
 	&rmnet_function,
 	&gps_function,
@@ -3990,7 +4253,13 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 		conf_str = strsep(&b, ":");
 		if (!conf_str)
 			continue;
-
+#ifdef CONFIG_USB_MAUSB
+		if(b && is_mausb_enabled() == 1 && !lge_get_laf_mode())
+		{
+			printk(KERN_INFO"mausb skipping before colon string enumeration problem\n");
+			continue;
+		}
+#endif
 		/* If the next not equal to the head, take it */
 		if (curr_conf->next != &dev->configs)
 			conf = list_entry(curr_conf->next,
@@ -4215,6 +4484,18 @@ static ssize_t state_show(struct device *pdev, struct device_attribute *attr,
 	char *state = "DISCONNECTED";
 	unsigned long flags;
 
+#ifdef CONFIG_USB_MAUSB
+	pr_info("%s: mausb_state :%d \n", __func__,mausb_state);
+		if (is_mausb_enabled()==1 && !mausb_state) {
+		spin_lock_irqsave(&cdev->lock, flags);
+			if(cdev->config || dev->connected)
+				state = "TCPERROR";
+		spin_unlock_irqrestore(&cdev->lock, flags);
+		mausb_state=1;
+		goto out;
+	}
+#endif	
+	
 	if (!cdev)
 		goto out;
 
@@ -4992,7 +5273,7 @@ static int usb_diag_update_pid_and_serial_num(u32 pid, const char *snum)
 		return -ENODEV;
 	}
 
-	pr_debug("%s: dload:%p pid:%x serial_num:%s\n",
+	pr_debug("%s: dload:%pK pid:%x serial_num:%s\n",
 				__func__, diag_dload, pid, snum);
 
 	/* update pid */

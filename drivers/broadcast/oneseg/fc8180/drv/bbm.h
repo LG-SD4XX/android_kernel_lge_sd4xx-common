@@ -30,7 +30,7 @@
 #include "fci_tun.h"
 #include "fci_oal.h"
 
-#define DRIVER_VER "S1.7.0"
+#define DRIVER_VER "S1.10.0"
 
 #ifdef __cplusplus
 extern "C" {

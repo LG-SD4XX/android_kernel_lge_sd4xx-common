@@ -20,9 +20,9 @@
 
 #include <linux/kernel.h>
 
-#define CONFIG_LGE_THERMALE_CHG_CONTROL
+#define CONFIG_LGE_THERMAL_CHG_CONTROL
 #if defined(CONFIG_LGE_PM_UNIFIED_WLC_OTP)
-#define CONFIG_LGE_THERMALE_CHG_CONTROL_FOR_WLC
+#define CONFIG_LGE_THERMAL_CHG_CONTROL_FOR_WLC
 #endif
 
 #define DC_IUSB_VOLTUV   4000000
@@ -58,7 +58,7 @@ enum lge_states_changes {
 	STS_CHE_NONE,
 	STS_CHE_NORMAL_TO_DECCUR,
 	STS_CHE_NORMAL_TO_STPCHG,
-	STS_CHE_DECCUR_TO_NORAML,
+	STS_CHE_DECCUR_TO_NORMAL,
 	STS_CHE_DECCUR_TO_STPCHG,
 	STS_CHE_STPCHG_TO_NORMAL,
 	STS_CHE_STPCHG_TO_DECCUR,
@@ -76,7 +76,7 @@ struct charging_info {
 	int     batt_temp;
 	int     is_charger;
 	int     current_now;
-#ifdef CONFIG_LGE_THERMALE_CHG_CONTROL
+#ifdef CONFIG_LGE_THERMAL_CHG_CONTROL
 	int     chg_current_ma;
 	int     chg_current_te;
 #endif

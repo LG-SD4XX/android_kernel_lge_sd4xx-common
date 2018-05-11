@@ -51,12 +51,14 @@
 #endif
 
 #ifdef CONFIG_LGE_PM_LLK_MODE
+#ifndef CONFIG_LGE_PM_CCD
 #define STORE_DEMO_ENABLED_ATTR(_name)			\
 {									\
 	.attr = { .name = #_name, .mode = 0644},			\
 	.show = power_supply_show_property,				\
 	.store = power_supply_store_property,				\
 }
+#endif
 #endif
 
 static struct device_attribute power_supply_attrs[];
@@ -68,7 +70,10 @@ static ssize_t power_supply_show_property(struct device *dev,
 		"Unknown", "Battery", "UPS", "Mains", "USB",
 		"USB_DCP", "USB_CDP", "USB_ACA",
 		"USB_HVDCP", "USB_HVDCP_3", "Wireless", "BMS", "USB_Parallel",
-		"Wipower", "TYPEC", "TYPEC_UFP", "TYPEC_DFP"
+		"Wipower", "TYPEC", "TYPEC_UFP", "TYPEC_DFP",
+#ifdef CONFIG_LGE_USB_TYPE_C
+		"USB_C", "USB_PD",
+#endif
 	};
 	static char *status_text[] = {
 		"Unknown", "Charging", "Discharging", "Not charging", "Full"
@@ -106,19 +111,24 @@ static ssize_t power_supply_show_property(struct device *dev,
 	};
 #elif defined(CONFIG_MACH_MSM8917_LV3_MPCS_US) || defined(CONFIG_MACH_MSM8917_LV3_TMO_US)  || defined(CONFIG_MACH_MSM8917_LV3_USC_US)\
 	|| defined(CONFIG_MACH_MSM8917_LV3_LGU_KR) || defined(CONFIG_MACH_MSM8917_LV3_SKT_KR) || defined(CONFIG_MACH_MSM8917_LV3_KT_KR)\
-	|| defined(CONFIG_MACH_MSM8917_LV3_GLOBAL_COM) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US_VZW) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US_R) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US_VZW_R) \
+	|| defined(CONFIG_MACH_MSM8917_LV3_GLOBAL_COM) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US_VZW)\
 	|| defined(CONFIG_MACH_MSM8940_LV9_ATT_US) || defined(CONFIG_MACH_MSM8940_LV9_NAO_US) || defined(CONFIG_MACH_MSM8917_LV7_CCT_US_VZW) \
-	|| defined(CONFIG_MACH_MSM8917_LV7_CRK_US) || defined(CONFIG_MACH_MSM8917_LV7_GLOBAL_CA) || defined(CONFIG_MACH_MSM8940_LV9_GLOBAL_COM) || defined(CONFIG_MACH_MSM8940_LV9_GLOBAL_CA)
+	|| defined(CONFIG_MACH_MSM8917_LV7_CRK_US) || defined(CONFIG_MACH_MSM8917_LV7_GLOBAL_CA) || defined(CONFIG_MACH_MSM8940_LV9_GLOBAL_COM)
 	static char *lge_hw_rev_text[] = {
 		"rev_0", "rev_a", "rev_b", "rev_c", "rev_d", "rev_e",
 		"rev_10", "rev_11", "reserved"
 	};
-#elif defined(CONFIG_MACH_MSM8940_MH_GLOBAL_COM) || defined(CONFIG_MACH_MSM8940_MH_LGU_KR)
+#elif defined(CONFIG_MACH_MSM8917_CV3_LGU_KR) || defined(CONFIG_MACH_MSM8917_CV3_SKT_KR) || defined(CONFIG_MACH_MSM8917_CV3_KT_KR) || defined(CONFIG_MACH_MSM8917_CV3_LAO_COM) || defined(CONFIG_MACH_MSM8917_CV3_VZW) || defined(CONFIG_MACH_MSM8917_CV3_CRK_US) || defined(CONFIG_MACH_MSM8917_CV3_CCT_US)
+	static char *lge_hw_rev_text[] = {
+		"rev_0", "rev_a", "rev_b", "rev_c", "rev_d", "rev_e", "rev_f",
+		"rev_g", "rev_h", "rev_10", "rev_11", "reserved"
+	};
+#elif defined(CONFIG_MACH_MSM8940_MH_GLOBAL_COM) || defined(CONFIG_MACH_MSM8940_MH_LGU_KR) || defined(CONFIG_MACH_MSM8940_MH_SKT_KR) || defined(CONFIG_MACH_MSM8940_MH_KT_KR) || defined(CONFIG_MACH_MSM8940_MH_TMO_US) || defined(CONFIG_MACH_MSM8940_MH_CRK_US) || defined(CONFIG_MACH_MSM8940_MH_MPCS_US) || defined(CONFIG_MACH_MSM8940_MH_TRF_US) || defined(CONFIG_MACH_MSM8940_MH_GLOBAL_CA) || defined(CONFIG_MACH_MSM8940_MH_LAO_COM) || defined(CONFIG_MACH_MSM8940_MH_GLOBAL_LDU)
 	static char *lge_hw_rev_text[] = {
 		"rev_0", "rev_02", "rev_a", "rev_b", "rev_c", "rev_d",
 		"rev_10", "rev_11", "reserved"
 	};
-#elif	defined(CONFIG_MACH_MSM8917_LV517_TMO_US) || defined(CONFIG_MACH_MSM8917_LV517_VZW) || defined(CONFIG_MACH_MSM8917_LV517_LRA_US) || defined(CONFIG_MACH_MSM8917_LV517_TRF_US)\
+#elif	defined(CONFIG_MACH_MSM8917_LV517_TMO_US) || defined(CONFIG_MACH_MSM8917_LV517_VZW) || defined(CONFIG_MACH_MSM8917_LV517_TRF_US)\
 	||  defined(CONFIG_MACH_MSM8917_LV517N_ATT_US) || defined(CONFIG_MACH_MSM8917_LV517_CRK_US) || defined(CONFIG_MACH_MSM8917_LV517_CLR_PR) ||  defined(CONFIG_MACH_MSM8917_LV517_MPCS_US)
 	static char *lge_hw_rev_text[] = {
 		"rev_0", "rev_a_1", "rev_a_2", "rev_a_3", "rev_b", "rev_c",
@@ -130,7 +140,7 @@ static ssize_t power_supply_show_property(struct device *dev,
 		"rev_a", "rev_a_2", "rev_a_3", "rev_b", "rev_c",
 		"rev_10", "rev_11", "reserved"
 	};
-#elif defined(CONFIG_MACH_MSM8940_SF3_MPCS_US) || defined(CONFIG_MACH_MSM8940_SF3_TMO_US) || defined(CONFIG_MACH_MSM8940_SF3_CLR_PR) || defined(CONFIG_MACH_MSM8940_TF8_TMO_US) || defined(CONFIG_MACH_MSM8940_TF8_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_GLOBAL_CA) || defined(CONFIG_MACH_MSM8940_SF3_GLOBAL_CA)
+#elif defined(CONFIG_MACH_MSM8940_SF3_MPCS_US) || defined(CONFIG_MACH_MSM8940_SF3_TMO_US) || defined(CONFIG_MACH_MSM8940_TF8_TMO_US) || defined(CONFIG_MACH_MSM8940_SF3_GLOBAL_CA) || defined(CONFIG_MACH_MSM8917_CV1_LAO_COM) || defined(CONFIG_MACH_MSM8917_CV1_VZW) || defined(CONFIG_MACH_MSM8917_CV1_ATT_US) || defined(CONFIG_MACH_MSM8917_CV1_CRK_US)
         static char *lge_hw_rev_text[] = {
                 "rev_0", "rev_a", "rev_a_2", "rev_b", "rev_c", "rev_d",
                 "rev_10", "rev_11", "reserved"
@@ -139,6 +149,11 @@ static ssize_t power_supply_show_property(struct device *dev,
 	static char *lge_hw_rev_text[] = {
 		"hdk_a", "rev_a", "rev_b", "rev_c",
 		"rev_10", "rev_11", "revserved"
+	};
+#elif defined(CONFIG_MACH_MSM8940_L6_DCM_JP)
+	static char *lge_hw_rev_text[] = {
+		"rev_0", "rev_02", "rev_a", "rev_b", "rev_b_1", "rev_c", "rev_d", "rev_e", 
+		"rev_10", "rev_11", "reserved"
 	};
 #else
 	static char *lge_hw_rev_text[] = {
@@ -365,13 +380,18 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(vzw_chg),
 #endif
 #ifdef CONFIG_LGE_PM_LLK_MODE
+#ifndef CONFIG_LGE_PM_CCD
 	STORE_DEMO_ENABLED_ATTR(store_demo_enabled),
+#endif
 #endif
 #ifdef CONFIG_LGE_PM_PSEUDO_BATTERY
 	PSEUDO_BATT_ATTR(pseudo_batt),
 #endif
 #ifdef CONFIG_LGE_PM_USB_CURRENT_MAX_MODE
 	POWER_SUPPLY_ATTR(usb_current_max_mode),
+#endif
+#ifdef CONFIG_LGE_PM_QPNP_QNOVO
+	POWER_SUPPLY_ATTR(qns_current_max),
 #endif
 	POWER_SUPPLY_ATTR(flash_current_max),
 	POWER_SUPPLY_ATTR(update_now),
@@ -390,6 +410,9 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(restricted_charging),
 	POWER_SUPPLY_ATTR(current_capability),
 	POWER_SUPPLY_ATTR(typec_mode),
+#ifdef CONFIG_LGE_USB_TYPE_C
+	POWER_SUPPLY_ATTR(ctype_rp),
+#endif
 	POWER_SUPPLY_ATTR(allow_hvdcp3),
 	POWER_SUPPLY_ATTR(max_pulse_allowed),
 	POWER_SUPPLY_ATTR(soc_reporting_ready),
@@ -404,9 +427,17 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(batt_id),
 	POWER_SUPPLY_ATTR(valid_batt_id),
 #endif
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+	POWER_SUPPLY_ATTR(time_to_full),
+	POWER_SUPPLY_ATTR(time_to_full_capacity),
+	POWER_SUPPLY_ATTR(aicl_done),
+#endif
 #if defined(CONFIG_LGE_PM_QC20_SCENARIO) || defined(CONFIG_LGE_PM_CHG_LIMIT)
 	POWER_SUPPLY_ATTR(is_qc20_ta),
 	POWER_SUPPLY_ATTR(is_evp_ta),
+#endif
+#ifdef CONFIG_LGE_PM_HVDCP_FAKE
+	POWER_SUPPLY_ATTR(fake_hvdcp_mode),
 #endif
 #ifdef CONFIG_LGE_PM_CHARGERLOGO_WAIT_FOR_FG_INIT
 	POWER_SUPPLY_ATTR(first_soc_est_done),
@@ -414,11 +445,17 @@ static struct device_attribute power_supply_attrs[] = {
 #ifdef CONFIG_LGE_PM
 	POWER_SUPPLY_ATTR(fastchg),
 #endif
+#if defined (CONFIG_LGE_USB_TYPE_C) || defined(CONFIG_LGE_USB_FLOATED_CHARGER_DETECT)
+	POWER_SUPPLY_ATTR(apsd_rerun_need),
+#endif
 #ifdef CONFIG_LGE_USB_FLOATED_CHARGER_DETECT
 	POWER_SUPPLY_ATTR(incompatible_chg),
 #endif
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	POWER_SUPPLY_ATTR(moisture),
+#if defined(CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE) || defined(CONFIG_LGE_PM_CCD)
+        POWER_SUPPLY_ATTR(battery_cycle),
+#endif
+#ifdef CONFIG_LGE_PM_FG_AGE
+	POWER_SUPPLY_ATTR(battery_age_level),
 #endif
 	POWER_SUPPLY_ATTR(battery_condition),
 	POWER_SUPPLY_ATTR(model_name),

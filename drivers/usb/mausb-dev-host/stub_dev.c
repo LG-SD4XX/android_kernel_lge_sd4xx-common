@@ -1,4 +1,7 @@
 /*
+ * stub_dev.c
+ * - This file is derived form /drivers/usb/usbip/stub_dev.c
+ *
  * Copyright (C) 2003-2008 Takahiro Hirofuchi
  *
  * This is free software; you can redistribute it and/or modify
@@ -21,37 +24,26 @@
 #include <linux/file.h>
 #include <linux/kthread.h>
 #include <linux/module.h>
-
+#include <linux/wakelock.h>
 #include "mausb_common.h"
 #include "stub.h"
 #include "mausb_util.h"
+
+
+
+struct wake_lock mausb_wl;
+//void mausb_bind(void);
+//void mausb_unbind(void);
 /*
  * Define device IDs here if you want to explicitly limit exportable devices.
  * In most cases, wildcard matching will be okay because driver binding can be
  * changed dynamically by a userland program.
  */
 static struct usb_device_id stub_table[] = {
-#if 0
-	/* just an example */
-	{ USB_DEVICE(0x05ac, 0x0301) },   /* Mac 1 button mouse */
-	{ USB_DEVICE(0x0430, 0x0009) },   /* Plat Home Keyboard */
-	{ USB_DEVICE(0x059b, 0x0001) },   /* Iomega USB Zip 100 */
-	{ USB_DEVICE(0x04b3, 0x4427) },   /* IBM USB CD-ROM */
-	{ USB_DEVICE(0x05a9, 0xa511) },   /* LifeView USB cam */
-	{ USB_DEVICE(0x55aa, 0x0201) },   /* Imation card reader */
-	{ USB_DEVICE(0x046d, 0x0870) },   /* Qcam Express(QV-30) */
-	{ USB_DEVICE(0x04bb, 0x0101) },   /* IO-DATA HD 120GB */
-	{ USB_DEVICE(0x04bb, 0x0904) },   /* IO-DATA USB-ET/TX */
-	{ USB_DEVICE(0x04bb, 0x0201) },   /* IO-DATA USB-ET/TX */
-	{ USB_DEVICE(0x08bb, 0x2702) },   /* ONKYO USB Speaker */
-	{ USB_DEVICE(0x046d, 0x08b2) },   /* Logicool Qcam 4000 Pro */
-#endif
 	/* magic for wild card */
 	{ .driver_info = 1 },
 	{ 0, }                                     /* Terminating entry */
 };
-
-extern void android_mausb_connect(int connect);
 
 MODULE_DEVICE_TABLE(usb, stub_table);
 
@@ -91,7 +83,8 @@ static ssize_t store_sockfd(struct device *dev, struct device_attribute *attr,
 	struct socket *socket;
 	int rv;
 	unsigned long flags;
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"\n---> %s",__func__);
+	//struct sched_param param = { .sched_priority = MAX_RT_PRIO - 1 };//sandeep
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"\n---> %s",__func__);
 
 	if (!sdev) {
 		dev_err(dev, "sdev is null\n");
@@ -113,35 +106,25 @@ static ssize_t store_sockfd(struct device *dev, struct device_attribute *attr,
 			goto err;
 		}
 
-		//socket = sockfd_to_socket(sockfd);
 		socket = sockfd_lookup(sockfd, &err);
 		if (!socket)
 			goto err;
-//		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"\n socket found  %s",__func__);
 		sdev->ud.tcp_socket = socket;
-//		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"\n socket saved found  %s",__func__);
-//		kobject_uevent_env(&dev->kobj, KOBJ_CHANGE,
-//					   uevent_envp);
-
+		wake_lock_init(&mausb_wl, WAKE_LOCK_SUSPEND, "mausb_wakelock");
+		wake_lock(&mausb_wl);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN," Init wakelock");
 		spin_unlock_irqrestore(&sdev->ud.lock,flags);
 
 		sdev->ud.tcp_rx = kthread_get_run(stub_rx_loop, &sdev->ud,
 						  "stub_rx");
 		sdev->ud.tcp_tx = kthread_get_run(stub_tx_loop, &sdev->ud,
 						  "stub_tx");
-/*
-		sdev->ud.tcp_pal_mgnt = kthread_get_run(stub_pal_mgnt_loop, &sdev->ud,
-						  "stub_pal_mgnt");
-		sdev->ud.tcp_pal_in = kthread_get_run(stub_pal_in_loop, &sdev->ud,
-						  "stub_pal_in");
-		sdev->ud.tcp_pal_out = kthread_get_run(stub_pal_out_loop, &sdev->ud,
-						  "stub_pal_out");
-*/
+
+		//sched_setscheduler(sdev->ud.tcp_rx, SCHED_FIFO, &param);//sandeep
+
 		spin_lock_irqsave(&sdev->ud.lock,flags);
 		sdev->ud.status = MAUSB_SDEV_ST_USED;
 		spin_unlock_irqrestore(&sdev->ud.lock,flags);
-		//android_mausb_connect(1);	//Connect
-
 	} else {
 		dev_info(dev, "stub down\n");
 
@@ -162,11 +145,12 @@ err:
 }
 static DEVICE_ATTR(mausb_sockfd, S_IWUSR, NULL, store_sockfd);
 
+
+
 static int stub_add_files(struct device *dev)
 {
 	int err = 0;
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"---> %s",__func__);
-
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"---> %s",__func__);
 
 	err = device_create_file(dev, &dev_attr_mausb_status);
 	if (err)
@@ -179,7 +163,7 @@ static int stub_add_files(struct device *dev)
 	err = device_create_file(dev, &dev_attr_mausb_debug);
 	if (err)
 		goto err_debug;
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"<-- %s",__func__);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"<-- %s",__func__);
 
 	return 0;
 
@@ -187,8 +171,10 @@ err_debug:
 	device_remove_file(dev, &dev_attr_mausb_sockfd);
 err_sockfd:
 	device_remove_file(dev, &dev_attr_mausb_status);
+
 err_status:
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"\n Error in creating attributes");
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,
+			"\n Error in creating attributes");
 	return err;
 }
 
@@ -202,13 +188,14 @@ static void stub_remove_files(struct device *dev)
 static void stub_shutdown_connection(struct mausb_device *ud)
 {
 	struct stub_device *sdev = container_of(ud, struct stub_device, ud);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN," ---> stub_shutdown_connection");
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN," ---> stub_shutdown_connection");
 	/*
 	 * When removing an exported device, kernel panic sometimes occurred
 	 * and then EIP was sk_wait_data of stub_rx thread. Is this because
 	 * sk_wait_data returned though stub_rx thread was already finished by
 	 * step 1?
 	 */
+	//mausb_unbind();
 	if (ud->tcp_socket) {
 		dev_dbg(&sdev->udev->dev, "shutdown tcp_socket %p\n",
 			ud->tcp_socket);
@@ -225,23 +212,6 @@ static void stub_shutdown_connection(struct mausb_device *ud)
 		ud->tcp_tx = NULL;
 	}
 
-/*
-	if (ud->tcp_pal_mgnt) {
-		kthread_stop_put(ud->tcp_pal_mgnt);
-		ud->tcp_pal_mgnt = NULL;
-	}
-
-
-	if (ud->tcp_pal_in) {
-		kthread_stop_put(ud->tcp_pal_in);
-		ud->tcp_pal_in = NULL;
-	}
-
-	if (ud->tcp_pal_out) {
-		kthread_stop_put(ud->tcp_pal_out);
-		ud->tcp_pal_out = NULL;
-	}
-*/
 	/*
 	 * 2. close the socket
 	 *
@@ -260,10 +230,6 @@ static void stub_shutdown_connection(struct mausb_device *ud)
 	{
 		unsigned long flags;
 		struct stub_mausb_pal *mausb_unlink, *mausb_tmp;
-//MAUSB
-
-//		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"\n ---> stub_shutdown_connection");
-//		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"\n freeing memeory");
 
 		spin_lock_irqsave(&sdev->mausb_pal_lock, flags);
 		list_for_each_entry_safe(mausb_unlink, mausb_tmp, &sdev->mausb_unlink_tx, list) {
@@ -280,35 +246,19 @@ static void stub_shutdown_connection(struct mausb_device *ud)
 		spin_unlock_irqrestore(&sdev->mausb_pal_lock, flags);
 
 	}
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"<-- stub_shutdown_connection");
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"<-- stub_shutdown_connection");
 }
 
 static void stub_device_reset(struct mausb_device *ud)
 {
 	struct stub_device *sdev = container_of(ud, struct stub_device, ud);
 	struct usb_device *udev = sdev->udev;
-	int ret;
+	int ret = 0;
 
 	dev_dbg(&udev->dev, "device reset");
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN," ---> stub_device_reset");
-//	mausb_bind_unbind("unbind");//test
-	android_mausb_connect(0);	//Disconnect
-	//LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN," ---> stub_device_reset udev->state=%d sdev->interface->condition=%d",udev->state,sdev->interface->condition);
-	ret =-4;// usb_lock_device_for_reset(udev, sdev->interface);
-	//ret =usb_lock_device_for_reset(udev, sdev->interface);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"-->stub_device_reset lock for reset ret=%d\n",ret);
-	if (ret < 0) {
-		dev_err(&udev->dev, "lock for reset\n");
-		spin_lock_irq(&ud->lock);
-		ud->status = MAUSB_SDEV_ST_ERROR;
-		spin_unlock_irq(&ud->lock);
-		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN," <-- stub_device_reset :ret lock");
-		return;
-	}
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN," ---> stub_device_reset");
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"-->stub_device_reset lock for reset ret=%d\n",ret);
 
-	/* try to reset the device */
-	ret = usb_reset_device(udev);
-	usb_unlock_device(udev);
 
 	spin_lock_irq(&ud->lock);
 	if (ret) {
@@ -319,8 +269,16 @@ static void stub_device_reset(struct mausb_device *ud)
 		ud->status = MAUSB_SDEV_ST_AVAILABLE;
 	}
 	spin_unlock_irq(&ud->lock);
-	//mausb_bind_unbind("bind");//test
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN," <-- stub_device_reset");
+	if(wake_lock_active(&mausb_wl))
+	{
+	wake_unlock(&mausb_wl);
+	wake_lock_destroy(&mausb_wl);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN," Removing wakelock");
+	}
+//	mausb_start_upnp();
+	//mausb_bind();
+
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN," <-- stub_device_reset");
 }
 
 static void stub_device_unusable(struct mausb_device *ud)
@@ -377,16 +335,11 @@ static struct stub_device *stub_device_alloc(struct usb_device *udev,
 	spin_lock_init(&sdev->mausb_pal_lock);
 
 	init_waitqueue_head(&sdev->tx_waitq);
-/*
-	init_waitqueue_head(&sdev->pal_mgmt_waitq);
-	init_waitqueue_head(&sdev->pal_in_waitq);
-	init_waitqueue_head(&sdev->pal_out_waitq);
-*/
+
 	sdev->ud.mausb_eh_ops.shutdown = stub_shutdown_connection;
 	sdev->ud.mausb_eh_ops.reset    = stub_device_reset;
 	sdev->ud.mausb_eh_ops.unusable = stub_device_unusable;
-
-	//mausb_start_eh(&sdev->ud);
+	mausb_start_eh(&sdev->ud);
 
 	dev_dbg(&interface->dev, "register new interface\n");
 
@@ -415,10 +368,12 @@ static int stub_probe(struct usb_interface *interface,
 	struct stub_device *sdev = NULL;
 	const char *udev_busid = dev_name(interface->dev.parent);
 	int err = 0;
-	struct bus_id_priv *busid_priv;
+	struct bus_id_priv *busid_priv=NULL;
+
+	//WARN_ON(1);
 
 	dev_dbg(&interface->dev, "Enter\n");
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"---> %s",__func__);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"---> %s",__func__);
 	/* check we should claim or not by busid_table */
 	busid_priv = get_busid_priv(udev_busid);
 	if (!busid_priv || (busid_priv->status == MAUSB_STUB_BUSID_REMOV) ||
@@ -431,21 +386,30 @@ static int stub_probe(struct usb_interface *interface,
 		 * other matched drivers by the driver core.
 		 * See driver_probe_device() in driver/base/dd.c
 		 */
+		 if(!busid_priv)
+			 printk(KERN_INFO"stub_probe busid_priv is NULL \n");
+		 if(busid_priv)
+		 {
+		  if(busid_priv->status == MAUSB_STUB_BUSID_REMOV)
+			  printk(KERN_INFO"stub_probe MAUSB_STUB_BUSID_REMOV\n");
+		  if(busid_priv->status == MAUSB_STUB_BUSID_OTHER)
+			  printk(KERN_INFO"stub_probe MAUSB_STUB_BUSID_OTHER\n");
+		 }
 		return -ENODEV;
 	}
 
 	if (udev->descriptor.bDeviceClass == USB_CLASS_HUB) {
-		dev_dbg(&udev->dev, "%s is a usb hub device... skip!\n",
+		dev_info(&udev->dev, "%s is a usb hub device... skip!\n",
 			 udev_busid);
 		return -ENODEV;
 	}
 
 	if (!strcmp(udev->bus->bus_name, "vhci_hcd")) {
-		dev_dbg(&udev->dev, "%s is attached on vhci_hcd... skip!\n",
+		dev_info(&udev->dev, "%s is attached on vhci_hcd... skip!\n",
 			 udev_busid);
 		return -ENODEV;
 	}
-#if 1
+
 	if (busid_priv->status == MAUSB_STUB_BUSID_ALLOC) {
 		sdev = busid_priv->sdev;
 		if (!sdev)
@@ -472,7 +436,7 @@ static int stub_probe(struct usb_interface *interface,
 		usb_get_intf(interface);
 		return 0;
 	}
-#endif
+
 	/* ok, this is my device */
 	sdev = stub_device_alloc(udev, interface);
 	if (!sdev)
@@ -513,7 +477,8 @@ static void shutdown_busid(struct bus_id_priv *busid_priv)
 	if (busid_priv->sdev && !busid_priv->shutdown_busid) {
 		busid_priv->shutdown_busid = 1;
 
-/*		if (busid_priv->sdev->ud.tcp_rx) {
+		/*
+		if (busid_priv->sdev->ud.tcp_rx) {
 			kthread_stop_put(busid_priv->sdev->ud.tcp_rx);
 			busid_priv->sdev->ud.tcp_rx = NULL;
 		}
@@ -521,11 +486,11 @@ static void shutdown_busid(struct bus_id_priv *busid_priv)
 			kthread_stop_put(busid_priv->sdev->ud.tcp_tx);
 			busid_priv->sdev->ud.tcp_tx = NULL;
 		}
-*/
+		*/
 		mausb_event_add(&busid_priv->sdev->ud, SDEV_EVENT_REMOVED);
-		event_handler(&(busid_priv->sdev->ud));
+
 		/* wait for the stop of the event handler */
-		//mausb_stop_eh(&busid_priv->sdev->ud);
+		mausb_stop_eh(&busid_priv->sdev->ud);
 	}
 }
 
@@ -539,8 +504,10 @@ static void stub_disconnect(struct usb_interface *interface)
 	const char *udev_busid = dev_name(interface->dev.parent);
 	struct bus_id_priv *busid_priv;
 
+	WARN_ON(1);
+
 	dev_dbg(&interface->dev, "Enter\n");
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"---> %s",__func__);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"---> %s",__func__);
 
 	busid_priv = get_busid_priv(udev_busid);
 	if (!busid_priv) {
@@ -566,13 +533,16 @@ static void stub_disconnect(struct usb_interface *interface)
 	/* If usb reset is called from event handler */
 	if (busid_priv->sdev->ud.eh == current) {
 		busid_priv->interf_count--;
-		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"Event Handler called stub_disconnect");
+		DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,
+				"Event Handler called stub_disconnect");
 		return;
 	}
 
 	if (busid_priv->interf_count > 1) {
 
-		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"---> %s busid_priv=%p busid_priv->interf_count=%d ",__func__,busid_priv,busid_priv->interf_count);
+		DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,
+			"---> %s busid_priv=%p busid_priv->interf_count=%d ",
+			__func__,busid_priv,busid_priv->interf_count);
 		busid_priv->interf_count--;
 		shutdown_busid(busid_priv);
 		usb_put_intf(interface);
@@ -580,7 +550,9 @@ static void stub_disconnect(struct usb_interface *interface)
 	}
 
 	busid_priv->interf_count = 0;
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"---> %s busid_priv=%p busid_priv->interf_count=%d ",__func__,busid_priv,busid_priv->interf_count);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,
+			"---> %s busid_priv=%p busid_priv->interf_count=%d ",
+			__func__,busid_priv,busid_priv->interf_count);
 	/* shutdown the current connection */
 	shutdown_busid(busid_priv);
 
@@ -603,12 +575,11 @@ static void stub_disconnect(struct usb_interface *interface)
  * Presence of pre_reset and post_reset prevents the driver from being unbound
  * when the device is being reset
  */
-
 static int stub_pre_reset(struct usb_interface *interface)
 {
 	dev_dbg(&interface->dev, "pre_reset\n");
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"---> %s",__func__);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"<-- %s",__func__);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"---> %s",__func__);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"<-- %s",__func__);
 	return 0;
 }
 
@@ -619,42 +590,42 @@ static int stub_post_reset(struct usb_interface *interface)
 	struct bus_id_priv *busid_priv;
 	struct stub_device *sdev = NULL;
 	dev_dbg(&interface->dev, "post_reset\n");
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"---> %s",__func__);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"---> %s",__func__);
 
 	busid_priv = get_busid_priv(udev_busid);
-	sdev = busid_priv->sdev;
-	/* 3. free used data */
-	//stub_device_cleanup_urbs(sdev);//sandeep
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"<-- %s",__func__);
+
+	if(busid_priv) {
+		sdev = busid_priv->sdev;
+		/* 3. free used data */
+		//stub_device_cleanup_urbs(sdev);
+	}
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"<-- %s",__func__);
 	return 0;
 }
 
-/*
-static int stub_suspend(struct usb_interface *intf, pm_message_t message)
+/*static int stub_suspend(struct usb_interface *interface, pm_message_t message)
 {
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"\n---> %s",__func__);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"\n Event: %d",message.event );
-	//android_mausb_connect(0);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"\n<-- %s",__func__);
-	return -EBUSY;
-}
+         pr_info("%s\n", __func__);
 
-static int stub_resume(struct usb_interface *intf)
+         return 0;
+}
+ 
+static int stub_resume(struct usb_interface *interface)
 {
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"\n---> %s",__func__);
+         pr_info("%s\n", __func__);
 
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,"\n<-- %s",__func__);
-	return 0;
-}
-*/
+         return 0;
+}*/
+
+
 
 struct usb_driver stub_driver = {
 	.name		= "mausb-host",
 	.probe		= stub_probe,
 	.disconnect	= stub_disconnect,
+	//.suspend    = stub_suspend,
+	//.resume     = stub_resume,
 	.id_table	= stub_table,
 	.pre_reset	= stub_pre_reset,
 	.post_reset	= stub_post_reset,
-	//.suspend 	= stub_suspend,
-	//.resume 	= stub_resume,
 };

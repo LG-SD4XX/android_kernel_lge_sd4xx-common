@@ -71,12 +71,10 @@ static void log_file_size_check(struct device *dev)
 	case MINIOS_AAT:
 		fname = "/data/touch/touch_self_test.txt";
 		break;
-	case MINIOS_MFTS_FLAT:
-		fname = "/data/touch/touch_self_mfts_flat.txt";
-		break;
-	case MINIOS_MFTS_CURVED:
 	case MINIOS_MFTS_FOLDER:
-		fname = "/data/touch/touch_self_mfts_folder.txt";
+	case MINIOS_MFTS_FLAT:
+	case MINIOS_MFTS_CURVED:
+		fname = "/data/touch/touch_self_mfts.txt";
 		break;
 	default:
 		TOUCH_I("%s : not support mode\n", __func__);
@@ -308,7 +306,7 @@ static int RspSetCommandType(struct device *dev, u8 setValue, int report_type)
 
 	/*Waiting for complete*/
 	do {
-		touch_msleep(10);
+		touch_msleep(5);
 		ret = td4310_read(dev, ANALOG_COMMAND_REG, &setValue, sizeof(setValue));
 		if (ret < 0) {
 			TOUCH_E("ANALOG_COMMAND_REG read error\n");
@@ -894,11 +892,15 @@ static int td4310_Test_Result_Data(struct device *dev, int test_type, int* test_
 	int min, max = 0; /*aver, stdev*/
 	int fail_count = 0;
 	int check_limit_upper = 1, check_limit_lower = 1;
-	int boot_mode = touch_boot_mode_check(dev);
+	int boot_mode = 0;
 
 	TOUCH_TRACE();
 
 	*test_result = TEST_FAIL;
+
+	if (touch_boot_mode_check(dev) >= MINIOS_MFTS_FOLDER) {
+		boot_mode = 1;
+	}
 
 	switch (test_type) {
 	case RAW_DATA_TEST:
@@ -909,8 +911,8 @@ static int td4310_Test_Result_Data(struct device *dev, int test_type, int* test_
 		}
 		TOUCH_I("===== Get Raw Data Complete !!!=====\n");
 		ret += snprintf(buffer + ret, PAGE_SIZE - ret, "============= Raw Data Test Result =============\n");
-		limit_upper = SET_LIMIT(boot_mode, RAW_DATA_MAX, _MFTS_FOLDER, _MFTS_FLAT) + SET_LIMIT(boot_mode, RAW_DATA_MARGIN, _MFTS_FOLDER, _MFTS_FLAT);
-		limit_lower = SET_LIMIT(boot_mode, RAW_DATA_MIN, _MFTS_FOLDER, _MFTS_FLAT) - SET_LIMIT(boot_mode, RAW_DATA_MARGIN, _MFTS_FOLDER, _MFTS_FLAT);
+		limit_upper = SET_LIMIT(boot_mode, RAW_DATA_MAX, _MFTS) + SET_LIMIT(boot_mode, RAW_DATA_MARGIN, _MFTS);
+		limit_lower = SET_LIMIT(boot_mode, RAW_DATA_MIN, _MFTS) - SET_LIMIT(boot_mode, RAW_DATA_MARGIN, _MFTS);
 		break;
 
 	case P2P_NOISE_TEST:
@@ -921,7 +923,7 @@ static int td4310_Test_Result_Data(struct device *dev, int test_type, int* test_
 		}
 		TOUCH_I("===== Get Peak-to-Peak Noise Data Complete !!!=====\n");
 		ret += snprintf(buffer + ret, PAGE_SIZE - ret, "============= Peak-to-Peak Noise Test Result =============\n");
-		limit_upper = SET_LIMIT(boot_mode, P2P_NOISE_MAX, _MFTS_FOLDER, _MFTS_FLAT);
+		limit_upper = SET_LIMIT(boot_mode, P2P_NOISE_MAX, _MFTS);
 		//limit_lower = P2P_NOISE_MIN;
 		check_limit_lower = 0;
 		break;
@@ -933,8 +935,8 @@ static int td4310_Test_Result_Data(struct device *dev, int test_type, int* test_
 		}
 		TOUCH_I("===== Get E2E Short Data Complete !!!=====\n");
 		ret += snprintf(buffer + ret, PAGE_SIZE - ret, "============= E2E Short Test Result =============\n");
-		limit_upper = SET_LIMIT(boot_mode, E2E_SHORT_MAX, _MFTS_FOLDER, _MFTS_FLAT);
-		limit_lower = SET_LIMIT(boot_mode, E2E_SHORT_MIN, _MFTS_FOLDER, _MFTS_FLAT);
+		limit_upper = SET_LIMIT(boot_mode, E2E_SHORT_MAX, _MFTS);
+		limit_lower = SET_LIMIT(boot_mode, E2E_SHORT_MIN, _MFTS);
 		//check_limit_lower=0;
 		break;
 	case ELECTRODE_OPEN_TEST:
@@ -945,8 +947,8 @@ static int td4310_Test_Result_Data(struct device *dev, int test_type, int* test_
 		}
 		TOUCH_I("===== Get E2E Short Data Complete !!!=====\n");
 		ret += snprintf(buffer + ret, PAGE_SIZE - ret, "============= ELECTRODE OPEN Test Result =============\n");
-		limit_upper = SET_LIMIT(boot_mode, ELECTRODE_OPEN_MAX, _MFTS_FOLDER, _MFTS_FLAT);
-		limit_lower = SET_LIMIT(boot_mode, ELECTRODE_OPEN_MIN, _MFTS_FOLDER, _MFTS_FLAT);
+		limit_upper = SET_LIMIT(boot_mode, ELECTRODE_OPEN_MAX, _MFTS);
+		limit_lower = SET_LIMIT(boot_mode, ELECTRODE_OPEN_MIN, _MFTS);
 		check_limit_upper = 0;
 		break;
 	case LPWG_RAW_DATA_TEST:
@@ -957,8 +959,8 @@ static int td4310_Test_Result_Data(struct device *dev, int test_type, int* test_
 		}
 		TOUCH_I("===== Get Raw Data Complete !!!=====\n");
 		ret += snprintf(buffer + ret, PAGE_SIZE - ret, "============= LPWG Raw Data Test Result =============\n");
-		limit_upper = SET_LIMIT(boot_mode, LPWG_RAW_DATA_MAX, _MFTS_FOLDER, _MFTS_FLAT) + SET_LIMIT(boot_mode, RAW_DATA_MARGIN, _MFTS_FOLDER, _MFTS_FLAT);
-		limit_lower = SET_LIMIT(boot_mode, LPWG_RAW_DATA_MIN, _MFTS_FOLDER, _MFTS_FLAT) - SET_LIMIT(boot_mode, RAW_DATA_MARGIN, _MFTS_FOLDER, _MFTS_FLAT);
+		limit_upper = SET_LIMIT(boot_mode, LPWG_RAW_DATA_MAX, _MFTS) + SET_LIMIT(boot_mode, RAW_DATA_MARGIN, _MFTS);
+		limit_lower = SET_LIMIT(boot_mode, LPWG_RAW_DATA_MIN, _MFTS) - SET_LIMIT(boot_mode, RAW_DATA_MARGIN, _MFTS);
 		break;
 	case LPWG_P2P_NOISE_TEST:
 		result = td4310_Get_P2P_Noise_Data(dev);
@@ -968,8 +970,8 @@ static int td4310_Test_Result_Data(struct device *dev, int test_type, int* test_
 		}
 		TOUCH_I("===== Get Peak-to-Peak Noise Data Complete !!!=====\n");
 		ret += snprintf(buffer + ret, PAGE_SIZE - ret, "============= LPWG P2P Noise Test Result =============\n");
-		limit_upper = SET_LIMIT(boot_mode, LPWG_P2P_NOISE_MAX, _MFTS_FOLDER, _MFTS_FLAT);
-		limit_lower = SET_LIMIT(boot_mode, LPWG_P2P_NOISE_MIN, _MFTS_FOLDER, _MFTS_FLAT);
+		limit_upper = SET_LIMIT(boot_mode, LPWG_P2P_NOISE_MAX, _MFTS);
+		limit_lower = SET_LIMIT(boot_mode, LPWG_P2P_NOISE_MIN, _MFTS);
 		//check_limit_lower = 0;
 		break;
 	case DELTA_SHOW:
@@ -1171,7 +1173,7 @@ static int td4310_sd(struct device *dev, char *buf, int *raw, int *ch)
 	touch_msleep(30);
 	write_file(dev, buffer, TIME_INFO_SKIP);
 
-	ret += td4310_Test_Result_Data(dev, E2E_SHORT_TEST, &short_result);
+	ret += td4310_Test_Result_Data(dev, E2E_SHORT_TEST, &open_result);
 	touch_msleep(30);
 	write_file(dev, buffer, TIME_INFO_SKIP);
 

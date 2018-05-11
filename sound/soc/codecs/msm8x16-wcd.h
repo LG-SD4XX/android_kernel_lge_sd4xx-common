@@ -228,6 +228,7 @@ struct msm8916_asoc_mach_data {
 	int ext_pa;
 	int us_euro_gpio;
 	int spk_ext_pa_gpio;
+	int hifi_sw_gpio;
 	int mclk_freq;
 	int lb_mode;
 	int afe_clk_ver;
@@ -245,6 +246,8 @@ struct msm8916_asoc_mach_data {
 	void __iomem *vaddr_gpio_mux_mic_ctl;
 	void __iomem *vaddr_gpio_mux_quin_ctl;
 	void __iomem *vaddr_gpio_mux_pcm_ctl;
+	void __iomem *vaddr_gpio_mux_qui_pcm_ctl;
+	void __iomem *vaddr_gpio_mux_quin_ext_ctl;
 	struct on_demand_supply wsa_switch_supply;
 };
 

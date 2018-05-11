@@ -559,6 +559,7 @@ struct mdss_dsi_ctrl_pdata {
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_DEBUG)
 	int debug_pwr_seq_dly[10];
 	int debug_pwr_always_on[10];
+	int debug_cabc_mode;
 #endif
 	bool update_phy_timing; /* flag to recalculate PHY timings */
 

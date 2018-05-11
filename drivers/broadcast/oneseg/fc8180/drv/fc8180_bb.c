@@ -29,6 +29,13 @@
 #include "fc8180_regs.h"
 #include "fc8180_drv_api.h"
 
+// TO DO : LATIN_DTV disable this feature
+//#define BBM_EXT_LNA_ALWAYSON
+
+extern unsigned int fc8180_get_xtal_freq(void);
+
+unsigned int freq_xtal;
+
 static void fc8180_clock_mode(HANDLE handle, u32 xtal_freq, u32 band_width)
 {
 	switch (xtal_freq) {
@@ -634,15 +641,19 @@ s32 fc8180_probe(HANDLE handle)
 	u16 ver;
 	bbm_word_read(handle, BBM_CHIP_ID_L, &ver);
 
-       print_log(0, "[1seg][YK] fc8180_probe BBM_CHIP_ID 0x%x\n", ver);
+       print_log(0, "[dtv] fc8180_probe BBM_CHIP_ID 0x%x\n", ver);
 
 	return (ver == 0x8180) ? BBM_OK : BBM_NOK;
 }
 
 s32 fc8180_init(HANDLE handle)
 {
+    freq_xtal = fc8180_get_xtal_freq();
+
+    print_log(0, "[dtv] fc8180_init freq_xtal = %d\n", freq_xtal);
+
 	fc8180_reset(handle);
-	fc8180_clock_mode(handle, BBM_XTAL_FREQ, BBM_BAND_WIDTH);
+	fc8180_clock_mode(handle, freq_xtal, BBM_BAND_WIDTH);
 
 	bbm_write(handle, 0x1000, 0x27);
 	bbm_write(handle, 0x1004, 0x4d);
@@ -662,7 +673,7 @@ s32 fc8180_init(HANDLE handle)
 	bbm_write(handle, 0x00b0, 0x07);
 	bbm_write(handle, 0x00b4, 0x00);
 	bbm_write(handle, 0x00b5, 0x00);
-	bbm_write(handle, 0x00b6, 0x01);
+	bbm_write(handle, 0x00b6, 0x04);
 	bbm_write(handle, 0x00b9, 0x00);
 	bbm_write(handle, 0x00ba, 0x01);
 
@@ -703,6 +714,11 @@ s32 fc8180_init(HANDLE handle)
 
 #ifdef BBM_ES
 	bbm_write(handle, BBM_FUNCTION_SEL, 0x00);
+#endif
+
+#ifdef BBM_EXT_LNA_ALWAYSON
+	bbm_write(handle, 0x9000, 0x01); /* GPIO output value */
+	bbm_write(handle, 0x9001, 0x01); /* GPIO direction */
 #endif
 
 	bbm_write(handle, BBM_INT_AUTO_CLEAR, 0x00);

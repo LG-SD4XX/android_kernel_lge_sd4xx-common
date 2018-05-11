@@ -65,27 +65,6 @@
 };
 
 &pm8937_gpios {
-	gpio@c000 {
-		qcom,mode = <0>;
-		qcom,pull = <4>;
-		qcom,vin-sel = <0>;
-		qcom,src-sel = <0>;
-		status = "okay";
-	};
-	gpio@c100 {
-		qcom,mode = <0>;
-		qcom,pull = <0>;
-		qcom,vin-sel = <0>;
-		qcom,src-sel = <0>;
-		status = "okay";
-	};
-	gpio@c300 {
-		qcom,mode = <0>;
-		qcom,pull = <4>;
-		qcom,vin-sel = <0>;
-		qcom,src-sel = <0>;
-		status = "okay";
-	};
 	gpio@c400 {
 		qcom,mode = <0>;
 		qcom,pull = <0>;

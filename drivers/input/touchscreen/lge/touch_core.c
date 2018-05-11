@@ -15,6 +15,7 @@
  * GNU General Public License for more details.
  *
  */
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -22,7 +23,6 @@
 #include <linux/delay.h>
 #include <linux/irq.h>
 #include <linux/input/lge_touch_notify.h>
-#include <linux/input.h>
 
 /*
  *  Include to touch core Header File
@@ -40,12 +40,13 @@ static void touch_send_uevent(struct touch_core_data *ts, int type);
 static void touch_suspend(struct device *dev);
 static void touch_resume(struct device *dev);
 
-#if defined(CONFIG_LGE_DISPLAY_RECOVERY_ESD)
-#if defined(CONFIG_LGE_DISPLAY_WITH_QCT_ESD)
-int set_esd_status(int esd_detection);
-#else
-int lge_mdss_report_panel_dead(void);
+#if defined(CONFIG_LGE_TOUCH_CORE_QCT)
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_RECOVERY_ESD)
+extern void lge_mdss_report_panel_dead(void);
 #endif
+#endif
+#if defined(CONFIG_LGE_TOUCH_CORE_MTK)
+extern void mtkfb_esd_recovery(void);
 #endif
 
 static void touch_report_cancel_event(struct touch_core_data *ts)
@@ -57,6 +58,10 @@ static void touch_report_cancel_event(struct touch_core_data *ts)
 	for (i = 0; i < MAX_FINGER; i++) {
 		if (old_mask & (1 << i)) {
 			input_mt_slot(ts->input, i);
+			input_mt_report_slot_state(ts->input, MT_TOOL_FINGER,
+						   true);
+			input_report_key(ts->input, BTN_TOUCH, 1);
+			input_report_key(ts->input, BTN_TOOL_FINGER, 1);
 			input_report_abs(ts->input, ABS_MT_PRESSURE,
 					255);
 			TOUCH_I("finger canceled:<%d>(%4d,%4d,%4d)\n",
@@ -77,14 +82,12 @@ static void touch_report_event(struct touch_core_data *ts)
 	u16 press_mask = 0;
 	u16 release_mask = 0;
 	u16 change_mask = 0;
-	int lockscreen = 0;
-	bool hide_coordinate = 0;
 	int i;
+	bool hide_lockscreen_coord =
+		((atomic_read(&ts->state.lockscreen) == LOCKSCREEN_LOCK) &&
+		 (ts->role.hide_coordinate));
 
 	TOUCH_TRACE();
-
-	lockscreen = atomic_read(&ts->state.lockscreen);
-	hide_coordinate = ts->role.hide_coordinate;
 
 	change_mask = old_mask ^ new_mask;
 	press_mask = new_mask & change_mask;
@@ -104,8 +107,11 @@ static void touch_report_event(struct touch_core_data *ts)
 	for (i = 0; i < MAX_FINGER; i++) {
 		if (new_mask & (1 << i)) {
 			input_mt_slot(ts->input, i);
-			input_report_abs(ts->input, ABS_MT_TRACKING_ID,
-					ts->tdata[i].id);
+			input_mt_report_slot_state(ts->input, MT_TOOL_FINGER,
+						   true);
+			input_report_key(ts->input, BTN_TOUCH, 1);
+			input_report_key(ts->input, BTN_TOOL_FINGER, 1);
+			input_report_abs(ts->input, ABS_MT_TRACKING_ID, i);
 			input_report_abs(ts->input, ABS_MT_POSITION_X,
 					ts->tdata[i].x);
 			input_report_abs(ts->input, ABS_MT_POSITION_Y,
@@ -120,33 +126,38 @@ static void touch_report_event(struct touch_core_data *ts)
 					ts->tdata[i].orientation);
 
 			if (press_mask & (1 << i)) {
-				if (hide_coordinate && (lockscreen == LOCKSCREEN_LOCK)) {
-				TOUCH_I("%d finger pressed:<%d>(xxxx,xxxx,xxxx)\n",
-						ts->tcount,
-						i);
+				if (hide_lockscreen_coord) {
+					TOUCH_I("%d finger pressed:<%d>(xxxx,xxxx,xxxx)\n",
+							ts->tcount, i);
 				} else {
-				TOUCH_I("%d finger pressed:<%d>(%4d,%4d,%4d)\n",
-						ts->tcount,
-						i,
-						ts->tdata[i].x,
-						ts->tdata[i].y,
-						ts->tdata[i].pressure);
+					TOUCH_I("%d finger pressed:<%d>(%4d,%4d,%4d)\n",
+							ts->tcount,
+							i,
+							ts->tdata[i].x,
+							ts->tdata[i].y,
+							ts->tdata[i].pressure);
 				}
 			}
 		} else if (release_mask & (1 << i)) {
 			input_mt_slot(ts->input, i);
-			input_report_abs(ts->input, ABS_MT_TRACKING_ID, -1);
-				if (hide_coordinate && (lockscreen == LOCKSCREEN_LOCK)) {
-					TOUCH_I("finger released:<%d>(xxxx,xxxx,xxxx)\n",
-					i);
-				} else {
-					TOUCH_I("finger released:<%d>(%4d,%4d,%4d)\n",
-					i,
-					ts->tdata[i].x,
-					ts->tdata[i].y,
-					ts->tdata[i].pressure);
-				}
+			//input_report_abs(ts->input, ABS_MT_TRACKING_ID, -1);
+			input_mt_report_slot_state(ts->input, MT_TOOL_FINGER, false);
+			if (hide_lockscreen_coord) {
+				TOUCH_I(" finger released:<%d>(xxxx,xxxx,xxxx)\n",
+						i);
+			} else {
+				TOUCH_I(" finger released:<%d>(%4d,%4d,%4d)\n",
+						i,
+						ts->tdata[i].x,
+						ts->tdata[i].y,
+						ts->tdata[i].pressure);
+			}
 		}
+	}
+
+	if (!ts->tcount) {
+		input_report_key(ts->input, BTN_TOUCH, 0);
+		input_report_key(ts->input, BTN_TOOL_FINGER, 0);
 	}
 
 	ts->old_mask = new_mask;
@@ -215,7 +226,7 @@ irqreturn_t touch_irq_thread(int irq, void *dev_id)
 			touch_send_uevent(ts, TOUCH_UEVENT_SWIPE_DOWN);
 
 		if (ts->intr_status & TOUCH_IRQ_SWIPE_UP)
-			TOUCH_I("Do not send Uevent for Swipe up gesture\n");
+			touch_send_uevent(ts, TOUCH_UEVENT_SWIPE_UP);
 
 		if (ts->intr_status & TOUCH_IRQ_SWIPE_RIGHT)
 			touch_send_uevent(ts, TOUCH_UEVENT_SWIPE_RIGHT);
@@ -223,16 +234,8 @@ irqreturn_t touch_irq_thread(int irq, void *dev_id)
 		if (ts->intr_status & TOUCH_IRQ_SWIPE_LEFT)
 			touch_send_uevent(ts, TOUCH_UEVENT_SWIPE_LEFT);
 	} else {
-		if (ret == -ERESTART) {
-#if defined(CONFIG_LGE_DISPLAY_RECOVERY_ESD)
+		if (ret == -EGLOBALRESET) {
 			queue_delayed_work(ts->wq, &ts->panel_reset_work, 0);
-#else
-			touch_interrupt_control(ts->dev, INTERRUPT_DISABLE);
-			ts->driver->power(ts->dev, POWER_OFF);
-			ts->driver->power(ts->dev, POWER_ON);
-			touch_msleep(ts->caps.hw_reset_delay);
-			mod_delayed_work(ts->wq, &ts->init_work, 0);
-#endif
 		} else if (ret == -EHWRESET) {
 			ts->driver->power(ts->dev, POWER_HW_RESET);
 		} else if (ret == -ESWRESET) {
@@ -270,12 +273,9 @@ static void touch_init_work_func(struct work_struct *init_work)
 	touch_interrupt_control(ts->dev, INTERRUPT_ENABLE);
 	mutex_unlock(&ts->lock);
 
-	if (ts->role.use_fw_upgrade) {
-		if (atomic_read(&ts->state.core) == CORE_PROBE) {
-			TOUCH_I("TOUCH FW UPGRADE TRIGGERED\n");
-			queue_delayed_work(ts->wq, &ts->upgrade_work, 0);
-			return;
-		}
+	if (atomic_read(&ts->state.core) == CORE_PROBE) {
+		queue_delayed_work(ts->wq, &ts->upgrade_work, 0);
+		return;
 	}
 
 	atomic_set(&ts->state.core, CORE_NORMAL);
@@ -311,7 +311,7 @@ static void touch_upgrade_work_func(struct work_struct *upgrade_work)
 	mutex_unlock(&ts->lock);
 
 	mod_delayed_work(ts->wq, &ts->init_work,
-			msecs_to_jiffies(ts->caps.hw_reset_delay));
+		msecs_to_jiffies(ts->caps.hw_reset_delay));
 }
 
 static void touch_fb_work_func(struct work_struct *fb_work)
@@ -328,22 +328,27 @@ static void touch_fb_work_func(struct work_struct *fb_work)
 		touch_resume(ts->dev);
 }
 
-#if defined(CONFIG_LGE_DISPLAY_RECOVERY_ESD)
 static void touch_panel_reset_work_func(struct work_struct *panel_reset_work)
 {
 	TOUCH_I("Request panel reset !!!\n");
-#if defined(CONFIG_LGE_DISPLAY_WITH_QCT_ESD)
-	set_esd_status(BIT(0));
-#else
+
+#if defined(CONFIG_LGE_TOUCH_CORE_QCT)
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_RECOVERY_ESD)
 	lge_mdss_report_panel_dead();
 #endif
-}
 #endif
+
+#if defined(CONFIG_LGE_TOUCH_CORE_MTK)
+	mtkfb_esd_recovery();
+#endif
+
+}
 
 static int touch_check_driver_function(struct touch_core_data *ts)
 {
 	if (ts->driver->probe &&
 			ts->driver->remove &&
+			ts->driver->shutdown &&
 			ts->driver->suspend &&
 			ts->driver->resume &&
 			ts->driver->init &&
@@ -407,14 +412,15 @@ static int touch_init_input(struct touch_core_data *ts)
 			ts->caps.max_x,
 			ts->caps.max_y,
 			ts->caps.max_pressure,
-			ts->caps.max_width,
-			ts->caps.max_width,
+			ts->caps.max_width_major,
+			ts->caps.max_width_minor,
 			ts->caps.max_orientation,
 			ts->caps.max_id);
 	set_bit(EV_SYN, input->evbit);
 	set_bit(EV_ABS, input->evbit);
-    set_bit(EV_KEY, input->evbit);
-	set_bit(KEY_WAKEUP, input->evbit);
+	set_bit(EV_KEY, input->evbit);
+	set_bit(BTN_TOUCH, input->keybit);
+	set_bit(BTN_TOOL_FINGER, input->keybit);
 	set_bit(INPUT_PROP_DIRECT, input->propbit);
 	input_set_abs_params(input, ABS_MT_POSITION_X, 0,
 			ts->caps.max_x, 0, 0);
@@ -423,9 +429,9 @@ static int touch_init_input(struct touch_core_data *ts)
 	input_set_abs_params(input, ABS_MT_PRESSURE, 0,
 			ts->caps.max_pressure, 0, 0);
 	input_set_abs_params(input, ABS_MT_WIDTH_MAJOR, 0,
-			ts->caps.max_width, 0, 0);
+			ts->caps.max_width_major, 0, 0);
 	input_set_abs_params(input, ABS_MT_WIDTH_MINOR, 0,
-			ts->caps.max_width, 0, 0);
+			ts->caps.max_width_minor, 0, 0);
 	input_set_abs_params(input, ABS_MT_ORIENTATION, 0,
 			ts->caps.max_orientation, 0, 0);
 
@@ -538,8 +544,6 @@ static int touch_fb_notifier_callback(struct notifier_block *self,
 		container_of(self, struct touch_core_data, fb_notif);
 	struct fb_event *ev = (struct fb_event *)data;
 
-	TOUCH_TRACE();
-
 	if (ev && ev->data && event == FB_EVENT_BLANK) {
 		int *blank = (int *)ev->data;
 
@@ -577,7 +581,6 @@ static int touch_init_uevent(struct touch_core_data *ts)
 
 	TOUCH_TRACE();
 
-
 	ret = subsys_system_register(&touch_uevent_subsys, NULL);
 	if (ret < 0)
 		TOUCH_E("%s, bus is not registered, ret : %d\n",
@@ -610,12 +613,6 @@ static void touch_send_uevent(struct touch_core_data *ts, int type)
 				KOBJ_CHANGE, uevent_str[type]);
 		TOUCH_I("%s\n",  uevent_str[type][0]);
 		touch_report_all_event(ts);
-        atomic_set(&ts->state.uevent, UEVENT_IDLE);
-        if (type == 8) {
-			input_report_key(ts->input, KEY_WAKEUP, BUTTON_PRESSED);
-			input_report_key(ts->input, KEY_WAKEUP, BUTTON_RELEASED);
-			input_sync(ts->input);
-		}
 	}
 }
 
@@ -646,8 +643,8 @@ static int touch_notify(struct touch_core_data *ts,
 
 	TOUCH_TRACE();
 
-	if (touch_boot_mode() == TOUCH_CHARGER_MODE)
-		return 0;
+	//if (touch_boot_mode() == TOUCH_CHARGER_MODE)
+	//	return 0;
 
 	if (ts->driver->notify) {
 		mutex_lock(&ts->lock);
@@ -758,7 +755,6 @@ static int touch_init_works(struct touch_core_data *ts)
 
 	TOUCH_TRACE();
 
-
 	if (!ts->wq) {
 		TOUCH_E("failed to create workqueue\n");
 		return -ENOMEM;
@@ -768,9 +764,7 @@ static int touch_init_works(struct touch_core_data *ts)
 	INIT_DELAYED_WORK(&ts->upgrade_work, touch_upgrade_work_func);
 	INIT_DELAYED_WORK(&ts->notify_work, touch_atomic_notifer_work_func);
 	INIT_DELAYED_WORK(&ts->fb_work, touch_fb_work_func);
-#if defined(CONFIG_LGE_DISPLAY_RECOVERY_ESD)
 	INIT_DELAYED_WORK(&ts->panel_reset_work, touch_panel_reset_work_func);
-#endif
 
 	return 0;
 }
@@ -797,10 +791,6 @@ static int touch_core_probe_normal(struct platform_device *pdev)
 	/* set defalut lpwg value because of AAT */
 	ts->lpwg.screen = 1;
 	ts->lpwg.sensor = PROX_FAR;
-
-	ts->factory_boot = lge_get_factory_boot();
-	TOUCH_I("factory boot check : %d(%s)\n",
-				ts->factory_boot, (ts->factory_boot)? "minios": "normal");
 
 	ts->driver->power(ts->dev, POWER_OFF);
 	ts->driver->power(ts->dev, POWER_ON);
@@ -839,6 +829,7 @@ static int touch_core_probe_normal(struct platform_device *pdev)
 	TOUCH_I("hw_reset_delay : %d ms\n", ts->caps.hw_reset_delay);
 	queue_delayed_work(ts->wq, &ts->init_work,
 			msecs_to_jiffies(ts->caps.hw_reset_delay));
+	ts->boot_mode = touch_boot_mode_check(ts->dev);
 
 	return 0;
 
@@ -895,6 +886,16 @@ static int touch_core_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void touch_core_shutdown(struct platform_device *pdev)
+{
+	struct touch_core_data *ts;
+	ts = (struct touch_core_data *) pdev->dev.platform_data;
+
+	TOUCH_TRACE();
+	touch_interrupt_control(ts->dev, INTERRUPT_DISABLE);
+	ts->driver->shutdown(ts->dev);
+}
+
 static struct platform_driver touch_core_driver = {
 	.driver = {
 		.name = LGE_TOUCH_DRIVER_NAME,
@@ -905,6 +906,7 @@ static struct platform_driver touch_core_driver = {
 	},
 	.probe = touch_core_probe,
 	.remove = touch_core_remove,
+	.shutdown = touch_core_shutdown,
 };
 
 static void touch_core_async_init(void *data, async_cookie_t cookie)

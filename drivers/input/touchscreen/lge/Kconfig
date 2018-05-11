@@ -43,12 +43,6 @@ config LGE_MODULE_DETECT
 	help
 	Feature for read device maker id, like lcd or touch maker
 
-config LGE_TOUCH_LV3
-	bool "Enable LV3 model"
-	default n
-	help
-	Feature model
-
 menuconfig LGE_TOUCH_HALL_IC_COVER
 	bool "LGE Touch Core - Smart Cover"
 	select LGE_TOUCH_CORE_BASE
@@ -66,3 +60,4 @@ source "drivers/input/touchscreen/lge/focaltech/Kconfig"
 source "drivers/input/touchscreen/lge/lgsic/Kconfig"
 source "drivers/input/touchscreen/lge/novatek/Kconfig"
 endif
+

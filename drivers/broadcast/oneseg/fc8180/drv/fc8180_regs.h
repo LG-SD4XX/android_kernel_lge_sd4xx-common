@@ -51,17 +51,7 @@ extern "C" {
 /* #define BBM_XTAL_FREQ               18000 */
 /* #define BBM_XTAL_FREQ               19200 */
 /* #define BBM_XTAL_FREQ               24000 */
-
-#if defined(CONFIG_ARCH_MSM8937) || defined(CONFIG_ARCH_MSM8940)
-#if defined(CONFIG_LGE_BROADCAST_SBTVD_LATIN)
-#define BBM_XTAL_FREQ               19200
-#else
-#define BBM_XTAL_FREQ               26000
-#endif
-#else /* defined (CONFIG_ARCH_MSM8937) || defined(CONFIG_ARCH_MSM8940) */
-#define BBM_XTAL_FREQ               19200
-#endif /* defined (CONFIG_ARCH_MSM8937) || defined(CONFIG_ARCH_MSM8940) */
-
+/* #define BBM_XTAL_FREQ               26000 */
 /* #define BBM_XTAL_FREQ               27000 */
 /* #define BBM_XTAL_FREQ               27120 */
 /* #define BBM_XTAL_FREQ               24576 */

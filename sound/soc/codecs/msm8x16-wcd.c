@@ -134,6 +134,8 @@ enum {
 
 #ifdef CONFIG_MACH_LGE
 static int tapan_tx_mute = 0;
+static bool gnd_cfilt = false;
+static bool reversed_dmic = false;
 #endif
 static const DECLARE_TLV_DB_SCALE(digital_gain, 0, 1, 0);
 static const DECLARE_TLV_DB_SCALE(analog_gain, 0, 25, 1);
@@ -312,7 +314,9 @@ static void msm8x16_wcd_set_auto_zeroing(struct snd_soc_codec *codec,
 static void msm8x16_wcd_configure_cap(struct snd_soc_codec *codec,
 		bool micbias1, bool micbias2);
 static bool msm8x16_wcd_use_mb(struct snd_soc_codec *codec);
-
+#ifdef CONFIG_MACH_LGE
+static void remove_detach_mic_noise(struct snd_soc_codec *codec);
+#endif
 struct msm8x16_wcd_spmi msm8x16_wcd_modules[MAX_MSM8X16_WCD_DEVICE];
 
 static void *adsp_state_notifier;
@@ -650,7 +654,11 @@ static void msm8x16_wcd_mbhc_common_micb_ctrl(struct snd_soc_codec *codec,
 	case MBHC_COMMON_MICB_SET_VAL:
 		reg = MSM8X16_WCD_A_ANALOG_MICB_1_VAL;
 		mask = 0xFF;
+        #ifdef CONFIG_MACH_MSM8940_L6_DCM_JP
+                val = (enable ? 0xA0 : 0x00);
+        #else
 		val = (enable ? 0xC0 : 0x00);
+        #endif
 		break;
 	case MBHC_COMMON_MICB_TAIL_CURR:
 		reg = MSM8X16_WCD_A_ANALOG_MICB_1_EN;
@@ -1013,6 +1021,9 @@ static const struct wcd_mbhc_cb mbhc_cb = {
 	.hph_pa_on_status = msm8x16_wcd_mbhc_hph_pa_on_status,
 	.set_btn_thr = msm8x16_wcd_mbhc_program_btn_thr,
 	.extn_use_mb = msm8x16_wcd_use_mb,
+#ifdef CONFIG_MACH_LGE
+    .remove_detach_mic_noise = remove_detach_mic_noise,
+#endif
 };
 
 static const uint32_t wcd_imped_val[] = {4, 8, 12, 13, 16,
@@ -3068,7 +3079,16 @@ static int msm8x16_wcd_put_dec_enum(struct snd_kcontrol *kcontrol,
 
 	dev_dbg(w->dapm->dev, "%s(): widget = %s decimator = %u dec_mux = %u\n"
 		, __func__, w->name, decimator, dec_mux);
-
+#ifdef CONFIG_MACH_LGE
+	if(reversed_dmic) {
+		if(dec_mux == 5 || dec_mux == 4) {
+			ucontrol->value.enumerated.item[0] = (strcmp(dec_mux_text[dec_mux], "DMIC1"))? (dec_mux-1) : (dec_mux+1);
+			dec_mux = ucontrol->value.enumerated.item[0];
+		}
+		dev_dbg(w->dapm->dev, "%s(): Using reversed DMIC (widget = %s decimator = %u dec_mux = %u)\n"
+			, __func__, w->name, decimator, dec_mux);
+	}
+#endif
 	switch (decimator) {
 	case 1:
 	case 2:
@@ -3223,8 +3243,17 @@ static int msm8x16_wcd_codec_enable_adc(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_PRE_PMU:
 		msm8x16_wcd_codec_enable_adc_block(codec, 1);
 		if (w->reg == MSM8X16_WCD_A_ANALOG_TX_2_EN)
+#ifdef CONFIG_MACH_LGE
+		{
+			if(gnd_cfilt)
+				snd_soc_update_bits(codec, MSM8X16_WCD_A_ANALOG_MICB_1_CTL, 0x02, 0x00);
+			else
+				snd_soc_update_bits(codec, MSM8X16_WCD_A_ANALOG_MICB_1_CTL, 0x02, 0x02);
+		}
+#else
 			snd_soc_update_bits(codec,
 			MSM8X16_WCD_A_ANALOG_MICB_1_CTL, 0x02, 0x02);
+#endif
 		/*
 		 * Add delay of 10 ms to give sufficient time for the voltage
 		 * to shoot up and settle so that the txfe init does not
@@ -3468,17 +3497,38 @@ static int msm8x16_wcd_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_PRE_PMU:
 		(*dmic_clk_cnt)++;
 		if (*dmic_clk_cnt == 1) {
+#ifdef CONFIG_MACH_MSM8940_L6_DCM_JP
+			snd_soc_update_bits(codec, dmic_clk_reg,
+					0x0E, 0x04);
+#else
 			snd_soc_update_bits(codec, dmic_clk_reg,
 					0x0E, 0x02);
+#endif
 			snd_soc_update_bits(codec, dmic_clk_reg,
 					dmic_clk_en, dmic_clk_en);
+#ifdef CONFIG_MACH_MSM8940_L6_DCM_JP
+			dev_info(codec->dev, "%s: DMIC 80ms delay\n",__func__);
+			usleep_range(80000, 80100);
+#endif
 		}
+#ifdef CONFIG_MACH_MSM8940_L6_DCM_JP
+	snd_soc_update_bits(codec,
+		MSM8X16_WCD_A_CDC_TX1_DMIC_CTL, 0x07, 0x02);
+
+	snd_soc_update_bits(codec,
+			MSM8X16_WCD_A_CDC_TX2_DMIC_CTL, 0x07, 0x02);
+#else
 		if (dmic == 1)
+
 			snd_soc_update_bits(codec,
 			MSM8X16_WCD_A_CDC_TX1_DMIC_CTL, 0x07, 0x01);
+
+
 		if (dmic == 2)
+
 			snd_soc_update_bits(codec,
 			MSM8X16_WCD_A_CDC_TX2_DMIC_CTL, 0x07, 0x01);
+#endif
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		(*dmic_clk_cnt)--;
@@ -5794,11 +5844,30 @@ static void msm8x16_wcd_configure_cap(struct snd_soc_codec *codec,
 		snd_soc_update_bits(codec, MSM8X16_WCD_A_ANALOG_MICB_1_EN,
 				0x40, (pdata->micbias1_cap_mode << 6));
 	} else {
+#ifdef CONFIG_MACH_LGE
+		snd_soc_update_bits(codec, MSM8X16_WCD_A_ANALOG_MICB_1_EN,
+				0x40, 0x40);
+#else
 		snd_soc_update_bits(codec, MSM8X16_WCD_A_ANALOG_MICB_1_EN,
 				0x40, 0x00);
+#endif
 	}
 }
 
+#ifdef CONFIG_MACH_LGE
+static void remove_detach_mic_noise(struct snd_soc_codec *codec)
+{
+    int tx2_enabled = 0;
+
+    dev_dbg(codec->dev, "%s()\n", __func__);
+
+    tx2_enabled =  snd_soc_read(codec,MSM8X16_WCD_A_ANALOG_TX_2_EN) & 0x80;
+    if(tx2_enabled){
+        dev_info(codec->dev, "%s()-tx2 muted\n", __func__);
+	    snd_soc_write(codec, MSM8X16_WCD_A_CDC_TX1_VOL_CTL_GAIN,0xac);
+    }
+}
+#endif
 static int msm8x16_wcd_codec_probe(struct snd_soc_codec *codec)
 {
 	struct msm8x16_wcd_priv *msm8x16_wcd_priv;
@@ -5833,9 +5902,11 @@ static int msm8x16_wcd_codec_probe(struct snd_soc_codec *codec)
 		kfree(msm8x16_wcd_priv);
 		return -ENOMEM;
 	}
+#ifndef CONFIG_MACH_LGE //To remove error log : unused regulator
 	msm8x16_wcd_priv->spkdrv_reg =
 		wcd8x16_wcd_codec_find_regulator(codec->control_data,
 						MSM89XX_VDD_SPKDRV_NAME);
+#endif
 	msm8x16_wcd_priv->pmic_rev = snd_soc_read(codec,
 					MSM8X16_WCD_A_DIGITAL_REVISION1);
 	msm8x16_wcd_priv->codec_version = snd_soc_read(codec,
@@ -5953,6 +6024,15 @@ static int msm8x16_wcd_codec_probe(struct snd_soc_codec *codec)
 		switch_dev_unregister(&msm8x16_wcd_priv->sar);
 	}
 	pr_info("%s : done\n", __func__);
+
+	gnd_cfilt = of_property_read_bool(codec->dev->of_node, "lge,cdc-gnd-cfilt");
+	if (gnd_cfilt) {
+		pr_debug("%s: ground cfilter by setting gnd_cfilt = %d\n", __func__, gnd_cfilt);
+	}
+	reversed_dmic = of_property_read_bool(codec->dev->of_node, "lge,use-reversed-dmic");
+	if (reversed_dmic) {
+		pr_debug("%s: Using reversed DMIC by setting reversed_dmic = %d\n", __func__, reversed_dmic);
+	}
 #endif
 	return 0;
 }

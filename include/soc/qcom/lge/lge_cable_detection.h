@@ -7,6 +7,15 @@
 #define LT_CABLE_130K    7
 #define LT_CABLE_910K    11
 
+#ifdef CONFIG_MACH_MSM8940_L6_DCM_JP
+enum acc_cable_type {
+	NO_INIT_CABLE = 0,
+	CABLE_56K,
+	CABLE_130K,
+	CABLE_910K,
+	CABLE_NONE
+};
+#else
 enum acc_cable_type {
 	NO_INIT_CABLE = 0,
 	CABLE_MHL_1K,
@@ -24,6 +33,7 @@ enum acc_cable_type {
 	CABLE_910K,
 	CABLE_NONE
 };
+#endif
 
 struct chg_cable_info {
 	enum acc_cable_type cable_type;
@@ -32,6 +42,7 @@ struct chg_cable_info {
 };
 
 void get_cable_data_from_dt(void *of_node);
+void get_cable_data_from_dt_new(void *of_node);
 
 struct qpnp_vadc_chip;
 int lge_pm_get_cable_info(struct qpnp_vadc_chip *, struct chg_cable_info *);
@@ -50,8 +61,5 @@ inline bool lge_is_factory_cable(void) { return false; }
 #ifdef CONFIG_LGE_DOCK
 void check_dock_connected(enum power_supply_type type);
 #endif
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-void lge_set_moisture_state(bool state);
-bool lge_get_moisture_state(void);
-#endif
+
 #endif

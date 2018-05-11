@@ -3840,6 +3840,24 @@ void sme_abortConnection(tHalHandle hHal, tANI_U8 sessionId)
    return;
 }
 
+void sme_set_con_state_not_connected(tHalHandle hHal, tANI_U8 sessionId)
+{
+   tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+   eHalStatus status;
+
+   status = sme_AcquireGlobalLock(&pMac->sme);
+   if (HAL_STATUS_SUCCESS(status))
+   {
+      if(CSR_IS_SESSION_VALID(pMac, sessionId))
+      {
+          csr_set_con_state_not_connected(pMac, sessionId);
+      }
+      sme_ReleaseGlobalLock(&pMac->sme);
+   }
+   return;
+}
+
+
 /* sme_dhcp_done_ind() - send dhcp done ind
  * @hal: hal context
  * @session_id: session id

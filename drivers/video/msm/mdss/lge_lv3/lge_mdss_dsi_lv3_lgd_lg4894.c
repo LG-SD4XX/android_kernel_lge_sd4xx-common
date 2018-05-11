@@ -117,35 +117,6 @@ int set_touch_osc(int enable)
 }
 EXPORT_SYMBOL(set_touch_osc);
 
-#if IS_ENABLED(CONFIG_LGE_DISPLAY_WITH_QCT_ESD)
-/*
- * esd_status : status about esd
- * value 0 : not detected or init Status
- * value BIT(0) : detected by Touch Interrupt (DISPLAY_WITH_QCT_ESD)
- */
-static int esd_status = 0;
-
-void init_esd_status(void)
-{
-	esd_status = 0;
-}
-
-int get_esd_status(void)
-{
-	return esd_status;
-}
-
-void set_esd_status(int esd_detection)
-{
-	if (lge_get_panel_type() == LV3_LGD) {
-		esd_status |= esd_detection;
-		pr_info("%s:detection=0x%x, status=0x%x\n", __func__, esd_detection, esd_status);
-
-	} else {
-		lge_mdss_report_panel_dead();
-	}
-}
-#endif
 int lv3_lgd_lg4894_mdss_dsi_event_handler(struct mdss_panel_data *pdata, int event, void *arg)
 {
 	int rc = 0;

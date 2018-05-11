@@ -1,4 +1,6 @@
 #include <linux/of_platform.h>
+#include "mdss_fb.h"
+#include "mdss_mdp.h"
 #include "mdss_dsi.h"
 
 #if defined(CONFIG_LGE_HIGH_LUMINANCE_MODE)
@@ -67,6 +69,17 @@ int lge_mdss_panel_parse_dt_extra(struct device_node *np,
 		pr_info("%s: esc-clk-rate=%d\n", __func__, ctrl_pdata->lge_extra.esc_clk_rate);
 	}
 
+	ctrl_pdata->lge_extra.lp11_off = of_property_read_bool(np,
+					"lge,mdss-dsi-lp11-off");
+
+	ctrl_pdata->lge_extra.panel_id = 0;
+	rc = of_property_read_u32(np, "lge,panel-id", &tmp);
+	if(!rc && tmp >=0 && tmp <= 7) {
+		ctrl_pdata->lge_extra.panel_id = tmp;
+	} else {
+		pr_info("%s: failed to parse panel_id\n", __func__);
+	}
+
 	parse_dt_extra_dcs_cmds(np, ctrl_pdata);
 
 	return 0;
@@ -75,6 +88,13 @@ int lge_mdss_panel_parse_dt_extra(struct device_node *np,
 void lge_mdss_dsi_panel_extra_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl, const char *name)
 {
 	int i, index = -1;
+
+	if (ctrl == NULL)
+		ctrl = lge_mdss_dsi_get_ctrl_pdata();
+
+	if (ctrl == NULL)
+		return;
+
 	for (i = 0; i < ctrl->lge_extra.num_extra_cmds; ++i) {
 		if (!strcmp(ctrl->lge_extra.extra_cmds_array[i].name, name)) {
 			index = i;
@@ -151,3 +171,46 @@ __weak int lge_mdss_dsi_set_daylight_mode(struct mdss_dsi_ctrl_pdata *ctrl, int 
 	return 0;
 }
 #endif
+
+static struct mdss_dsi_ctrl_pdata *dsi_ctrl_pdata = NULL;
+
+struct mdss_dsi_ctrl_pdata *lge_mdss_dsi_get_ctrl_pdata(void)
+{
+	if (dsi_ctrl_pdata == NULL)
+		pr_err("%s: %pS: dsi ctrl pdata is NULL\n", __func__, __builtin_return_address(0));
+	return dsi_ctrl_pdata;
+}
+
+void lge_mdss_dsi_store_ctrl_pdata(struct mdss_dsi_ctrl_pdata *pdata)
+{
+	// store only dsi0
+	if (dsi_ctrl_pdata == NULL)
+		dsi_ctrl_pdata = pdata;
+}
+
+void lge_mdss_dsi_pr_status_buf(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	u32 i, j, k = 0, l = 0, cnt, *lenp;
+	char buf[256];
+
+	if (ctrl == NULL)
+		return;
+
+	lenp = ctrl->status_valid_params ?: ctrl->status_cmds_rlen;
+	cnt = ctrl->status_cmds.cmd_cnt;
+	if (ctrl->return_buf == NULL || lenp == NULL || cnt == 0)
+		return;
+
+	for (i = 0; i < cnt; ++i) {
+		for (j = 0; j < lenp[i]; ++j) {
+			snprintf(buf+l, sizeof(buf)-l, "0x%02X ", ctrl->return_buf[k++]);
+			l = strlen(buf);
+		}
+	}
+	pr_info("%s: %s\n", __func__, buf);
+}
+
+__weak int lge_mdss_panel_select_initial_cmd_set(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	return 0;
+}

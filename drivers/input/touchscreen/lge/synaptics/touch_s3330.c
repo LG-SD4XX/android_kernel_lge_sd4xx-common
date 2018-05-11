@@ -124,32 +124,6 @@ int synaptics_write(struct device *dev, u16 addr, void *data, int size)
 
 	return 0;
 }
-void synaptics_reset_ctrl(struct device *dev, int ctrl)
-{
-	struct touch_core_data *ts = to_touch_core(dev);
-	struct synaptics_data *d = to_synaptics_data(dev);
-	int ret = 0;
-	u8 wdata = 0x01;
-
-	TOUCH_TRACE();
-
-	switch (ctrl) {
-		case SW_RESET:
-			TOUCH_I("%s : SW Reset\n", __func__);
-			ret = synaptics_write(dev, DEVICE_COMMAND_REG, &wdata, sizeof(u8));
-			if(ret < 0)
-				TOUCH_E("DEVICE_COMMAND_REG write fail, ret = %d\n",ret);
-			touch_msleep(300);
-			break;
-		case HW_RESET:
-			TOUCH_I("%s : HW Reset\n", __func__);
-			touch_gpio_direction_output(ts->reset_pin, 0);
-			touch_msleep(1);
-			touch_gpio_direction_output(ts->reset_pin, 1);
-			touch_msleep(ts->caps.hw_reset_delay);
-			break;
-	}
-}
 
 static int synaptics_irq_enable(struct device *dev, bool enable)
 {
@@ -448,130 +422,9 @@ static int synaptics_get_product_id(struct device *dev)
 	return 0;
 }
 
-static int synaptics_ime_set(struct device *dev)
-{
-	int ret = 0;
-	struct touch_core_data *ts = to_touch_core(dev);
-	struct synaptics_data *d = to_synaptics_data(dev);
-	int ime_status = 0;
-	u8 buffer[20] = {0,};
-	u8 buf_1 = 0;
-
-	TOUCH_TRACE();
-
-	if (!synaptics_is_product(d, "PLG636", 6)) {
-		TOUCH_I("[%s] Do not support ime set.\n",__func__);
-                return 0;
-	}
-
-	ime_status = atomic_read(&ts->state.ime);
-	TOUCH_I("[IME_STATUS] : %d\n", ime_status);
-
-	ret = synaptics_set_page(dev, LPWG_PAGE);
-	if (ret < 0) {
-		TOUCH_E("failed to set page to LPWG_PAGE\n");
-		return ret;
-	}
-
-	ret = synaptics_read(dev, FINGER_HYST_RATIO_REG, &buf_1, sizeof(buf_1));
-	if (ret < 0) {
-		TOUCH_E("failed to read FINGER_HYST_RATIO register - ret:%d\n", ret);
-		return ret;
-	}
-
-	if(ime_status){
-		buf_1 = IME_FINGER_HYST_RATIO;
-		TOUCH_I("[%s] ime figner hyst ratio register set: %d\n",__func__, buf_1);
-	}
-	else{
-		buf_1 = FINGER_HYST_RATIO;
-		TOUCH_I("[%s] ime figner hyst ratio register unset: %d\n",__func__, buf_1);
-	}
-
-	ret = synaptics_write(dev, FINGER_HYST_RATIO_REG, &buf_1, sizeof(buf_1));
-	if (ret < 0) {
-		TOUCH_E("failed to write FINGER_HYST_RATIO register - ret:%d\n", ret);
-		return ret;
-	}
-
-	ret = synaptics_set_page(dev, DEFAULT_PAGE);
-	if (ret < 0) {
-		TOUCH_E("failed to set page to DEFAULT_PAGE\n");
-		return ret;
-	}
-
-	ret = synaptics_read(dev, d->f12_reg.ctrl[10], buffer, sizeof(buffer));
-	if (ret < 0) {
-		TOUCH_E("failed to read F12_2D_CTRL10 register - ret:%d\n", ret);
-		return ret;
-	}
-
-	if(ime_status){
-		buffer[0] = IME_NOISE_FLOOR;
-		buffer[1] = IME_MIN_PEAK;
-		buffer[2] = IME_PEAK_MERGE_THD;
-		buffer[3] = IME_DRUMMING_ACCELERATION;
-		buffer[4] = IME_DRUMMING_SEPARAION;
-		TOUCH_I("[%s] ime register set: %d/%d/%d/%d/%d\n",
-				        __func__, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]);
-	}
-	else{
-		buffer[0] = NOISE_FLOOR;
-		buffer[1] = MIN_PEAK;
-		buffer[2] = PEAK_MERGE_THD;
-		buffer[3] = DRUMMING_ACCELERATION;
-		buffer[4] = DRUMMING_SEPARAION;
-		TOUCH_I("[%s] ime register unset: %d/%d/%d/%d/%d\n",
-				        __func__, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]);
-	}
-
-	ret = synaptics_write(dev, d->f12_reg.ctrl[10], buffer, sizeof(buffer));
-	if (ret < 0) {
-		TOUCH_E("failed to write F12_2D_CTRL10 register - ret:%d\n", ret);
-		return ret;
-	}
-
-	return ret;
-}
-
-int synaptics_bl_mode_check(struct device *dev)
-{
-	struct synaptics_data *d = to_synaptics_data(dev);
-	u8 status = 0;
-	int ret = 0;
-	int bl_mode = 0;
-
-	ret = synaptics_set_page(dev, FLASH_PAGE);
-	if (ret < 0) {
-		TOUCH_E("failed to set page to FLASH_PAGE\n");
-		return ret;
-	}
-
-	ret = synaptics_read(dev, FLASH_STATUS_REG, &status, sizeof(status));
-	if (ret < 0) {
-		TOUCH_E("failed to read flash status reg - ret:%d\n", ret);
-		return ret;
-	}
-
-	TOUCH_I("%s - status[F34_FLASH_DATA00:%02x]\n", __func__, status);
-	if ((status & 0x80) == 0x80) { /* Bit 7 : BL Mode */
-		bl_mode = 1;
-		TOUCH_I("BL mode = 1\n");
-	}
-
-	ret = synaptics_set_page(dev, DEFAULT_PAGE);
-	if (ret < 0) {
-		TOUCH_E("failed to set page to DEFAULT_PAGE\n");
-		return ret;
-	}
-
-	return bl_mode;
-}
-
 int synaptics_ic_info(struct device *dev)
 {
 	struct synaptics_data *d = to_synaptics_data(dev);
-	struct touch_core_data *ts = to_touch_core(dev);
 
 	int ret;
 
@@ -583,17 +436,11 @@ int synaptics_ic_info(struct device *dev)
 			TOUCH_E("firmware page description read error... : (%d)\n", ret);
 			TOUCH_E("Touch IC(S3330) is no response\n");
 			d->need_scan_pdt = false;
-			if (synaptics_bl_mode_check(dev) == 1) {
-				TOUCH_I("%s - bootloader mode. keep initialize!\n", __func__);
-				goto skip_error;
-			}
 			return ret;
 		}
 		SCAN_PDT(dev);
 		d->need_scan_pdt = false;
 	}
-
-skip_error: /* in order to execute fw upgrade function */
 
 	ret = synaptics_set_page(dev, DEFAULT_PAGE);
 	if (ret < 0) {
@@ -614,9 +461,6 @@ skip_error: /* in order to execute fw upgrade function */
 			&(d->fw.revision), sizeof(d->fw.revision));
 	if (ret < 0)
 		TOUCH_E("Firmware Revision Query read error : %d\n", ret);
-
-	if(atomic_read(&ts->state.ime))
-		ret = synaptics_ime_set(dev);
 
 	d->fw.info.major = (d->fw.version[3] & 0x80 ? 1 : 0);
 	d->fw.info.minor = (d->fw.version[3] & 0x7F);
@@ -1176,7 +1020,7 @@ static int synaptics_get_status(struct device *dev, u8 *device, u8 *interrupt)
 	return ret;
 }
 
-int synaptics_irq_clear(struct device *dev)
+static int synaptics_irq_clear(struct device *dev)
 {
 	TOUCH_TRACE();
 
@@ -1561,7 +1405,6 @@ static int synaptics_irq_handler(struct device *dev)
 	u8 irq_status;
 	int ret = 0;
 	int retry = 0;
-	int mfts_mode = 0;
 
 	TOUCH_TRACE();
 
@@ -1578,17 +1421,6 @@ static int synaptics_irq_handler(struct device *dev)
 
 	if (retry >= 5) {
 		TOUCH_E("abnormal device status\n");
-		mfts_mode = lge_get_mfts_mode();
-		if(!mfts_mode && (ret == -2 || ret == -4 || ret == -7)){
-			/*
-			 * IC HW reset reason
-			 * -2: BUS Error: noisy
-			 * -4: Arbitration Lost
-			 * -7: error timeout on polling for valid state
-			 */
-			TOUCH_E("HW reset due to i2c error!!: [%d]\n",ret);
-			return -EHWRESET;
-		}
 		return ret;
 	}
 
@@ -1664,28 +1496,6 @@ int synaptics_init(struct device *dev)
 	return 0;
 }
 
-int synaptics_reset(struct device *dev, int mode)
-{
-	struct touch_core_data *ts = to_touch_core(dev);
-
-	TOUCH_I("%s : Reset(%s)\n", __func__, (mode == 1) ? "HW_RESET": "SW_RESET");
-	touch_interrupt_control(ts->dev, INTERRUPT_DISABLE);
-
-	if(mode == SW_RESET) {
-		synaptics_reset_ctrl(dev, SW_RESET);
-	} else if(mode == HW_RESET) {
-		synaptics_reset_ctrl(dev, HW_RESET);
-	} else {
-		TOUCH_E(" Unknown mode: (%d)\n", mode);
-		touch_interrupt_control(ts->dev, INTERRUPT_ENABLE);
-		return 0;
-	}
-
-	mod_delayed_work(ts->wq, &ts->init_work, 0);
-
-	return 0;
-}
-
 static int synaptics_power(struct device *dev, int ctrl)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
@@ -1714,15 +1524,6 @@ static int synaptics_power(struct device *dev, int ctrl)
 
 	case POWER_WAKE:
 		TOUCH_I("%s, wake\n", __func__);
-		break;
-	case POWER_SW_RESET:
-		TOUCH_I("%s, sw reset\n", __func__);
-		synaptics_reset(dev, SW_RESET);
-		break;
-
-	case POWER_HW_RESET:
-		TOUCH_I("%s, hw reset\n", __func__);
-		synaptics_reset(dev, HW_RESET);
 		break;
 	}
 
@@ -2015,7 +1816,6 @@ static int synaptics_notify(struct device *dev, ulong event, void *data)
 	struct synaptics_data *d = to_synaptics_data(dev);
 
 	int mfts_mode = lge_get_mfts_mode();
-	int ret = 0;
 
 	TOUCH_TRACE();
 
@@ -2039,14 +1839,9 @@ static int synaptics_notify(struct device *dev, ulong event, void *data)
 		TOUCH_I("%s, LCD_EVENT_TOUCH_LPWG_OFF\n", __func__);
 		d->power_state = POWER_WAKE;
 		break;
-
-	case NOTIFY_IME_STATE:
-		TOUCH_I("NOTIFY_IME_STATE!\n");
-		ret = synaptics_ime_set(dev);
-		break;
 	}
 
-	return ret;
+	return 0;
 }
 
 static ssize_t show_pen_support(struct device *dev, char *buf)
@@ -2421,53 +2216,12 @@ static ssize_t show_glove_test(struct device *dev, char *buf)
 	return ret;
 }
 
-static ssize_t show_pin_state(struct device *dev, char *buf)
-{
-	struct touch_core_data *ts = to_touch_core(dev);
-	int ret = 0;
-
-	TOUCH_TRACE();
-
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "rst_pin : %d/ int_pin : %d\n",
-			gpio_get_value(ts->reset_pin), gpio_get_value(ts->int_pin));
-	TOUCH_I("rst_pin : %d / int_pin : %d\n", gpio_get_value(ts->reset_pin), gpio_get_value(ts->int_pin));
-
-	return ret;
-}
-
-static ssize_t store_pin_state(struct device *dev,
-		const char *buf, size_t count)
-{
-	struct touch_core_data *ts = to_touch_core(dev);
-	char command[8] = {0};
-	int rst_pin = 0;
-
-	TOUCH_TRACE();
-
-	if (sscanf(buf, "%7s %d", command, &rst_pin) <= 0)
-		return count;
-
-	if (!strcmp(command, "rst_pin")) {
-		if (gpio_is_valid(ts->reset_pin)) {
-
-			gpio_set_value(ts->reset_pin, rst_pin);
-			TOUCH_I("Write rst_pin : %d\n", gpio_get_value(ts->reset_pin));
-
-		}
-	 } else {
-		TOUCH_E("Usage\n");
-		TOUCH_E("Write command(rst_pin) value\n");
-	 }
-
-	return count;
-}
 static TOUCH_ATTR(reg_ctrl, NULL, store_reg_ctrl);
 static TOUCH_ATTR(pen_support, show_pen_support, NULL);
 static TOUCH_ATTR(ts_noise, show_check_noise, store_check_noise);
 static TOUCH_ATTR(ts_noise_log_enable, show_noise_log, store_noise_log);
 static TOUCH_ATTR(glove_support, show_glove_state, store_glove_state);
 static TOUCH_ATTR(glove_test, show_glove_test, NULL);
-static TOUCH_ATTR(pin_state, show_pin_state, store_pin_state);
 
 static struct attribute *s3330_attribute_list[] = {
 	&touch_attr_reg_ctrl.attr,
@@ -2476,7 +2230,6 @@ static struct attribute *s3330_attribute_list[] = {
 	&touch_attr_ts_noise_log_enable.attr,
 	&touch_attr_glove_support.attr,
 	&touch_attr_glove_test.attr,
-	&touch_attr_pin_state.attr,
 	NULL,
 };
 
@@ -2585,12 +2338,6 @@ static int synaptics_upgrade(struct device *dev)
 
 	TOUCH_TRACE();
 
-	if((check_recovery_boot == LGE_RECOVERY_BOOT) || (lge_get_laf_mode() == LGE_LAF_MODE_LAF) || (touch_boot_mode() == TOUCH_CHARGER_MODE))
-	{
-		TOUCH_I("recovery mode booting fw upgrade skip!!\n");
-		return -EPERM;
-	}
-
 	if (!ts->force_fwup) {
 		ts->test_fwpath[0] = '\0';
 		d->fw.def_fw = ts->def_fwpath[0];
@@ -2623,31 +2370,20 @@ static int synaptics_upgrade(struct device *dev)
 
 		return ret;
 	}
-
-	if (synaptics_bl_mode_check(dev) == 1) {
-		TOUCH_I("%s - bootloader mode. force fw upgrade!\n", __func__);
-		ts->force_fwup = 1;
-	}
-
 	update = synaptics_fw_compare(dev, fw);
 
 	if (update) {
 		d->need_scan_pdt = true;
-		synaptics_irq_enable(dev, false);
 		ret = FirmwareUpgrade(dev, fw);
 
 		if (ret < 0) {
-			TOUCH_E("firmware_upgrade fail\n");
-			ts->force_fwup = 0;
 			release_firmware(fw);
 			return ret;
 		}
-
 	} else {
 		TOUCH_I("need not fw version upgrade\n");
 	}
 
-	ts->force_fwup = 0;
 	release_firmware(fw);
 
 	return 0;

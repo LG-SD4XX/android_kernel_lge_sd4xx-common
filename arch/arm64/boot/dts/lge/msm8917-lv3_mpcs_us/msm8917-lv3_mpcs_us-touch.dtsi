@@ -118,7 +118,7 @@
 		/* firmware */
 		use_fw_upgrade = <1>;
 		use_firmware = <0>;
-		fw_image = "sic/lg4894/lv3/L0W50LV3_1_05.img"; /* for revision 9   */
+		fw_image = "sic/lg4894/lv3/L0W50LV3_1_02.img"; /* for revision 9   */
 		panel_spec = "sic/lg4894/lv3/lv3_limit.txt";
 		panel_spec_mfts_folder = "sic/lg4894/lv3/lv3_limit_mfts.txt";
 	};

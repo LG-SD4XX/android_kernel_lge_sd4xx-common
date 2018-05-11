@@ -1,4 +1,7 @@
 /*
+ * stub_main.c
+ * - This file is derived form /drivers/usb/usbip/stub_main.c
+ *
  * Copyright (C) 2003-2008 Takahiro Hirofuchi
  *
  * This is free software; you can redistribute it and/or modify
@@ -20,23 +23,15 @@
 #include <linux/string.h>
 #include <linux/module.h>
 #include <linux/device.h>
-#include <linux/miscdevice.h>
-
-
+//#include <linux/usb/mausb.h>
 
 #include "mausb_common.h"
-#include "stub.h"
 #include "mausb_util.h"
+#include "stub.h"
 
 #define DRIVER_AUTHOR "Takahiro Hirofuchi"
-#define DRIVER_DESC "USB/IP Host Driver"
-
+#define DRIVER_DESC "MAUSB Host Driver"
 #define DEVICE_BUS_ID	"1-1"
-
-
-#define LGFTM_MAUSB 204
-#define LGFTM_MAUSB_SIZE 1
-//extern int set_ftm_item(int id, int size, void *in);
 
 /*
  * busid_tables defines matching busids that mausb can grab. A user can change
@@ -47,8 +42,6 @@
 static struct bus_id_priv busid_table[MAX_BUSID];
 static spinlock_t busid_table_lock;
 
-
-
 static void init_busid_table(void)
 {
 	/*
@@ -57,12 +50,8 @@ static void init_busid_table(void)
 	 */
 	memset(busid_table, 0, sizeof(busid_table));
 
-//	strncpy(busid_table[0].name, DEVICE_BUS_ID, BUSID_SIZE);
-//	busid_table[0].status = MAUSB_STUB_BUSID_ADDED;
-
-
 	spin_lock_init(&busid_table_lock);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "lock3: %p",(void*)&busid_table_lock);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "lock3: %p",(void*)&busid_table_lock);
 }
 
 /*
@@ -76,7 +65,8 @@ static int get_busid_idx(const char *busid)
 
 	for (i = 0; i < MAX_BUSID; i++)
 		if (busid_table[i].name[0]) {
-			LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,  "busid: %s \n",busid_table[i].name);
+			DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,
+					"busid: %s \n",busid_table[i].name);
 			if (!strncmp(busid_table[i].name, busid, BUSID_SIZE)) {
 				idx = i;
 				break;
@@ -103,7 +93,9 @@ static int add_match_busid(char *busid)
 {
 	int i;
 	int ret = -1;
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,  "match busid: %s \n",busid);
+
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,
+			"match busid: %s \n",busid);
 	spin_lock(&busid_table_lock);
 	/* already registered? */
 	if (get_busid_idx(busid) >= 0) {
@@ -157,7 +149,7 @@ static ssize_t show_match_busid(struct device_driver *drv, char *buf)
 {
 	int i;
 	char *out = buf;
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "---> %s", __func__);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "---> %s", __func__);
 	spin_lock(&busid_table_lock);
 	for (i = 0; i < MAX_BUSID; i++)
 		if (busid_table[i].name[0])
@@ -174,8 +166,9 @@ static ssize_t store_match_busid(struct device_driver *dev, const char *buf,
 	int len;
 	char busid[BUSID_SIZE];
 
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "\n---> %s",__func__);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "\n count %zu  Buffer: %s", count, buf);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "\n---> %s",__func__);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,
+			"\n count %zu  Buffer: %s", count, buf);
 	if (count < 5)
 		return -EINVAL;
 
@@ -187,7 +180,7 @@ static ssize_t store_match_busid(struct device_driver *dev, const char *buf,
 		return -EINVAL;
 
 	strncpy(busid, buf + 4, BUSID_SIZE);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "\n BusID: %s", busid);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "\n BusID: %s", busid);
 	if (!strncmp(buf, "add ", 4)) {
 		if (add_match_busid(busid) < 0)
 			return -ENOMEM;
@@ -209,7 +202,8 @@ static ssize_t store_match_busid(struct device_driver *dev, const char *buf,
 static DRIVER_ATTR(match_busid, S_IRUSR | S_IWUSR, show_match_busid,
 		   store_match_busid);
 
-static struct stub_mausb_pal *stub_priv_pop_from_listhead(struct list_head *listhead)
+static struct stub_mausb_pal *stub_priv_pop_from_listhead(
+		struct list_head *listhead)
 {
 	struct stub_mausb_pal *priv, *tmp;
 
@@ -217,10 +211,8 @@ static struct stub_mausb_pal *stub_priv_pop_from_listhead(struct list_head *list
 		list_del(&priv->list);
 		return priv;
 	}
-
 	return NULL;
 }
-
 
 static struct stub_mausb_pal *stub_mausb_pal_pop(struct stub_device *sdev)
 {
@@ -229,30 +221,34 @@ static struct stub_mausb_pal *stub_mausb_pal_pop(struct stub_device *sdev)
 
 	spin_lock_irqsave(&sdev->mausb_pal_lock, flags);
 
-	pal = (struct stub_mausb_pal *)stub_priv_pop_from_listhead(&sdev->mausb_pal_in_init);
+	pal = (struct stub_mausb_pal *)
+		stub_priv_pop_from_listhead(&sdev->mausb_pal_in_init);
 	if (pal)
 		goto done1;
 
-	pal = (struct stub_mausb_pal *)stub_priv_pop_from_listhead(&sdev->mausb_pal_out_init);
+	pal = (struct stub_mausb_pal *)
+		stub_priv_pop_from_listhead(&sdev->mausb_pal_out_init);
 	if (pal)
 		goto done1;
 
-	pal = (struct stub_mausb_pal *)stub_priv_pop_from_listhead(&sdev->mausb_pal_mgmt_init);
+	pal = (struct stub_mausb_pal *)
+		stub_priv_pop_from_listhead(&sdev->mausb_pal_mgmt_init);
 	if (pal)
 		goto done1;
 
-	pal = (struct stub_mausb_pal *)stub_priv_pop_from_listhead(&sdev->mausb_pal_tx);
+	pal = (struct stub_mausb_pal *)
+		stub_priv_pop_from_listhead(&sdev->mausb_pal_tx);
 	if (pal)
 		goto done1;
 
-	pal = (struct stub_mausb_pal *)stub_priv_pop_from_listhead(&sdev->mausb_pal_free);
+	pal = (struct stub_mausb_pal *)
+		stub_priv_pop_from_listhead(&sdev->mausb_pal_free);
 	if (pal)
 		goto done1;
 
 done1:
 	spin_unlock_irqrestore(&sdev->mausb_pal_lock, flags);
 	return pal;
-
 }
 
 void stub_device_cleanup_urbs(struct stub_device *sdev)
@@ -260,23 +256,21 @@ void stub_device_cleanup_urbs(struct stub_device *sdev)
 	struct stub_mausb_pal *pal;
 	struct urb *urb;
 
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,  " %s  \n",__func__);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,  " %s  \n",__func__);
 
-	if(sdev==NULL)
-	{
+	if (!sdev)
 		return;
-	}
+
 	dev_dbg(&sdev->udev->dev, "free sdev %p\n", sdev);
-
-
 
 	while ((pal = stub_mausb_pal_pop(sdev))) {
 		urb = pal->urb;
 		dev_dbg(&sdev->udev->dev, "free urb %p\n", urb);
 		if (urb)
 			usb_kill_urb(urb);
-		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, " %s  pal %p\n",__func__,pal);
-		if (urb){
+
+		DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, " %s  pal %p\n",__func__,pal);
+		if (urb) {
 			if (urb->transfer_buffer)
 				kfree(urb->transfer_buffer);
 			if (urb->setup_packet)
@@ -285,61 +279,20 @@ void stub_device_cleanup_urbs(struct stub_device *sdev)
 		}
 		kfree(pal);
 	}
-
-
 }
 
-int task_mausb_enable_loop(void *data)
-{
-	unsigned int mausb_enable=0;
-
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "---> %s",__func__);
-
-	mausb_enable=1;
-	//set_ftm_item(LGFTM_MAUSB,LGFTM_MAUSB_SIZE,&mausb_enable);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "<-- %s",__func__);
-	return 0;
-}
-
-int mausb_enable_thread(void)
-{
-	struct task_struct *task_mausb_enable;
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "---> %s",__func__);
-	task_mausb_enable =  kthread_get_run(task_mausb_enable_loop, NULL,  "task_mausb_enable");
-	return 0;
-
-}
-
-int task_mausb_disable_loop(void *data)
-{
-	unsigned int mausb_enable=0;
-
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "---> %s",__func__);
-
-	mausb_enable=0;
-	//set_ftm_item(LGFTM_MAUSB,LGFTM_MAUSB_SIZE,&mausb_enable);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "<-- %s",__func__);
-	return 0;
-}
-
-
-int mausb_disable_thread(void)
-{
-	struct task_struct *task_mausb_disable;
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "---> %s",__func__);
-	task_mausb_disable =  kthread_get_run(task_mausb_disable_loop, NULL,  "task_mausb_disable");
-	return 0;
-
-}
-
+/* TODO: replace with userspace daemon */
 int mausb_bind_function(const char *buf)
 {
 	int ret = 0;
-	char *argv_bind[] = { "/system/bin/mausb", "bind", "--busid=1-1", NULL };
+
+	char *argv_bind[] = { "/system/bin/mausb",
+		"bind", "--busid=1-1", NULL };
 	char *argv_upnp[] = {"/system/bin/upnp-server", "&", NULL};
 	char *argv_mausbd[] = {"/system/bin/mausbd", "-D", NULL};
 
-	char *argv_unbind[] = { "/system/bin/mausb", "unbind", "--busid=1-1", NULL };
+	char *argv_unbind[] = { "/system/bin/mausb",
+		"unbind", "--busid=1-1", NULL };
 	char *argv_kill_mausbd[] = {"/system/bin/pkill","mausbd", NULL};
 	char *argv_kill_upnp[] = {"/system/bin/pkill", "upnp-server", NULL};
 
@@ -349,99 +302,78 @@ int mausb_bind_function(const char *buf)
 		"SHELL=/system/bin/sh",
 		"LD_LIBRARY_PATH=/vendor/lib:/system/lib",
 		"MKSH=/system/bin/sh",
-		"PATH=/sbin:/vendor/bin:/system/sbin:/system/bin:/system/xbin", NULL };
+		"PATH=/sbin:/vendor/bin:/system/sbin:/system/bin:/system/xbin",
+		NULL };
 
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "---> %s",__func__);
-	if (!strcmp(buf,"bind"))
-	{
-		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "bind command received \n");
-		ret = call_usermodehelper( argv_bind[0], argv_bind, envp, UMH_WAIT_EXEC );
-		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "ret: %d\n",ret);
-		ret = call_usermodehelper( argv_mausbd[0], argv_mausbd, envp, UMH_WAIT_EXEC );
-		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "ret: %d\n",ret);
-		ret  = call_usermodehelper( argv_upnp[0], argv_upnp, envp, UMH_WAIT_EXEC );
-		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "ret: %d\n",ret);
-	}
-	else if (!strcmp(buf,"unbind"))
-	{
-		LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "unbind command received \n");
-	ret  = call_usermodehelper( argv_kill_upnp[0], argv_kill_upnp, envp, UMH_WAIT_EXEC );
-	ret  = call_usermodehelper( argv_unbind[0], argv_unbind, envp, UMH_WAIT_EXEC );
-	ret  = call_usermodehelper( argv_kill_mausbd[0], argv_kill_mausbd, envp, UMH_WAIT_EXEC );
-	}
-	else if (!strcmp(buf,"mausb_enable"))
-	{
-	printk(KERN_INFO "mausb enable command received \n");
-	mausb_enable_thread();
-	}
-
-	else if (!strcmp(buf,"mausb_disable"))
-	{
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "---> %s",__func__);
+	if (!strcmp(buf,"bind")) {
+                DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,
+				"bind command received \n");
+                ret = call_usermodehelper(argv_bind[0],
+				argv_bind, envp, UMH_WAIT_EXEC );
+                DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "ret: %d\n",ret);
+                ret = call_usermodehelper(argv_mausbd[0],
+				argv_mausbd, envp, UMH_WAIT_EXEC );
+                DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "ret: %d\n",ret);
+		ret = call_usermodehelper(argv_upnp[0],
+				argv_upnp, envp, UMH_WAIT_EXEC );
+                DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "ret: %d\n",ret);
+	} else if (!strcmp(buf,"unbind")) {
+		DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN,
+				"unbind command received \n");
+                ret = call_usermodehelper(argv_kill_upnp[0],
+				argv_kill_upnp, envp, UMH_WAIT_EXEC );
+                ret = call_usermodehelper(argv_unbind[0],
+				argv_unbind, envp, UMH_WAIT_EXEC );
+                ret = call_usermodehelper(argv_kill_mausbd[0],
+				argv_kill_mausbd, envp, UMH_WAIT_EXEC );
+	} else if (!strcmp(buf,"mausb_enable")) {
+		printk(KERN_INFO "mausb enable command received \n");
+	} else if (!strcmp(buf,"mausb_disable")) {
 		printk(KERN_INFO "mausb disable command received \n");
-		mausb_disable_thread();
 	}
-
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "<-- %s",__func__);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "<-- %s",__func__);
 	return ret;
 }
 
 int task_bind_loop(void *data)
 {
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "---> %s",__func__);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "---> %s",__func__);
 	msleep(400);
 	mausb_bind_function("bind");
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "<-- %s",__func__);
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "<-- %s",__func__);
 	return 0;
 }
-
-int mausb_bind_unbind(const char *buf)
+int task_unbind_loop(void *data)
+{
+    mausb_bind_function("unbind");
+    return 0;
+}
+static int stub_bind_unbind(const char *buf)
 {
 	struct task_struct *task_bind;
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "---> %s",__func__);
-	  if (!strcmp(buf,"bind")) {
-		task_bind =  kthread_get_run(task_bind_loop, NULL,  "task_bind");
-	 	return 0;
-	  }
-	  return 0;
-}
+	DBG_MAUSB(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "---> %s",__func__);
 
-EXPORT_SYMBOL_GPL(mausb_bind_unbind);
-
-static ssize_t mausb_bind_write(struct file *fp, const char __user *buf, size_t count, loff_t *pos)
-{
-	char buffer[16];
-	sprintf(buffer,"%s",buf);
-	return mausb_bind_function(buf);
-}
-
-static int mausb_bind_open(struct inode *ip, struct file *fp)
-{
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "---> %s",__func__);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "<-- %s",__func__);
-	return 0;
-}
-static int mausb_bind_release(struct inode *ip, struct file *fp)
-{
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "---> %s",__func__);
-	LG_PRINT(DBG_LEVEL_MEDIUM,DATA_TRANS_MAIN, "<-- %s",__func__);
+	if (!strcmp(buf,"bind"))
+		task_bind =  kthread_get_run(task_bind_loop,
+				NULL, "task_bind");
+        else if (!strcmp(buf, "unbind"))
+                    task_bind = kthread_get_run(task_unbind_loop,
+                                            NULL, "task_unbind");
 	return 0;
 }
 
-static const char mausb_shortname[] = "mausb_bind";
+void mausb_bind(void)
+{
+	stub_bind_unbind("bind");
+}
+EXPORT_SYMBOL_GPL(mausb_bind);
 
-/* file operations for /dev/mausb_bind */
-static const struct file_operations mausb_bind_ops = {
-	.owner = THIS_MODULE,
-	.write = mausb_bind_write,
-	.open = mausb_bind_open,
-	.release = mausb_bind_release,
-};
-
-static struct miscdevice mausb_bind_device = {
-	.minor = MISC_DYNAMIC_MINOR,
-	.name = mausb_shortname,
-	.fops = &mausb_bind_ops,
-};
+void mausb_unbind(void)
+{
+	stub_bind_unbind("unbind");
+}
+EXPORT_SYMBOL_GPL(mausb_unbind);
 
 static int __init mausb_device_init(void)
 {
@@ -462,11 +394,6 @@ static int __init mausb_device_init(void)
 		goto err_create_file;
 	}
 
-	ret = misc_register(&mausb_bind_device);
-
-	if (ret)
-			goto err_create_file;
-
 	pr_info(DRIVER_DESC " v" MAUSB_VERSION "\n");
 
 	return ret;
@@ -479,8 +406,6 @@ err_usb_register:
 
 static void __exit mausb_device_exit(void)
 {
-	//david kernel panic NW model
-	misc_deregister(&mausb_bind_device);
 	driver_remove_file(&stub_driver.drvwrap.driver,
 			   &driver_attr_match_busid);
 

@@ -308,11 +308,8 @@ static long cxd224x_dev_unlocked_ioctl(struct file *filp,
     switch (cmd) {
     case CXDNFC_RST_CTL:
 #ifdef CONFIG_CXD224X_NFC_RST
-        if(lge_get_boot_mode() <= LGE_BOOT_MODE_CHARGERLOGO ) {
-            dev_info(&cxd224x_dev->client->dev, "%s, rst arg=%d\n", __func__, (int)arg);
-            dev_info(&cxd224x_dev->client->dev, "%s, bootmode = %d\n", __func__, lge_get_boot_mode());
-            return (queue_work(cxd224x_dev->wqueue, &cxd224x_dev->qmsg) ? 0 : 1);
-        }
+        dev_info(&cxd224x_dev->client->dev, "%s, rst arg=%d\n", __func__, (int)arg);
+        return (queue_work(cxd224x_dev->wqueue, &cxd224x_dev->qmsg) ? 0 : 1);
 #endif
         break;
     case CXDNFC_POWER_CTL:

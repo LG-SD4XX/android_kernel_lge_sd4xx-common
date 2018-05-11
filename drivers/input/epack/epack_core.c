@@ -13,6 +13,7 @@
  * GNU General Public License for more details.
  *
  */
+#define pr_fmt(fmt)	"[E-PACK] %s : " fmt, __func__
 
 #include <linux/module.h>
 #include <linux/i2c.h>
@@ -31,13 +32,13 @@
 #define DEFAULT_MONITOR_PERIOD_MS 30000
 #define EPACK_DEFAULT_POLLING_TIME 1000
 #define EPACK_I2C_NAME "epack"
-#define AUTO_UPDATE_FLAG  1
+#define AUTO_UPDATE_FLAG  0
 
 static struct epack_dev_data *the_epack;
+static bool has_already_flag = 0;
 
 static int ep_id_status = 0;
 static int ep_pwr_status = 0;
-static int tablet_otg_status = 0;
 
 enum irq_type{
 	IRQ_INIT,
@@ -45,7 +46,7 @@ enum irq_type{
 	IRQ_EP_PWR,
 	IRQ_USB_PWR,
 };
-char *irq_str[4] = {"initial","ep__id","ep_pwr","usb_pwr"};
+char *irq_str[4] = {"INIT","EP_ID","EP_PWR","USB_PWR"};
 
 
 int epack_firmware_update(struct i2c_client *client, struct device *dev,int flag, char* fwpath)
@@ -95,11 +96,6 @@ int epack_firmware_update(struct i2c_client *client, struct device *dev,int flag
 		return result;
 	}
 	retry_cnt = 1;
-
-	if(epack->fwver >= 0xf0 && the_epack->force_update == 0){
-		epack_log("test FW version. exit(%x)\n", epack->fwver);
-		return result;
-	}
 
 	while(retry_cnt <= MAX_RETRY_COUNT){
 		result = cmd_hw_version(client,true, &(epack->hwver)); 	//HW version check
@@ -584,17 +580,24 @@ int get_vbus_source(void)
 	return check_vbus_source(the_epack);
 }
 
+static void epack_notify_vbus_src(struct work_struct *work)
+{
+	epack_log("vbus source is chagned\n");
+}
+
 char *vs_str[3] = {"NONE","from_PACK","from_USB"};
 static int update_vbus_source(struct epack_dev_data *epack,int update_reason)
 {
 	int vbus_src;
 
 	vbus_src = check_vbus_source(epack);
+	epack_log("irq %-7s vbus_src  : %s -> %s \n"
+		,irq_str[update_reason],vs_str[epack->vbus_src],vs_str[vbus_src]);
 
 	if (vbus_src != epack->vbus_src) {
-		epack_log("%s irq occurs! vbus_src : %s (old:%s)\n"
-		,irq_str[update_reason],vs_str[vbus_src],vs_str[epack->vbus_src]);
 		epack->vbus_src = vbus_src;
+		//schedule_delayed_work(&epack->notify_vbus_src_work,
+		//		msecs_to_jiffies(0));
 	}
 	return vbus_src;
 }
@@ -615,34 +618,13 @@ static int check_epack_status(struct epack_dev_data *epack)
 module_param(ep_id_status, int, 0444);
 module_param(ep_pwr_status, int, 0444);
 
-void set_tablet_otg_status(int on)
-{
-	tablet_otg_status = on;
-}
-
 int get_epack_status(void)
 {
 	if (!the_epack) {
-		epack_log("%s : pack is not initialized yet \n",__func__);
+		epack_log("%s : EPACK is not initialized yet \n",__func__);
 		return EPACK_ABSENT;
 	}
 	return check_epack_status(the_epack);
-}
-
-static void notify_epack_w_otg(struct work_struct *work)
-{
-	struct delayed_work *dwork = to_delayed_work(work);
-	struct epack_dev_data *epack = container_of(dwork,
-		struct epack_dev_data, notify_epack_w_otg_work);
-	int status;
-
-	status = check_epack_status(epack);
-	epack_log("%s: epack status changed during tablet otg connected *******************\n", __func__);
-
-	if (status == EPACK_POWER_LOW)
-		power_supply_set_usb_epack(epack->usb_psy, 1);
-	else if (status == EPACK_ABSENT)
-		power_supply_set_usb_epack(epack->usb_psy, 0);
 }
 
 static void notify_epack_ready(struct work_struct *work)
@@ -651,7 +633,7 @@ static void notify_epack_ready(struct work_struct *work)
 	struct epack_dev_data *epack = container_of(dwork,
 		struct epack_dev_data, notify_epack_ready_work);
 
-	pr_err("[EpackMain]    pack is Ready :-) \n");
+	epack_log("%s: epack power ok, set usb_psy epack *******************\n", __func__);
 	// notify_to_audio;
 	audio_input_set_sdev_name(epack, 1);
 	// notify_to_usb;
@@ -663,9 +645,15 @@ static void notify_epack_ready(struct work_struct *work)
 				epack_log("%s: dev is null\n", __func__);
         return;
       }
+    if(has_already_flag ==0){
 			mutex_lock(&epack->i2c_lock);
  			epack_firmware_update(epack->client, &(epack->client->dev), 0, NULL);
 			mutex_unlock(&epack->i2c_lock);
+ 		}
+		else
+			epack_log("%s: has_already_flag %d don't update\n", __func__, has_already_flag);
+    has_already_flag = 1;
+    epack_log("%s: has_already_flag %d\n", __func__, has_already_flag);
   }
 }
 
@@ -675,10 +663,12 @@ static void notify_epack_unready(struct work_struct *work)
 	struct epack_dev_data *epack = container_of(dwork,
 		struct epack_dev_data, notify_epack_unready_work);
 
-	pr_err("[EpackMain]    pack is UNready :-( \n");
+	epack_log("%s: epack power low or absent ************************\n",__func__);
 	// notify_to_audio;
 	audio_input_set_sdev_name(epack, 0);
 	// notify_to_usb;
+	has_already_flag = 0;
+	epack_log("%s: has_already_flag %d\n", __func__, has_already_flag);
 	power_supply_set_usb_epack(epack->usb_psy, 0);
 }
 
@@ -690,64 +680,30 @@ static void update_epack_status(struct epack_dev_data *epack,int update_reason)
 
 	status = check_epack_status(epack);
 
-	pr_err("[EpackMain] %9s irq occurs! sts : %-9s (old:%s)\n"
-		,irq_str[update_reason],es_str[status],es_str[epack->last_status]);
+	epack_log("irq %-7s epack_sts : %s -> %s \n"
+		,irq_str[update_reason],es_str[epack->last_status],es_str[status]);
 	if (status == epack->last_status)
 		return;
 
-
-	if (tablet_otg_status) {
-		if ((epack->last_status == EPACK_ABSENT) &&
-				(status == EPACK_POWER_LOW)) {
-			cancel_delayed_work(&epack->notify_epack_w_otg_work);
-			schedule_delayed_work(&epack->notify_epack_w_otg_work,
-				msecs_to_jiffies(500));
-		}
-		if ((epack->last_status == EPACK_POWER_LOW) &&
-				(status == EPACK_ABSENT)) {
-			cancel_delayed_work(&epack->notify_epack_w_otg_work);
-			schedule_delayed_work(&epack->notify_epack_w_otg_work,
-				msecs_to_jiffies(500));
-		}
-	}
-
 	if(status == EPACK_ABSENT) {
-		epack->debug_i2c_fail = 0;
-		cancel_delayed_work(&epack->audio_work);
-		cancel_delayed_work(&epack->debug_monitor_work);
+		cancel_delayed_work(&epack->pwr_monitor_work);
 	} else {
 		if (epack->last_status == EPACK_ABSENT) {
-			cancel_delayed_work(&epack->audio_work);
-			cancel_delayed_work(&epack->debug_monitor_work);
-			schedule_delayed_work(&epack->debug_monitor_work
-									, msecs_to_jiffies(13000));
+			cancel_delayed_work(&epack->pwr_monitor_work);
+			schedule_delayed_work(&epack->pwr_monitor_work
+									, msecs_to_jiffies(5000));
 		}
 	}
 
 	if (epack->last_status == EPACK_POWER_OK) {
 		epack->last_status = status;
-		cancel_delayed_work(&epack->audio_work);
-		cancel_delayed_work(&epack->notify_epack_unready_work);
-		cancel_delayed_work(&epack->notify_epack_ready_work);
 		schedule_delayed_work(&epack->notify_epack_unready_work,
 				msecs_to_jiffies(0));
 	} else {
 		epack->last_status = status;
-		if (status == EPACK_POWER_OK){
-			cancel_delayed_work(&epack->notify_epack_ready_work);
-			cancel_delayed_work(&epack->notify_epack_unready_work);
+		if (status == EPACK_POWER_OK)
 			schedule_delayed_work(&epack->notify_epack_ready_work,
-				msecs_to_jiffies(500));
-			cancel_delayed_work(&epack->audio_work);
-			schedule_delayed_work(&epack->audio_work,
-							msecs_to_jiffies(500));
-			if (epack->debug_i2c_fail) {
-					epack->debug_i2c_fail = 0;
-					cancel_delayed_work(&epack->debug_monitor_work);
-					schedule_delayed_work(&epack->debug_monitor_work
-							, msecs_to_jiffies(500));
-			}
-		}
+				msecs_to_jiffies(0));
 	}
 
 	return;
@@ -756,6 +712,7 @@ static void update_epack_status(struct epack_dev_data *epack,int update_reason)
 static irqreturn_t epack_detect_handler(int irq, void *data)
 {
 	struct epack_dev_data *epack = (struct epack_dev_data *)data;
+	epack_log("irq %-7s occurs!\n",irq_str[IRQ_EP_ID]);
 
 	/* i2c register update takes time, 30msec sleep required as per HPG */
 	msleep(30);
@@ -770,6 +727,7 @@ static irqreturn_t epack_detect_handler(int irq, void *data)
 static irqreturn_t epack_power_change_handler(int irq, void *data)
 {
 	struct epack_dev_data *epack = (struct epack_dev_data *)data;
+	epack_log("irq %-7s occurs!\n",irq_str[IRQ_EP_PWR]);
 
 	mutex_lock(&epack->irq_lock);
 	update_epack_status(epack,IRQ_EP_PWR);
@@ -782,6 +740,7 @@ static irqreturn_t epack_power_change_handler(int irq, void *data)
 static irqreturn_t usb_power_change_handler(int irq, void *data)
 {
 	struct epack_dev_data *epack = (struct epack_dev_data *)data;
+	epack_log("irq %-7s occurs!\n",irq_str[IRQ_USB_PWR]);
 
 	mutex_lock(&epack->irq_lock);
 	update_vbus_source(epack,IRQ_USB_PWR);
@@ -978,6 +937,7 @@ err_detect_irq:
 static int epack_init_workqueue(struct epack_dev_data *epack)
 {
 	epack->wq = create_singlethread_workqueue("epack_wq");
+	epack_log("create_singlethread_workqueue\n");
 
 	if (!epack->wq) {
 		epack_log("failed to create workqueue\n");
@@ -985,10 +945,13 @@ static int epack_init_workqueue(struct epack_dev_data *epack)
 	}
 
 	INIT_DELAYED_WORK(&epack->audio_work, epack_audio_work_func);
-	INIT_DELAYED_WORK(&epack->debug_monitor_work, epack_debug_monitor);
+	INIT_DELAYED_WORK(&epack->pwr_monitor_work, epack_pwr_monitor_work);
 	INIT_DELAYED_WORK(&epack->notify_epack_ready_work, notify_epack_ready);
 	INIT_DELAYED_WORK(&epack->notify_epack_unready_work, notify_epack_unready);
-	INIT_DELAYED_WORK(&epack->notify_epack_w_otg_work, notify_epack_w_otg);
+	INIT_DELAYED_WORK(&epack->notify_vbus_src_work, epack_notify_vbus_src);
+
+	//schedule_delayed_work(&epack->audio_work, 0);
+	//schedule_delayed_work(&epack->power_work, 0);
 
 	return 0;
 }

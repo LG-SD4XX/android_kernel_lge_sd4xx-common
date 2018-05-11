@@ -74,8 +74,8 @@
 
 #define fix_derived_permission(x, mask)	\
 	do {						\
-		(x)->i_uid = SDCARDFS_I(x)->d_uid;	\
-		(x)->i_gid = SDCARDFS_I(x)->d_gid;	\
+		(x)->i_uid.val = SDCARDFS_I(x)->d_uid;	\
+		(x)->i_gid.val = SDCARDFS_I(x)->d_gid;	\
         SDCARDFS_I(x)->d_mode = 0775 &  ~mask; \
         if (SDCARDFS_I(x)->perm == PERM_PRE_ROOT) \
         { \
@@ -474,8 +474,8 @@ static inline int prepare_dir(const char *path_s, uid_t uid, gid_t gid, mode_t m
 		goto out_drop;
 	}
 
-	attrs.ia_uid = uid;
-	attrs.ia_gid = gid;
+	attrs.ia_uid.val= uid;
+	attrs.ia_gid.val= gid;
 	attrs.ia_valid = ATTR_UID | ATTR_GID;
 	mutex_lock(&dent->d_inode->i_mutex);
 	notify_change(dent, &attrs, &dent->d_inode);

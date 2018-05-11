@@ -22,11 +22,6 @@
  */
 #define MAX98925_REVISION                 "1.0"
 
-#ifdef CONFIG_LGE_EXTERNAL_SPEAKER
-/*MAX98925 Work Queue name*/
-#define MA98925_WQ_NAME				"max98925_wq"
-#endif
-
 /*
  * MAX98925 Register Definitions
  */
@@ -869,11 +864,6 @@ struct max98925_priv {
 	bool nodsm;
 	unsigned int sample_rate;
 	unsigned int ch_size;
-#ifdef CONFIG_LGE_EXTERNAL_SPEAKER
-	struct mutex mutex;
-	struct workqueue_struct *wq;
-	struct delayed_work work;
-#endif
 };
 
 enum {

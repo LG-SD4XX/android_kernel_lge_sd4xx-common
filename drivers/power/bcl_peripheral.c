@@ -1034,6 +1034,7 @@ static int bcl_update_data(void)
 		ret = -ENODEV;
 		goto update_data_exit;
 	}
+
 	INIT_DELAYED_WORK(&bcl_perph->param[BCL_PARAM_VOLTAGE].poll_work,
 		bcl_poll_vbat_high);
 	INIT_DELAYED_WORK(&bcl_perph->param[BCL_PARAM_CURRENT].poll_work,

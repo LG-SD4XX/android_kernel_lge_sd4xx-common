@@ -178,8 +178,6 @@ config SND_SOC_MSM8X16
 	select SND_SOC_WSA881X
 	select MFD_CORE
 	select QTI_PP
-	select DOLBY_DAP
-	select DOLBY_DS2
 	select SND_SOC_CPE
 	select SND_SOC_WCD_CPE
 	select SND_SOC_MSM_HDMI_DBA_CODEC_RX
@@ -295,11 +293,5 @@ config SND_SOC_MDM9640
 	 interfaces with DSP, also it will enable
 	 the machine drivers and the corresponding
 	 DAI-links.
-
-config LGE_EXTERNAL_SPEAKER
-	bool "LGE EPACK SPEAKER"
-	default n
-	help
-	 To support TF8 EPACK SPEAKER
 
 endmenu

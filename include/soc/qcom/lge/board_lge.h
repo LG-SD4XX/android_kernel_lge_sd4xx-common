@@ -27,10 +27,9 @@ enum hw_rev_type {
 };
 #elif defined(CONFIG_MACH_MSM8917_LV3_MPCS_US) || defined(CONFIG_MACH_MSM8917_LV3_TMO_US)  || defined(CONFIG_MACH_MSM8917_LV3_USC_US)\
 	|| defined(CONFIG_MACH_MSM8917_LV3_LGU_KR) || defined(CONFIG_MACH_MSM8917_LV3_SKT_KR) || defined(CONFIG_MACH_MSM8917_LV3_KT_KR)\
-	|| defined(CONFIG_MACH_MSM8917_LV3_GLOBAL_COM) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US_VZW) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US_R) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US_VZW_R) \
+	|| defined(CONFIG_MACH_MSM8917_LV3_GLOBAL_COM) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US_VZW)\
 	|| defined(CONFIG_MACH_MSM8940_LV9_ATT_US) || defined(CONFIG_MACH_MSM8940_LV9_NAO_US) || defined(CONFIG_MACH_MSM8917_LV7_CCT_US_VZW) \
-	|| defined(CONFIG_MACH_MSM8917_LV7_CRK_US) || defined(ONFIG_MACH_MSM8917_LV7_GLOBAL_CA) || defined(CONFIG_MACH_MSM8940_LV9_GLOBAL_COM) \
-	|| defined(CONFIG_MACH_MSM8940_LV9_GLOBAL_CA)
+	|| defined(CONFIG_MACH_MSM8917_LV7_CRK_US) || defined(ONFIG_MACH_MSM8917_LV7_GLOBAL_CA) || defined(CONFIG_MACH_MSM8940_LV9_GLOBAL_COM)
 enum hw_rev_type {
 	HW_REV_0 = 0,
 	HW_REV_A,
@@ -42,7 +41,22 @@ enum hw_rev_type {
 	HW_REV_1_1,
 	HW_REV_MAX
 };
-#elif defined(CONFIG_MACH_MSM8940_MH_GLOBAL_COM) || defined(CONFIG_MACH_MSM8940_MH_LGU_KR)
+#elif defined(CONFIG_MACH_MSM8917_CV3_LGU_KR) || defined(CONFIG_MACH_MSM8917_CV3_SKT_KR) || defined(CONFIG_MACH_MSM8917_CV3_KT_KR) || defined(CONFIG_MACH_MSM8917_CV3_LAO_COM) || defined(CONFIG_MACH_MSM8917_CV3_VZW) || defined(CONFIG_MACH_MSM8917_CV3_CRK_US) || defined(CONFIG_MACH_MSM8917_CV3_CCT_US)
+enum hw_rev_type {
+	HW_REV_0 = 0,
+	HW_REV_A,
+	HW_REV_B,
+	HW_REV_C,
+	HW_REV_D,
+	HW_REV_E,
+	HW_REV_F,
+	HW_REV_G,
+	HW_REV_H,
+	HW_REV_1_0,
+	HW_REV_1_1,
+	HW_REV_MAX
+};
+#elif defined(CONFIG_MACH_MSM8940_MH_GLOBAL_COM) || defined(CONFIG_MACH_MSM8940_MH_LGU_KR) || defined(CONFIG_MACH_MSM8940_MH_SKT_KR) || defined(CONFIG_MACH_MSM8940_MH_KT_KR) || defined(CONFIG_MACH_MSM8940_MH_TMO_US) || defined(CONFIG_MACH_MSM8940_MH_CRK_US) || defined(CONFIG_MACH_MSM8940_MH_MPCS_US) || defined(CONFIG_MACH_MSM8940_MH_TRF_US) || defined(CONFIG_MACH_MSM8940_MH_GLOBAL_CA) || defined(CONFIG_MACH_MSM8940_MH_LAO_COM) || defined(CONFIG_MACH_MSM8940_MH_GLOBAL_LDU)
 enum hw_rev_type {
 	HW_REV_0 = 0,
 	HW_REV_02,
@@ -54,7 +68,7 @@ enum hw_rev_type {
 	HW_REV_1_1,
 	HW_REV_MAX
 };
-#elif	defined(CONFIG_MACH_MSM8917_LV517_TMO_US) || defined(CONFIG_MACH_MSM8917_LV517_VZW) || defined(CONFIG_MACH_MSM8917_LV517_LRA_US) || defined(CONFIG_MACH_MSM8917_LV517_TRF_US)\
+#elif	defined(CONFIG_MACH_MSM8917_LV517_TMO_US) || defined(CONFIG_MACH_MSM8917_LV517_VZW) || defined(CONFIG_MACH_MSM8917_LV517_TRF_US)\
 	||  defined(CONFIG_MACH_MSM8917_LV517N_ATT_US) || defined(CONFIG_MACH_MSM8917_LV517_CRK_US) || defined(CONFIG_MACH_MSM8917_LV517_CLR_PR) || defined(CONFIG_MACH_MSM8917_LV517_MPCS_US)
 enum hw_rev_type {
 	HW_REV_0 = 0,
@@ -79,7 +93,7 @@ enum hw_rev_type {
 	HW_REV_1_1,
 	HW_REV_MAX
 };
-#elif defined(CONFIG_MACH_MSM8940_SF3_MPCS_US) || defined(CONFIG_MACH_MSM8940_SF3_TMO_US) || defined(CONFIG_MACH_MSM8940_SF3_CLR_PR) || defined(CONFIG_MACH_MSM8940_TF8_TMO_US) || defined(CONFIG_MACH_MSM8940_TF8_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_GLOBAL_CA) || defined(CONFIG_MACH_MSM8940_SF3_GLOBAL_CA)
+#elif defined(CONFIG_MACH_MSM8940_SF3_MPCS_US) || defined(CONFIG_MACH_MSM8940_SF3_TMO_US) || defined(CONFIG_MACH_MSM8940_TF8_TMO_US) || defined(CONFIG_MACH_MSM8940_SF3_GLOBAL_CA) || defined(CONFIG_MACH_MSM8917_CV1_LAO_COM) || defined(CONFIG_MACH_MSM8917_CV1_VZW) || defined(CONFIG_MACH_MSM8917_CV1_ATT_US) || defined(CONFIG_MACH_MSM8917_CV1_CRK_US)
 enum hw_rev_type {
         HW_REV_0 = 0,
         HW_REV_A,
@@ -97,6 +111,20 @@ enum hw_rev_type {
 	HW_REV_A,
 	HW_REV_B,
 	HW_REV_C,
+	HW_REV_1_0,
+	HW_REV_1_1,
+	HW_REV_MAX
+};
+#elif defined(CONFIG_MACH_MSM8940_L6_DCM_JP)
+enum hw_rev_type {
+	HW_REV_0 = 0,
+	HW_REV_02,
+	HW_REV_A,
+	HW_REV_B,
+	HW_REV_B_1,
+	HW_REV_C,
+	HW_REV_D,
+	HW_REV_E,
 	HW_REV_1_0,
 	HW_REV_1_1,
 	HW_REV_MAX
@@ -165,10 +193,10 @@ int lge_get_board_orange(void);
 
 bool lge_get_mfts_mode(void);
 int lge_get_factory_boot(void);
-#if defined(CONFIG_LGE_DISPLAY_ESD_NOT_CHECK_WITH_FACTORY_CABLE)
-bool lge_get_panel_status_on_boot(void);
-bool lge_get_disable_esd_absent_bettery(void);
-#endif
+
+extern int lge_get_fota_mode(void);
+extern char* lge_get_boot_partition(void);
+
 #define LGE_RECOVERY_BOOT	1
 extern int lge_get_bootreason(void);
 
@@ -199,12 +227,19 @@ enum lge_panel_type {
 	SF3_TOVIS,
 	LV5_TOVIS,
 	LGD_INCELL_SW49106,
+	CV1_TIANMA_FT8006M,
+	CV1_LGD_LG4894A,
+	CV1_TCL_FT8006M,
+	CV3_LGD,
+	CV3_TOVIS,
 };
 
 enum lge_panel_type lge_get_panel_type(void);
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_CV3)
+bool lge_get_lcd_init_cmd_division(void);
 #endif
-#if defined(CONFIG_LGE_DISPLAY_EXTERNAL_DSV)
-char* lge_get_dsv_vendor(void);
+
 #endif
 
 #if defined(CONFIG_PRE_SELF_DIAGNOSIS)
@@ -213,6 +248,27 @@ struct pre_selfd_platform_data {
 	int (*get_values) (int *r, int *g, int *b);
 };
 #endif
+
+#ifdef CONFIG_LGE_ONE_BINARY_SKU
+
+enum lge_sku_carrier_type lge_get_sku_carrier(void);
+
+enum lge_sku_carrier_type {
+	LAO = 0,
+	TMUS,
+	TRF_C,
+	TRF_G,
+	USC,
+	VZW,
+	TRF,
+	TMUS71,
+	CRK
+};
+#endif
+
+#ifdef CONFIG_LGE_ONE_BINARY_HW_SKU
+int lge_get_gpio_value(void);
+#endif //CONFIG_LGE_ONE_BINARY_HW_SKU
 
 extern int on_hidden_reset;
 #endif

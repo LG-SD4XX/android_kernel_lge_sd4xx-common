@@ -6724,6 +6724,11 @@ eHalStatus csrScanCopyRequest(tpAniSirGlobal pMac, tCsrScanRequest *pDstReq, tCs
 
     ch144_support = WDA_getFwWlanFeatCaps(WLAN_CH144);
 
+    if(pMac->scan.fEnableDFSChnlScan)
+    {
+        pMac->roam.configParam.initialScanSkipDFSCh = 0;
+    }
+
     do
     {
         status = csrScanFreeRequest(pMac, pDstReq);

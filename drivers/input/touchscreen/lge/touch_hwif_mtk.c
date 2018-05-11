@@ -237,7 +237,6 @@ void touch_enable_irq(unsigned int irq)
 	struct irq_desc *desc = irq_to_desc(irq);
 
 	TOUCH_TRACE();
-
 	if (desc) {
 		if (desc->istate & 0x00000200 /*IRQS_PENDING*/)
 			TOUCH_D(BASE_INFO, "Remove pending irq(%d)\n", irq);
@@ -249,7 +248,6 @@ void touch_enable_irq(unsigned int irq)
 void touch_disable_irq(unsigned int irq)
 {
 	TOUCH_TRACE();
-
 	disable_irq_nosync(irq);
 }
 
@@ -259,7 +257,6 @@ int touch_request_irq(unsigned int irq, irq_handler_t handler,
 		     unsigned long flags, const char *name, void *dev)
 {
 	TOUCH_TRACE();
-
 	return request_threaded_irq(irq, handler, thread_fn, flags, name, dev);
 }
 

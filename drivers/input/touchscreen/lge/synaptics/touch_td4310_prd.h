@@ -35,7 +35,7 @@
 #define REPORT_TYPE_E2E_SHORT			95	/* raw capacitance delta */
 #define REPORT_TYPE_P2P_NOISE			94	/* raw capacitance delta */
 
-#define SET_LIMIT(COND, A, B, C) ((COND <= MINIOS_AAT) ? A : ((COND == MINIOS_MFTS_FOLDER) ? A##B : A##C))
+#define SET_LIMIT(COND, A, B)	(COND ? A##B : A)
 
 // Parameters added as per LGD Electrode Open Test
 #define ELECTRODE_OPEN_INTDUR1	4 	//Phase 1 image integration duration
@@ -67,63 +67,43 @@ enum {
 	TEST_FAIL,
 };
 
-/* MFTS Phone Set Spec as per LGD - (td4310) */
+/* Normal Mode SET Spec as per LGD - (td4310) */
 enum normal_spec {
-        RAW_DATA_MAX            = 3450,
-        RAW_DATA_MIN            = 1600,
-        RAW_DATA_MARGIN         = 0,
-        P2P_NOISE_MAX           = 50,
-        P2P_NOISE_MIN           = 0,
+	RAW_DATA_MAX 		= 2900,
+	RAW_DATA_MIN 		= 1900,
+	RAW_DATA_MARGIN 	= 0,
+	P2P_NOISE_MAX 		= 50,
+	P2P_NOISE_MIN 		= 0,
 
-        NOISE_TEST_FRM          = 50,
-        E2E_SHORT_MAX           = 43,
-        E2E_SHORT_MIN           = 0,
-        ELECTRODE_OPEN_MAX      = 500,
-        ELECTRODE_OPEN_MIN      = 50,
+	NOISE_TEST_FRM		= 50,
+	E2E_SHORT_MAX 		= 110,
+	E2E_SHORT_MIN 		= 0,
+	ELECTRODE_OPEN_MAX	= 500,
+	ELECTRODE_OPEN_MIN	= 50,
 
-        LPWG_RAW_DATA_MAX       = 3250,
-        LPWG_RAW_DATA_MIN       = 1400,
-        LPWG_P2P_NOISE_MAX      = 50,
-        LPWG_P2P_NOISE_MIN      = 0,
+	LPWG_RAW_DATA_MAX	= 2900,
+	LPWG_RAW_DATA_MIN	= 1900,
+	LPWG_P2P_NOISE_MAX	= 50,
+	LPWG_P2P_NOISE_MIN	= 0,
 };
-/* MFTS After Bonding(Folder) Spec as per LGD - (td4310) */
-enum mfts_folder_spec {
-        RAW_DATA_MAX_MFTS_FOLDER       = 3425,
-        RAW_DATA_MIN_MFTS_FOLDER       = 1650,
-        RAW_DATA_MARGIN_MFTS_FOLDER    = 0,
-        P2P_NOISE_MAX_MFTS_FOLDER      = 50,
-        P2P_NOISE_MIN_MFTS_FOLDER      = 0,
+/* MFTS Mode SET Spec as per LGD - (td4310) */
+enum mfts_spec {
+	RAW_DATA_MAX_MFTS 	= 2900,
+	RAW_DATA_MIN_MFTS 	= 1900,
+	RAW_DATA_MARGIN_MFTS 	= 0,
+	P2P_NOISE_MAX_MFTS 	= 50,
+	P2P_NOISE_MIN_MFTS 	= 0,
 
-        NOISE_TEST_FRM_MFTS_FOLDER     = 50,
-        E2E_SHORT_MAX_MFTS_FOLDER      = 43,
-        E2E_SHORT_MIN_MFTS_FOLDER      = 0,
-        ELECTRODE_OPEN_MAX_MFTS_FOLDER = 500,
-        ELECTRODE_OPEN_MIN_MFTS_FOLDER = 50,
+	NOISE_TEST_FRM_MFTS	= 50,
+	E2E_SHORT_MAX_MFTS 	= 110,
+	E2E_SHORT_MIN_MFTS 	= 0,
+	ELECTRODE_OPEN_MAX_MFTS	= 500,
+	ELECTRODE_OPEN_MIN_MFTS	= 50,
 
-        LPWG_RAW_DATA_MAX_MFTS_FOLDER  = 3225,
-        LPWG_RAW_DATA_MIN_MFTS_FOLDER  = 1450,
-        LPWG_P2P_NOISE_MAX_MFTS_FOLDER = 50,
-        LPWG_P2P_NOISE_MIN_MFTS_FOLDER = 0,
-};
-
-/*MFTS Before Bonding(Seongom) Spec as per LGD - (td4310)*/
-enum mfts_flat_spec {
-	RAW_DATA_MAX_MFTS_FLAT       = 3400,
-        RAW_DATA_MIN_MFTS_FLAT       = 1700,
-        RAW_DATA_MARGIN_MFTS_FLAT    = 0,
-        P2P_NOISE_MAX_MFTS_FLAT      = 50,
-        P2P_NOISE_MIN_MFTS_FLAT      = 0,
-
-        NOISE_TEST_FRM_MFTS_FLAT     = 50,
-        E2E_SHORT_MAX_MFTS_FLAT      = 43,
-        E2E_SHORT_MIN_MFTS_FLAT      = 0,
-        ELECTRODE_OPEN_MAX_MFTS_FLAT = 500,
-        ELECTRODE_OPEN_MIN_MFTS_FLAT = 50,
-
-        LPWG_RAW_DATA_MAX_MFTS_FLAT  = 3200,
-        LPWG_RAW_DATA_MIN_MFTS_FLAT  = 1500,
-        LPWG_P2P_NOISE_MAX_MFTS_FLAT = 50,
-        LPWG_P2P_NOISE_MIN_MFTS_FLAT = 0,
+	LPWG_RAW_DATA_MAX_MFTS	= 2900,
+	LPWG_RAW_DATA_MIN_MFTS	= 1900,
+	LPWG_P2P_NOISE_MAX_MFTS	= 50,
+	LPWG_P2P_NOISE_MIN_MFTS	= 0,
 };
 
 extern void touch_msleep(unsigned int msecs);

@@ -35,7 +35,7 @@ config LGE_BROADCAST_ISDBT_JAPAN_FC8300
 
 config LGE_BROADCAST_ISDBT_JAPAN_FC8180
     bool "Japan ONE-SEG broacast tuner chipset FC8180 device driver"
-    depends on (LGE_BROADCAST_ISDBT_JAPAN && MACH_MSM8937_L5_DCM_JP)
+    depends on (LGE_BROADCAST_ISDBT_JAPAN)
     default y
     help
       Select this if you want to use Japanese ONE-SEG service

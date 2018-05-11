@@ -20,8 +20,6 @@
 		#gpio-cells = <2>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pcb_indicator_default>;
 
 		pmx-uartconsole {
 			uart_console_active: uart_console_active {
@@ -549,8 +547,7 @@
 				config {
 					pins = "gpio91";
 					drive-strength = <2>;
-					/delete-property/ bias-pull-up;
-					bias-pull-down;
+					bias-pull-up;
 				};
 			};
 		};
@@ -1565,18 +1562,6 @@
 			config {
 				pins = "gpio50";
 				bias-disable; /* NO PULL */
-				drive-strength = <2>; /* 2 MA */
-			};
-		};
-
-		pcb_indicator_default: pcb_indicator_default {
-			mux {
-				pins = "gpio1", "gpio92", "gpio93";
-				function = "gpio";
-			};
-			config {
-				pins = "gpio1", "gpio92", "gpio93";
-				bias-pull-up; /* PULL UP */
 				drive-strength = <2>; /* 2 MA */
 			};
 		};

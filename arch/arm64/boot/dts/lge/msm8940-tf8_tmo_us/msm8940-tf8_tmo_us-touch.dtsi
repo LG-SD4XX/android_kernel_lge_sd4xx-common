@@ -148,6 +148,6 @@
 		/* firmware */
 		use_fw_upgrade = <1>;
 		use_firmware = <0>;
-		fw_image = "touch/tf8/novatek/TF8_105.bin";
+		fw_image = "touch/tf8/novatek/TF8_101.bin";
 	};
 };

@@ -1,0 +1,430 @@
+/*
+ * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/{
+    lge_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <29>;
+		#include "../battery_profile/LGE_BLT36_Lishen_3000mAh.dtsi"
+		#include "../battery_profile/LGE_BLT36_BYD_3000mAh.dtsi"
+		#include "../battery_profile/LGE_BLT36_Tocad_3000mAh.dtsi"
+    };
+};
+
+&soc {
+	lge,battery-id{
+		compatible = "lge,battery-id";
+		/delete-property/ lge,restrict-mode-enabled;
+		/*default battery profile*/
+		lge,default-battery = "LGE_BLT36_Lishen_3000mAh";
+		/*Total number of combined of battery cell and battery id */
+		lge,battery-num = <2>;
+		/* battery id and battery profile match numbers */
+		lge,battery-id-num = <0 1>;
+		/* battery profile */
+		lge,battery-profile-name = "LGE_BLT36_Lishen_3000mAh",
+						"LGE_BLT36_Lishen_3000mAh";
+	};
+
+	//Plus
+	/* vts = (0.1*xo_therm) + (0.85*quiet_therm) + 3 */
+	virtual_temp_sensor: lge,vts {
+		compatible = "lge,vts";
+		lge,name = "Plus";
+		qcom,vts-vadc = <&pm8937_vadc>;
+		lge,scaling-factor= <10>;
+		lge,constant = <3000>;
+		composite_sensor_0: lge,sensor0 {
+			label = "xo_therm";
+			channel = <0x32>;
+			weight = <100>;
+		};
+		composite_sensor_1: lge,sensor1 {
+			label = "quiet_therm";
+			channel = <0x13>;
+			weight = <850>;
+		};
+	};
+	//Prime
+	/* vts = (0.1*xo_therm) + (0.85*quiet_therm) + 3 */
+	virtual_temp_sensor_1: lge,vts_1 {
+		compatible = "lge,vts";
+		lge,name = "Prime";
+		qcom,vts-vadc = <&pm8937_vadc>;
+		lge,scaling-factor= <10>;
+		lge,constant = <3000>;
+		composite_sensor_2: lge,sensor2 {
+			label = "xo_therm";
+			channel = <0x32>;
+			weight = <100>;
+		};
+		composite_sensor_3: lge,sensor3 {
+			label = "quiet_therm";
+			channel = <0x13>;
+			weight = <850>;
+		};
+	};
+	//Default VTS
+	/* vts = (0.1*xo_therm) + (0.85*quiet_therm) + 3 */
+	virtual_temp_sensor_2: lge,vts_2 {
+		compatible = "lge,vts";
+		qcom,vts-vadc = <&pm8937_vadc>;
+		lge,scaling-factor= <10>;
+		lge,constant = <3000>;
+		composite_sensor_4: lge,sensor4 {
+			label = "xo_therm";
+			channel = <0x32>;
+			weight = <100>;
+		};
+		composite_sensor_5: lge,sensor5 {
+			label = "quiet_therm";
+			channel = <0x13>;
+			weight = <850>;
+		};
+	};
+
+	/* time to full */
+	lge,time-to-full {
+		compatible = "lge,time-to-full";
+
+		carrier@0 {
+			compatible = "lge,time-to-full-mpcs";
+			lge,battery_full_capacity = <3000>;
+			lge,dcp_current = <1800>;
+			lge,report_ttf_comp = <(-7)>;
+			profile@0 {
+				lge,profile_name = "LGE_BLT36_BYD_3000mAh";
+					    /* current  soc */
+				lge,cc_data = < 1800	0>;
+					    /* current  soc    time */
+				lge,cv_data = < 1740	903	952
+						1711	907	928
+						1672	911	903
+						1637	915	878
+						1589	920	853
+						1554	924	827
+						1518	928	799
+						1471	932	771
+						1425	937	743
+						1398	941	713
+						1350	945	682
+						1299	949	652
+						1256	954	619
+						1219	958	585
+						1176	962	551
+						1139	966	515
+						1100	970	478
+						1053	973	440
+						1011	977	399
+						973	980	357
+						927	983	313
+						887	986	267
+						849	989	218
+						804	992	168
+						760	995	115
+						725	998	59
+						603	1000	0>;
+				lge,sdp_comp = <(-10)>;
+				lge,cdp_comp = <2>;
+				lge,dcp_comp = <2>;
+				lge,min_comp = <0>;
+			};
+			profile@1 {
+				lge,profile_name = "LGE_BLT36_Tocad_3000mAh";
+					    /* current  soc */
+				lge,cc_data = < 1800	0>;
+					    /* current  soc    time */
+				lge,cv_data = < 1757	881	1230
+						1712	886	1206
+						1676	890	1180
+						1637	894	1155
+						1602	898	1129
+						1570	903	1102
+						1535	907	1074
+						1500	911	1047
+						1462	915	1018
+						1432	920	988
+						1396	924	958
+						1359	928	927
+						1318	932	895
+						1282	937	862
+						1248	941	829
+						1214	945	793
+						1178	949	757
+						1143	954	719
+						1111	958	681
+						1072	962	641
+						1037	966	599
+						1002	970	556
+						963	973	511
+						927	977	465
+						892	980	415
+						855	983	364
+						821	986	310
+						783	989	254
+						752	992	196
+						714	995	134
+						681	998	69
+						645	1000	0>;
+				lge,sdp_comp = <(-13)>;
+				lge,cdp_comp = <3>;
+				lge,dcp_comp = <3>;
+				lge,min_comp = <0>;
+			};
+			profile@2 {
+				lge,profile_name = "LGE_BLT36_Lishen_3000mAh";
+					    /* current  soc */
+				lge,cc_data = < 1800	0>;
+					    /* current  soc    time */
+				lge,cv_data = < 1740	903	952
+						1711	907	928
+						1672	911	903
+						1637	915	878
+						1589	920	853
+						1554	924	827
+						1518	928	799
+						1471	932	771
+						1425	937	743
+						1398	941	713
+						1350	945	682
+						1299	949	652
+						1256	954	619
+						1219	958	585
+						1176	962	551
+						1139	966	515
+						1100	970	478
+						1053	973	440
+						1011	977	399
+						973	980	357
+						927	983	313
+						887	986	267
+						849	989	218
+						804	992	168
+						760	995	115
+						725	998	59
+						603	1000	0>;
+				lge,sdp_comp = <(-10)>;
+				lge,cdp_comp = <2>;
+				lge,dcp_comp = <2>;
+				lge,min_comp = <0>;
+			};
+		};
+
+		carrier@1 {
+			compatible = "lge,time-to-full-common";
+			lge,battery_full_capacity = <3000>;
+			lge,dcp_current = <1200>;
+			lge,report_ttf_comp = <(-7)>;
+			profile@0 {
+				lge,profile_name = "LGE_BLT36_Lishen_3000mAh";
+					    /* current  soc */
+				lge,cc_data = < 1200	0>;
+					    /* current  soc    time */
+				lge,cv_data = < 1184	958	619
+						1166	962	580
+						1162	966	534
+						1123	970	495
+						1076	973	455
+						1040	977	412
+						905	980	368
+						961	983	322
+						925	986	275
+						883	989	225
+						844	992	172
+						805	995	118
+						769	998	61
+						732	1000	0>;
+				lge,sdp_comp = <(-13)>;
+				lge,cdp_comp = <0>;
+				lge,dcp_comp = <0>;
+				lge,min_comp = <0>;
+			};
+			profile@1 {
+				lge,profile_name = "LGE_BLT36_BYD_3000mAh";
+					    /* current  soc */
+				lge,cc_data = < 1200	0>;
+					    /* current  soc    time */
+				lge,cv_data = < 1197	958	615
+						1178	962	571
+						1143	966	534
+						1103	970	495
+						1072	973	450
+						1025	977	408
+						989	980	365
+						866	983	319
+						905	986	273
+						868	989	223
+						825	992	171
+						790	995	117
+						745	998	59
+						715	1000	0>;
+				lge,sdp_comp = <(-10)>;
+				lge,cdp_comp = <2>;
+				lge,dcp_comp = <2>;
+				lge,min_comp = <0>;
+			};
+			profile@2 {
+				lge,profile_name = "LGE_BLT36_Tocad_3000mAh";
+					    /* current  soc */
+				lge,cc_data = < 1200	0>;
+					    /* current  soc    time */
+				lge,cv_data = < 1179	949	762
+						1147	954	723
+						1118	958	681
+						1063	962	641
+						1031	966	598
+						1002	970	554
+						964	973	508
+						926	977	461
+						895	980	411
+						857	983	360
+						824	986	306
+						790	989	251
+						757	992	193
+						725	995	132
+						689	998	68
+						656	1000	0>;
+				lge,sdp_comp = <(-13)>;
+				lge,cdp_comp = <3>;
+				lge,dcp_comp = <3>;
+				lge,min_comp = <0>;
+			};
+		};
+	};
+};
+
+&pmi_haptic{
+	status = "okay";
+	qcom,actuator-type = "erm";
+	qcom,vmax-mv = <3016>;
+	qcom,brake-pattern = [00 00 00 00];
+};
+
+&pm8937_gpios {
+	gpio@c400 {
+		qcom,mode = <1>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+		status = "okay";
+	};
+};
+
+&spmi_bus {
+	qcom,pm8937@0 {
+		qcom,power-on@800 {
+			interrupts = <0x0 0x8 0x0>,
+				     <0x0 0x8 0x1>,
+				     <0x0 0x8 0x4>,
+				     <0x0 0x8 0x5>;
+			interrupt-names = "kpdpwr", "resin",
+				"resin-bark", "kpdpwr-resin-bark";
+
+			qcom,pon_1 {
+				status = "ok";
+				qcom,support-reset = <0>;
+			};
+			qcom,pon_2 {
+				status = "ok";
+				qcom,support-reset = <0>;
+			};
+			qcom,pon_3 {
+				status = "ok";
+				qcom,pon-type = <3>;
+				qcom,pull-up = <1>;
+				qcom,s1-timer = <6720>;
+				qcom,s2-timer = <2000>;
+				qcom,s2-type = <7>;
+				qcom,support-reset = <1>;
+				qcom,use-bark;
+			};
+		};
+	};
+};
+
+&pmi8940_fg {
+	qcom,fg-chg-iterm-ma = <100>;
+	lge_batt_vts_raw = <362>;
+	lge_batt_vts_xo = <190>;
+	lge_batt_vts_quiet = <455>;
+	lge_batt_vts_constant = <93>;
+};
+
+&pmi8940_charger {
+	qcom,battery-data = <&lge_batterydata>;
+	qcom,resume-delta-mv = <100>;
+	qcom,iterm-ma = <100>;
+	qcom,float-voltage-mv = <4400>;
+	qcom,bmd-pin-src = "bpd_thm";
+	qcom,override-usb-current;
+	lge,jeita-disabled;
+	lge,hvdcp-not-supported;
+
+	qcom,usb_pin-vadc = <&pmi8940_vadc>;
+
+	lge,otp-warm-ibat = <500>;
+	lge,otp-cold-ibat = <500>;
+
+	sku_carrier_0:	lge,carrier_0 {
+		lge,sku_carrier = "COMMON";
+
+		qcom,batt-life-cycle-fcc-ma = <1200 1200 1200 1200>;
+		qcom,batt-life-cycle-vfloat = <4400 4380 4360 4340>;
+
+		/* ref resistance 200K */
+		lge,no-init-cable = <0 0 0>;
+		lge,cable-mhl-1k = <5000 500 500>;
+		lge,cable-u-28p7k = <10000 1200 500>;
+		lge,cable-28p7k = <250000 1200 500>;
+		lge,cable-56k = <600000 1500 1500>;
+		lge,cable-100k = <620000 1200 500>;
+		lge,cable-130k = <780000 1500 1500>;
+		lge,cable-180k = <870000 1200 500>;
+		lge,cable-200k = <910000 1200 500>;
+		lge,cable-220k = <960000 1200 500>;
+		lge,cable-270k = <1050000 1200 500>;
+		lge,cable-330k = <1150000 1200 500>;
+		lge,cable-620k = <1380000 1200 500>;
+		lge,cable-910k = <1630000 1500 1500>;
+		lge,cable-none = <1900000 1200  500>;
+
+		lge,usb-max-current-ma = <1200>;
+		lge,fastchg-current-ma = <1200>;
+	};
+
+	sku_carrier_1: lge,carrier_1 {
+		lge,sku_carrier = "TMUS";
+
+		qcom,batt-life-cycle-fcc-ma = <1800 1800 1800 1800>;
+		qcom,batt-life-cycle-vfloat = <4400 4380 4360 4340>;
+
+		/* ref resistance 200K */
+		lge,no-init-cable = <0 0 0>;
+		lge,cable-mhl-1k = <5000 500 500>;
+		lge,cable-u-28p7k = <10000 1800 500>;
+		lge,cable-28p7k = <250000 1800 500>;
+		lge,cable-56k = <600000 1500 1500>;
+		lge,cable-100k = <620000 1800 500>;
+		lge,cable-130k = <780000 1500 1500>;
+		lge,cable-180k = <870000 1800 500>;
+		lge,cable-200k = <910000 1800 500>;
+		lge,cable-220k = <960000 1800 500>;
+		lge,cable-270k = <1050000 1800 500>;
+		lge,cable-330k = <1150000 1800 500>;
+		lge,cable-620k = <1380000 1800 500>;
+		lge,cable-910k = <1630000 1500 1500>;
+		lge,cable-none = <1900000 1800  500>;
+
+		lge,usb-max-current-ma = <1800>;
+		lge,fastchg-current-ma = <1800>;
+	};
+};

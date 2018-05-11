@@ -5,7 +5,7 @@ menu "LGE Broadcast Device Support"
 
 config LGE_BROADCAST_TDMB
     bool "LGE broadcast TDMB device Driver"
-    depends on (ARCH_MSM8916 || ARCH_MSM8917 || ARCH_MSM8992 || ARCH_MSM8996)
+    depends on (MACH_LGE)
     default n
     help
       Select this if you want to use TDMB broadcast service
@@ -19,8 +19,8 @@ config LGE_BROADCAST_SBTVD_LATIN
 
 config LGE_BROADCAST_ISDBT_JAPAN
     bool "Japan full-seg Broadcast service"
-    depends on (MACH_MSM8992_P1_KDDI_JP || MACH_MSM8996_H1_KDDI_JP || MACH_MSM8937_L5_DCM_JP)
-    default y
+    depends on (ARCH_MSM8940|| ARCH_MSM8937)
+    default n
     help
       Select this if you want to use Japanese FullSeg mobile broadcast service
 

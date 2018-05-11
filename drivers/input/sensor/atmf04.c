@@ -62,10 +62,22 @@
 #define ATMF04_CRCS_DUTY_LOW        460
 #define ATMF04_CRCS_DUTY_HIGH       915
 #define ATMF04_CRCS_COUNT           150
-#elif defined(CONFIG_MACH_MSM8940_TF8_TMO_US) || defined(CONFIG_MACH_MSM8940_TF8_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_GLOBAL_CA)
-#define ATMF04_CRCS_DUTY_LOW        420
-#define ATMF04_CRCS_DUTY_HIGH       1350
+#elif defined(CONFIG_MACH_MSM8952_B3_TMO_US)
+#define ATMF04_CRCS_DUTY_LOW        430
+#define ATMF04_CRCS_DUTY_HIGH       870
+#define ATMF04_CRCS_COUNT           150
+#elif defined(CONFIG_MACH_MSM8952_B3_JP_KDI)
+#define ATMF04_CRCS_DUTY_LOW        400
+#define ATMF04_CRCS_DUTY_HIGH       1500
+#define ATMF04_CRCS_COUNT           630
+#elif defined(CONFIG_MACH_MSM8952_B5_ATT_US)
+#define ATMF04_CRCS_DUTY_LOW        400
+#define ATMF04_CRCS_DUTY_HIGH       1650
 #define ATMF04_CRCS_COUNT           1270
+#elif defined(CONFIG_MACH_MSM8952_B5_USC_US)
+#define ATMF04_CRCS_DUTY_LOW        453
+#define ATMF04_CRCS_DUTY_HIGH       943
+#define ATMF04_CRCS_COUNT           200
 #else // default
 #define ATMF04_CRCS_DUTY_LOW        300
 #define ATMF04_CRCS_DUTY_HIGH       1650
@@ -150,9 +162,18 @@ static int CalData[4][SZ_CALDATA_UNIT];
 #if defined(CONFIG_MACH_MSM8952_B3_ATT_US) || defined(CONFIG_MACH_MSM8952_B3_BELL_CA) || defined(CONFIG_MACH_MSM8952_B3_RGS_CA)
 static const unsigned char InitCodeAddr[CNT_INITCODE]    = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x0C, 0x0D, 0x0E, 0x1A, 0x1B, 0x1C, 0x1D, 0x20, 0x21 };
 static const unsigned char InitCodeVal[CNT_INITCODE]     = { 0x00, 0x7A, 0x33, 0x0B, 0x08, 0x6B, 0x68, 0x17, 0x00, 0x14, 0x0F, 0x00, 0x0B, 0x00, 0x07, 0x81, 0x20 }; // High Band ANT , auto cal 15%, sensing 2.5%, LNF filter
-#elif defined(CONFIG_MACH_MSM8940_TF8_TMO_US) || defined(CONFIG_MACH_MSM8940_TF8_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_GLOBAL_CA)
+#elif defined(CONFIG_MACH_MSM8952_B3_TMO_US)
 static const unsigned char InitCodeAddr[CNT_INITCODE]    = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x0C, 0x0D, 0x0E, 0x1A, 0x1B, 0x1C, 0x1D, 0x20, 0x21 };
-static const unsigned char InitCodeVal[CNT_INITCODE]     = { 0x00, 0x7A, 0x33, 0x0B, 0x08, 0x75, 0x6D, 0x17, 0x00, 0x14, 0x7F, 0x00, 0x0B, 0x00, 0x07, 0x81, 0x20 }; // RF ANT, auto cal 15%, sensing 2.5%, LNF filter
+static const unsigned char InitCodeVal[CNT_INITCODE]     = { 0x00, 0x7A, 0x33, 0x0B, 0x08, 0x71, 0x67, 0x17, 0x00, 0x14, 0x0F, 0x00, 0x0B, 0x00, 0x07, 0x81, 0x20 }; // High Band ANT , auto cal 15%, sensing 2.5%, LNF filter
+#elif defined(CONFIG_MACH_MSM8952_B3_JP_KDI)
+static const unsigned char InitCodeAddr[CNT_INITCODE]    = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x0C, 0x0D, 0x0E, 0x1A, 0x1B, 0x1C, 0x1D, 0x20, 0x21 };
+static const unsigned char InitCodeVal[CNT_INITCODE]     = { 0x00, 0x7A, 0x33, 0x0B, 0x08, 0x6B, 0x68, 0x17, 0x00, 0x14, 0x3F, 0x00, 0x0B, 0x00, 0x07, 0x81, 0x20 }; // High Band ANT , auto cal 15%, sensing 2.5%, LNF filter
+#elif defined(CONFIG_MACH_MSM8952_B5_ATT_US)
+static const unsigned char InitCodeAddr[CNT_INITCODE]    = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x0C, 0x0D, 0x0E, 0x1A, 0x1B, 0x1C, 0x1D, 0x20, 0x21 };
+static const unsigned char InitCodeVal[CNT_INITCODE]     = { 0x00, 0x7A, 0x33, 0x0B, 0x08, 0x6B, 0x68, 0x15, 0x00, 0x0C, 0x7F, 0x00, 0x0B, 0x00, 0x07, 0x81, 0x20 }; // Low Band ANT , auto cal 15%, sensing 1.5%, LNF filter
+#elif defined(CONFIG_MACH_MSM8952_B5_USC_US)
+static const unsigned char InitCodeAddr[CNT_INITCODE]    = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x0C, 0x0D, 0x0E, 0x1A, 0x1B, 0x1C, 0x1D, 0x20, 0x21 };
+static const unsigned char InitCodeVal[CNT_INITCODE]     = { 0x00, 0x7A, 0x33, 0x0B, 0x08, 0x6A, 0x60, 0x15, 0x00, 0x0C, 0x14, 0x00, 0x0F, 0x00, 0x0C, 0x81, 0x20 }; // Low Band ANT , auto cal 15%, sensing 1.5%, LNF filter
 #else // default
 static const unsigned char InitCodeAddr[CNT_INITCODE]    = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x0C, 0x0D, 0x0E, 0x1A, 0x1B, 0x1C, 0x1D, 0x20, 0x21 };
 static const unsigned char InitCodeVal[CNT_INITCODE]     = { 0x00, 0x7A, 0x33, 0x0B, 0x08, 0x6B, 0x68, 0x17, 0x00, 0x14, 0x7F, 0x00, 0x0B, 0x00, 0x07, 0x81, 0x20 }; // High Band ANT , auto cal 15%, sensing 2.5%, LNF filter
@@ -162,9 +183,6 @@ static const unsigned char InitCodeVal[CNT_INITCODE]     = { 0x00, 0x7A, 0x33, 0
 const unsigned char InitCodeAddr[CNT_INITCODE] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
 const unsigned char InitCodeVal[CNT_INITCODE] = { 0x00, 0x0A, 0x69, 0x67, 0x0B, 0x33, 0x1E };
 #endif // defined (CONFIG_LGE_USE_CAP_SENSOR)
-
-#define CNT_TESTCODE              26
-static const unsigned char testAddr[CNT_TESTCODE]    = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x1A, 0x1B, 0x1C, 0x1D, 0x1F, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26 };
 
 static struct i2c_driver atmf04_driver;
 static struct workqueue_struct *atmf04_workqueue;
@@ -885,8 +903,8 @@ static ssize_t atmf04_show_reg(struct device *dev,
 
 	int ret = 0;
 
-	for (loop = 0; loop < CNT_TESTCODE; loop++) {
-		PINFO("###### [0x%x][0x%x]###", testAddr[loop], i2c_smbus_read_byte_data(client, testAddr[loop]));
+	for (loop = 0; loop < CNT_INITCODE; loop++) {
+		PINFO("###### [0x%x][0x%x]###", InitCodeAddr[loop], i2c_smbus_read_byte_data(client, InitCodeAddr[loop]));
 	}
 	return ret;
 }
@@ -1748,8 +1766,6 @@ static int atmf04_probe(struct i2c_client *client,
 	data->input_dev_cap->name = ATMF04_DRV_NAME;
 	data->input_dev_cap->id.bustype = BUS_I2C;
 
-	input_set_drvdata(data->input_dev_cap, data);
-
 	err = input_register_device(data->input_dev_cap);
 	if (err) {
 		err = -ENOMEM;
@@ -1766,10 +1782,6 @@ static int atmf04_probe(struct i2c_client *client,
 			goto exit_irq_init_failed;
 		}
 	}
-	err = sysfs_create_group(&data->input_dev_cap->dev.kobj, &atmf04_attr_group);
-	if (err)
-		PINFO("input sysfs create fail!\n");
-
 	err = sysfs_create_group(&client->dev.kobj, &atmf04_attr_group);
 	if (err)
 		PINFO("sysfs create fail!\n");

@@ -21,7 +21,6 @@
 #include "msm8940-lge-nfc.dtsi"
 #include "msm8940-lge-fingerprint.dtsi"
 #include "msm8940-lge-usb-pmi8950.dtsi"
-
 / {
 	reserved-memory {
 		ramoops_mem: ramoops_region@AFF00000 {

@@ -18,6 +18,7 @@ struct composite_sensor {
 };
 
 typedef struct virtual_temp_sensor {
+	const char			*name;
 	struct device			*dev;
 	struct thermal_zone_device	*tz_vts;
 	struct qpnp_vadc_chip		*vadc_dev;
@@ -25,8 +26,17 @@ typedef struct virtual_temp_sensor {
 	u32				scaling_factor;
 	int				constant;
 } VTS;
-
 LIST_HEAD(composite_sensors_head);
+static char lge_hydra_mode[32] = "";
+int __init lge_hydra_check(char *s)
+{
+	if (strlen(s)) {
+		pr_info("lge.hydra is %s\n", s);
+		strncpy(lge_hydra_mode,s,sizeof(lge_hydra_mode)-1);
+	}
+	return 0;
+}
+__setup("lge.hydra=", lge_hydra_check);
 
 static int vts_tz_get_temp(struct thermal_zone_device *thermal,
 				unsigned long *temp)
@@ -49,7 +59,7 @@ static int vts_tz_get_temp(struct thermal_zone_device *thermal,
 
 		if(!strcmp(sensor->name, quiet_therm))
 			quiet_val = sensor->weight * results.physical;
-	
+
 		val = xo_val + quiet_val;
 	}
 	val += vts->constant;
@@ -76,6 +86,7 @@ static int vts_probe(struct platform_device *pdev)
 	VTS *vts = kmalloc(sizeof(VTS), GFP_KERNEL);
 	int ret = 0;
 	int count = 0;
+	static bool is_vts_node = false;
 	struct composite_sensor *_sensor, *temp;
 
 	/* Alloc chipset data on memory */
@@ -85,9 +96,27 @@ static int vts_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	/* Get devices */
+	/* Get vts name from device tree.
+	   Set lge, name property if you want to change the name */
+	if (of_property_read_string(of_node, "lge,name", &vts->name))
+		vts->name = "vts";
 	vts->dev = &pdev->dev;
 	vts->vadc_dev = qpnp_get_vadc(vts->dev, "vts");
+	if (strlen(lge_hydra_mode)) {
+		if (strncmp(lge_hydra_mode, vts->name, sizeof(lge_hydra_mode)-1) && strncmp(VTS_NAME, vts->name, sizeof(VTS_NAME)-1)) {
+			pr_info("%s: probe skipped.\n", vts->name);
+			return 0;
+		}
+		if (is_vts_node)
+			return 0;
+		is_vts_node = 1;
+	} else {
+		if (strncmp(VTS_NAME, vts->name, sizeof(VTS_NAME)-1)) {
+			pr_info("%s: probe skipped.\n", vts->name);
+			return 0;
+		}
+	}
+
 	if (IS_ERR(vts->vadc_dev)) {
 		ret = PTR_ERR(vts->vadc_dev);
 		if (ret != -EPROBE_DEFER)
@@ -95,19 +124,19 @@ static int vts_probe(struct platform_device *pdev)
 		goto fail;
 	}
 	vts->tz_vts = thermal_zone_device_register(
-				VTS_NAME, 0, 0,	vts,
+				VTS_NAME, 0, 0, vts,
 				&vts_thermal_zone_ops, NULL, 0, 0);
 	if (IS_ERR(vts->tz_vts)) {
 		ret = PTR_ERR(vts->tz_vts);
 		if (ret != -EPROBE_DEFER)
-			pr_err("Fail to get thermal_zone_device.\n");
+			pr_err("%s: Fail to get thermal_zone_device.\n", vts->name);
 		goto fail;
 	}
 
 	/* Get infos from device tree */
 	if (of_property_read_u32(of_node, "lge,scaling-factor", &vts->scaling_factor))
 		vts->scaling_factor = 1;
-	if (of_property_read_u32(of_node, "lge,constant", &vts->constant))
+	if (of_property_read_s32(of_node, "lge,constant", &vts->constant))
 		vts->constant = 0;
 
 	for_each_child_of_node(of_node, child) {
@@ -115,10 +144,9 @@ static int vts_probe(struct platform_device *pdev)
 				sizeof(struct composite_sensor), GFP_KERNEL);
 		if (!sensor) {
 			ret = PTR_ERR(sensor);
-			pr_err("Fail to malloc sensor.\n");
+			pr_err("%s: Fail to malloc sensor.\n", vts->name);
 			goto fail;
 		}
-
 		if (of_property_read_string(child, "label", &sensor->name)) {
 			kfree(sensor);
 			continue;
@@ -127,7 +155,7 @@ static int vts_probe(struct platform_device *pdev)
 			kfree(sensor);
 			continue;
 		}
-		if (of_property_read_u32(child, "weight", &sensor->weight)) {
+		if (of_property_read_s32(child, "weight", &sensor->weight)) {
 			kfree(sensor);
 			continue;
 		}
@@ -136,16 +164,16 @@ static int vts_probe(struct platform_device *pdev)
 			sensor->weight *= -1;
 		}
 
-		pr_info("%s is registered. chan=%d, weight=%d\n",
-			sensor->name, sensor->channel, sensor->weight);
+		pr_info("%s is registered. chan=%d, weight=%d, constant=%d\n",
+			sensor->name, sensor->channel, sensor->weight, vts->constant);
 		INIT_LIST_HEAD(&sensor->list);
 		list_add_tail(&sensor->list, &composite_sensors_head);
 		count++;
 	}
-	pr_info("Add %d sensors for virtual temp sensor\n", count);
+	pr_info("%s: Add %d sensors for virtual temp sensor\n", vts->name, count);
 
 	platform_set_drvdata(pdev, vts);
-	pr_info("probe done\n");
+	pr_info("%s: probe done.\n", vts->name);
 	return 0;
 fail:
 	pr_info("Fail to register vts\n");

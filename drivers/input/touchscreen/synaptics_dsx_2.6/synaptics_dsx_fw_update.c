@@ -2228,6 +2228,7 @@ static int fwu_get_image_firmware_id(unsigned int *fw_id)
 			firmware_id[index] = strptr[index];
 			index++;
 		}
+		firmware_id[index] = '\0';
 
 		retval = sstrtoul(firmware_id, 10, (unsigned long *)fw_id);
 		kfree(firmware_id);

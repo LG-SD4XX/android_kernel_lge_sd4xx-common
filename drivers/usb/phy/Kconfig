@@ -298,11 +298,4 @@ config VBUS_SW_MAX14727
           Say Y to enable MAX14727, to support this configuration Need Specific H/W.
 
         default n
-
-config LGE_USB_MOISTURE_DETECTION
-	bool "Support moisture detection"
-	default n
-	help
-	  Say y if this must be needed.
-
 endmenu

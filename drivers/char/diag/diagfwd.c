@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -50,10 +50,6 @@
 
 static int timestamp_switch;
 module_param(timestamp_switch, int, 0644);
-
-#ifdef CONFIG_LGE_DM_APP
-#include "lg_dm_tty.h"
-#endif
 
 int wrap_enabled;
 uint16_t wrap_count;
@@ -287,11 +283,6 @@ static void pack_rsp_and_send(unsigned char *buf, int len)
 		if (driver->logging_mode == DIAG_MEMORY_DEVICE_MODE ||
 				driver->logging_mode == DIAG_MULTI_MODE)
 			chk_logging_wakeup();
-
-#ifdef CONFIG_LGE_DM_APP
-		if (driver->logging_mode == DM_APP_MODE)
-			chk_logging_wakeup();
-#endif
 	}
 	if (driver->rsp_buf_busy) {
 		pr_err("diag: unable to get hold of response buffer\n");
@@ -361,10 +352,6 @@ static void encode_rsp_and_send(unsigned char *buf, int len)
 		if (driver->logging_mode == DIAG_MEMORY_DEVICE_MODE ||
 				driver->logging_mode == DIAG_MULTI_MODE)
 			chk_logging_wakeup();
-#ifdef CONFIG_LGE_DM_APP
-		if (driver->logging_mode == DM_APP_MODE)
-			chk_logging_wakeup();
-#endif
 	}
 
 	if (driver->rsp_buf_busy) {
@@ -965,6 +952,14 @@ int diag_process_apps_pkt(unsigned char *buf, int len,
 	if (!buf)
 		return -EIO;
 #if defined(CONFIG_LGE_USB_DIAG_LOCK)
+
+/* [LGE_S][BSP_Modem] LGSSL to support testmode cmd */
+#ifdef CONFIG_LGE_DM_APP
+	if (driver->logging_mode != DIAG_MEMORY_DEVICE_MODE)
+	{
+#endif
+/* [LGE_E][BSP_Modem] LGSSL to support testmode cmd */
+
 	/* buf[0] : 0xA1(161) is a diag command for mdm port lock */
 	if (!is_filtering_command(buf) && (get_diag_enable() == DIAG_DISABLE)) {
 #if defined(CONFIG_LGE_USB_DIAG_LOCK_SPR) || defined(CONFIG_LGE_USB_DIAG_LOCK_TRF)
@@ -973,6 +968,13 @@ int diag_process_apps_pkt(unsigned char *buf, int len,
 #endif
 		return 0;
 	}
+
+/* [LGE_S][BSP_Modem] LGSSL to support testmode cmd */
+#ifdef CONFIG_LGE_DM_APP
+	}
+#endif
+/* [LGE_E][BSP_Modem] LGSSL to support testmode cmd */
+
 #endif
 
 	/* Check if the command is a supported mask command */
@@ -1014,11 +1016,27 @@ int diag_process_apps_pkt(unsigned char *buf, int len,
 				info->peripheral_mask)
 				write_len = diag_send_data(reg_item, buf, len);
 		} else {
+/* [LGE_S][BSP_Modem] LGSSL to support testmode cmd */
+#ifdef CONFIG_LGE_DM_APP
+			if (driver->logging_mode == DIAG_MEMORY_DEVICE_MODE)
+			{
+//				pr_debug("in %s, Testmode cmd on DIAG_MEMORY_DEVICE_MODE(%d)!!", __func__, DIAG_MEMORY_DEVICE_MODE);
+				write_len = diag_send_data(reg_item, buf, len);
+			}
+			else
+			{
+#endif
+/* [LGE_E][BSP_Modem] LGSSL to support testmode cmd */
 			if (MD_PERIPHERAL_MASK(reg_item->proc) &
 				driver->logging_mask)
 				diag_send_error_rsp(buf, len);
 			else
 				write_len = diag_send_data(reg_item, buf, len);
+/* [LGE_S][BSP_Modem] LGSSL to support testmode cmd */
+#ifdef CONFIG_LGE_DM_APP
+			}
+#endif
+/* [LGE_E][BSP_Modem] LGSSL to support testmode cmd */
 		}
 		mutex_unlock(&driver->cmd_reg_mutex);
 		return write_len;
@@ -1329,8 +1347,6 @@ static int diagfwd_mux_open(int id, int mode)
 
 static int diagfwd_mux_close(int id, int mode)
 {
-	uint8_t i;
-
 	switch (mode) {
 	case DIAG_USB_MODE:
 		driver->usb_connected = 0;
@@ -1341,26 +1357,20 @@ static int diagfwd_mux_close(int id, int mode)
 		return -EINVAL;
 	}
 
-#ifdef CONFIG_LGE_DM_APP
-	if ((driver->logging_mode == DIAG_MULTI_MODE &&
-		driver->md_session_mode == DIAG_MD_NONE) ||
-		(driver->md_session_mode == DIAG_MD_PERIPHERAL) ||
-		(driver->md_session_mode == DM_APP_MODE)) {
-#else
 	if ((driver->logging_mode == DIAG_MULTI_MODE &&
 	     driver->md_session_mode == DIAG_MD_NONE) ||
 	     (driver->md_session_mode == DIAG_MD_PERIPHERAL)) {
-#endif
 		/*
-		 * In this case the channel must not be closed. This case
-		 * indicates that the USB is removed but there is a client
-		 * running in background with Memory Device mode
+		 * This case indicates that the USB is removed
+		 * but there is a client running in background
+		 * with Memory Device mode.
 		 */
 	} else {
-		for (i = 0; i < NUM_PERIPHERALS; i++) {
-			diagfwd_close(i, TYPE_DATA);
-			diagfwd_close(i, TYPE_CMD);
-		}
+		/*
+		* With clearing of masks on ODL exit and
+		* USB disconnection, closing of the channel is
+		* not needed.This enables read and drop of stale packets.
+		*/
 		/* Re enable HDLC encoding */
 		pr_debug("diag: In %s, re-enabling HDLC encoding\n",
 		       __func__);
@@ -1460,7 +1470,9 @@ static void diag_hdlc_start_recovery(unsigned char *buf, int len,
 
 	if (start_ptr) {
 		/* Discard any partial packet reads */
+		mutex_lock(&driver->hdlc_recovery_mutex);
 		driver->incoming_pkt.processing = 0;
+		mutex_unlock(&driver->hdlc_recovery_mutex);
 		diag_process_non_hdlc_pkt(start_ptr, len - i, info);
 	}
 }
@@ -1474,18 +1486,24 @@ void diag_process_non_hdlc_pkt(unsigned char *buf, int len,
 	const uint32_t header_len = sizeof(struct diag_pkt_frame_t);
 	struct diag_pkt_frame_t *actual_pkt = NULL;
 	unsigned char *data_ptr = NULL;
-	struct diag_partial_pkt_t *partial_pkt = &driver->incoming_pkt;
+	struct diag_partial_pkt_t *partial_pkt = NULL;
 
-	if (!buf || len <= 0)
+	mutex_lock(&driver->hdlc_recovery_mutex);
+	if (!buf || len <= 0) {
+		mutex_unlock(&driver->hdlc_recovery_mutex);
 		return;
-
-	if (!partial_pkt->processing)
+	}
+	partial_pkt = &driver->incoming_pkt;
+	if (!partial_pkt->processing) {
+		mutex_unlock(&driver->hdlc_recovery_mutex);
 		goto start;
+	}
 
 	if (partial_pkt->remaining > len) {
 		if ((partial_pkt->read_len + len) > partial_pkt->capacity) {
 			pr_err("diag: Invalid length %d, %d received in %s\n",
 			       partial_pkt->read_len, len, __func__);
+			mutex_unlock(&driver->hdlc_recovery_mutex);
 			goto end;
 		}
 		memcpy(partial_pkt->data + partial_pkt->read_len, buf, len);
@@ -1499,6 +1517,7 @@ void diag_process_non_hdlc_pkt(unsigned char *buf, int len,
 			pr_err("diag: Invalid length during partial read %d, %d received in %s\n",
 			       partial_pkt->read_len,
 			       partial_pkt->remaining, __func__);
+			mutex_unlock(&driver->hdlc_recovery_mutex);
 			goto end;
 		}
 		memcpy(partial_pkt->data + partial_pkt->read_len, buf,
@@ -1512,20 +1531,27 @@ void diag_process_non_hdlc_pkt(unsigned char *buf, int len,
 	if (partial_pkt->remaining == 0) {
 		actual_pkt = (struct diag_pkt_frame_t *)(partial_pkt->data);
 		data_ptr = partial_pkt->data + header_len;
-		if (*(uint8_t *)(data_ptr + actual_pkt->length) != CONTROL_CHAR)
+		if (*(uint8_t *)(data_ptr + actual_pkt->length) !=
+						CONTROL_CHAR) {
+			mutex_unlock(&driver->hdlc_recovery_mutex);
 			diag_hdlc_start_recovery(buf, len, info);
+			mutex_lock(&driver->hdlc_recovery_mutex);
+		}
 		err = diag_process_apps_pkt(data_ptr,
 					    actual_pkt->length, info);
 		if (err) {
 			pr_err("diag: In %s, unable to process incoming data packet, err: %d\n",
 			       __func__, err);
+			mutex_unlock(&driver->hdlc_recovery_mutex);
 			goto end;
 		}
 		partial_pkt->read_len = 0;
 		partial_pkt->total_len = 0;
 		partial_pkt->processing = 0;
+		mutex_unlock(&driver->hdlc_recovery_mutex);
 		goto start;
 	}
+	mutex_unlock(&driver->hdlc_recovery_mutex);
 	goto end;
 
 start:
@@ -1538,14 +1564,14 @@ start:
 			diag_send_error_rsp(buf, len);
 			goto end;
 		}
-
+		mutex_lock(&driver->hdlc_recovery_mutex);
 		if (pkt_len + header_len > partial_pkt->capacity) {
 			pr_err("diag: In %s, incoming data is too large for the request buffer %d\n",
 			       __func__, pkt_len);
+			mutex_unlock(&driver->hdlc_recovery_mutex);
 			diag_hdlc_start_recovery(buf, len, info);
 			break;
 		}
-
 		if ((pkt_len + header_len) > (len - read_bytes)) {
 			partial_pkt->read_len = len - read_bytes;
 			partial_pkt->total_len = pkt_len + header_len;
@@ -1553,19 +1579,27 @@ start:
 						 partial_pkt->read_len;
 			partial_pkt->processing = 1;
 			memcpy(partial_pkt->data, buf, partial_pkt->read_len);
+			mutex_unlock(&driver->hdlc_recovery_mutex);
 			break;
 		}
 		data_ptr = buf + header_len;
-		if (*(uint8_t *)(data_ptr + actual_pkt->length) != CONTROL_CHAR)
+		if (*(uint8_t *)(data_ptr + actual_pkt->length) !=
+						CONTROL_CHAR) {
+			mutex_unlock(&driver->hdlc_recovery_mutex);
 			diag_hdlc_start_recovery(buf, len, info);
+			mutex_lock(&driver->hdlc_recovery_mutex);
+		}
 		else
 			hdlc_reset = 0;
 		err = diag_process_apps_pkt(data_ptr,
 					    actual_pkt->length, info);
-		if (err)
+		if (err) {
+			mutex_unlock(&driver->hdlc_recovery_mutex);
 			break;
+		}
 		read_bytes += header_len + pkt_len + 1;
 		buf += header_len + pkt_len + 1; /* advance to next pkt */
+		mutex_unlock(&driver->hdlc_recovery_mutex);
 	}
 end:
 	return;

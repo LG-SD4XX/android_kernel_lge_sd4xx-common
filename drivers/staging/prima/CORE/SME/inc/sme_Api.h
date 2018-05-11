@@ -871,6 +871,9 @@ eHalStatus sme_RoamDisconnect(tHalHandle hHal, tANI_U8 sessionId, eCsrRoamDiscon
 
 void sme_abortConnection(tHalHandle hHal, tANI_U8 sessionId);
 
+void sme_set_con_state_not_connected(tHalHandle hHal, tANI_U8 sessionId);
+
+
 /* ---------------------------------------------------------------------------
     \fn.sme_dhcp_done_ind
     \brief a wrapper function to set dhcp done ind  in sme session

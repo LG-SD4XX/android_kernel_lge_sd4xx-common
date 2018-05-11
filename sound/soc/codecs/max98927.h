@@ -1006,6 +1006,9 @@ struct max98927_priv {
 	struct class *class;
 	struct device *dev;
 #endif /* USE_DSM_LOG */
+#ifdef CONFIG_MACH_LGE
+	unsigned int reset_gpio;
+#endif
 	unsigned int spk_gain;
 	unsigned int sysclk;
 	unsigned int v_l_slot;

@@ -227,16 +227,6 @@ enum usb_id_state {
 	USB_ID_FLOAT,
 };
 
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-enum msm_adc_state {
-	ADC_STATE_DRY = 0,
-	ADC_STATE_WDT, //Wet DeTection
-	ADC_STATE_WFD, //Wait For Dry
-	ADC_STATE_WET,
-	ADC_STATE_OTG,
-};
-#endif
-
 /**
  * struct msm_otg_platform_data - platform device data
  *              for msm_otg driver.
@@ -348,7 +338,6 @@ struct msm_otg_platform_data {
 	bool dpdm_sw_reverse;
 #endif
 #ifdef CONFIG_VBUS_SW_MAX14727
-	int ovlo_inb_gpio;
 	int otg_ena_gpio;
 	int otg_enb_gpio;
 #endif
@@ -487,7 +476,6 @@ struct msm_otg {
 #ifdef CONFIG_INPUT_EPACK
 	struct delayed_work dpdm_sw_work;
 	bool epack_w_ta;
-	char epack_otg_state[30];
 #endif
 	enum usb_chg_state chg_state;
 	enum usb_chg_type chg_type;
@@ -564,12 +552,6 @@ struct msm_otg {
 	unsigned int bc1p2_current_max;
 	unsigned int typec_current_max;
 	unsigned int usbin_health;
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
-	unsigned int moisture;
-	struct delayed_work adc_work;
-	enum msm_adc_state adc_state;
-	enum qpnp_tm_state tm_state;
-#endif
 
 	dev_t ext_chg_dev;
 	struct cdev ext_chg_cdev;
@@ -604,6 +586,10 @@ struct msm_otg {
 	int pm_qos_latency;
 	struct pm_qos_request pm_qos_req_dma;
 	struct delayed_work perf_vote_work;
+#ifdef CONFIG_LGE_USB_TYPE_C
+	bool vbus_active_pending;
+	struct power_supply	*typec_psy;
+#endif
 };
 
 struct ci13xxx_platform_data {

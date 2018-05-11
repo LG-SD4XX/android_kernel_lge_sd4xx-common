@@ -341,7 +341,6 @@ error:
 
 static int td4310_page_description(struct device *dev)
 {
-	struct touch_core_data *ts = to_touch_core(dev);
 	struct td4310_data *d = to_td4310_data(dev);
 	struct function_descriptor dsc;
 	u8 page;
@@ -361,7 +360,6 @@ static int td4310_page_description(struct device *dev)
 	memset(&d->f54, 0, sizeof(struct td4310_function));
 	memset(&d->f55, 0, sizeof(struct td4310_function));
 	memset(&d->fdc, 0, sizeof(struct td4310_function));
-	d->num_of_pages = 0;
 
 	for (page = 0; page < PAGES_TO_SERVICE; page++) {
 		ret = td4310_set_page(dev, page);
@@ -389,13 +387,11 @@ static int td4310_page_description(struct device *dev)
 			case 0x01:
 				d->f01.dsc = dsc;
 				d->f01.page = page;
-				d->num_of_pages++;
 				break;
 
 			case 0x12:
 				d->f12.dsc = dsc;
 				d->f12.page = page;
-				d->num_of_pages++;
 				ret = td4310_get_f12_reg(dev);
 				if (ret < 0) {
 					TOUCH_E("failed to get f12 register, ret = %d\n", ret);
@@ -406,7 +402,6 @@ static int td4310_page_description(struct device *dev)
 			case 0x34:
 				d->f34.dsc = dsc;
 				d->f34.page = page;
-				d->num_of_pages++;
 				break;
 
 			/* td4310 FW recovery Added */
@@ -414,35 +409,30 @@ static int td4310_page_description(struct device *dev)
 				if(to_touch_core(dev)->role.use_fw_recovery) {
 					TOUCH_E("F35 detected - Need FW recovery\n");
 					atomic_set(&d->state.fw_recovery, true);
-					d->num_of_pages++;
 					break;
 				}
+
 			case 0x51:
 				d->f51.dsc = dsc;
 				d->f51.page = page;
-				d->num_of_pages++;
 				break;
 
 			case 0x54:
 				d->f54.dsc = dsc;
 				d->f54.page = page;
-				d->num_of_pages++;
 				break;
 
 			case 0x55:
 				d->f55.dsc = dsc;
 				d->f55.page = page;
-				d->num_of_pages++;
 				break;
 
 			case 0xdc:
 				d->fdc.dsc = dsc;
 				d->fdc.page = page;
-				d->num_of_pages++;
 				break;
 
 			default:
-				TOUCH_E("Unknown Page: 0x%02x\n", dsc.fn_number);
 				break;
 			}
 		}
@@ -454,7 +444,6 @@ static int td4310_page_description(struct device *dev)
 		d->f34.page, d->f34.dsc.fn_number,
 		d->f54.page, d->f54.dsc.fn_number,
 		d->f51.page, d->f51.dsc.fn_number);
-	TOUCH_I("%s : Num of pages = %d\n", __func__, d->num_of_pages);
 
 	client->addr = backup_slave_addr;
 	if(atomic_read(&d->state.fw_recovery)) {
@@ -462,17 +451,11 @@ static int td4310_page_description(struct device *dev)
 	}
 
 	ret = td4310_set_page(dev, DEFAULT_PAGE);
+
 	if (ret) {
 		TOUCH_E("faied to set page %d (ret: %d)\n", 0, ret);
 		return ret;
 	}
-
-	/* Force Upgrade in Bootloader Mode(f34 & f01 only) or if none of the pages exist */
-        if( (d->num_of_pages == 0) || ((d->f12.dsc.fn_number == 0x00) &&
-                (d->f01.dsc.fn_number == 0x01) && (d->f34.dsc.fn_number == 0x34))) {
-                ts->force_fwup = 1;
-                TOUCH_E("No page exist/Bootloader Mode(f34,f01)!! force_fwup is enabled.\n");
-        }
 
 	return 0;
 }
@@ -555,212 +538,6 @@ static int td4310_get_product_id(struct device *dev)
 			__func__, d->ic_info.product_id);
 
 	return 0;
-}
-
-static void td4310_clear_palm_filter_data(struct td4310_data *d)
-{
-	TOUCH_TRACE();
-
-	TOUCH_I("%s : clear palm_mask & palm_point\n", __func__);
-
-	d->palm_mask = 0;
-	memset(d->palm_point, 0, sizeof(struct point) * MAX_NUM_OF_FINGERS);
-	return;
-}
-
-static void td4310_palm_filter(struct device *dev)
-{
-	struct touch_core_data *ts = to_touch_core(dev);
-	struct td4310_data *d = to_td4310_data(dev);
-	u16 old_mask = ts->old_mask;
-	u16 new_mask = ts->new_mask;
-	u16 temp_mask = new_mask;
-	u16 change_mask = old_mask ^ new_mask;
-	u16 press_mask = new_mask & change_mask;
-	u16 release_mask = old_mask & change_mask;
-	uint delay = 50;
-	uint pen_z = 20;
-	uint small_finger_z = 30;
-	uint palm_z = 255;
-	uint palm_w = 20;
-	uint palm_dst = 225;//150;
-	uint jump_dst = 563;//375;
-	int dx = 0;
-	int dy = 0;
-	int i = 0;
-	int j = 0;
-
-	TOUCH_TRACE();
-
-	if (!d->use_palm_filter)
-		return;
-
-	/* check jumpy ghost */
-	for (i = 0; i < MAX_NUM_OF_FINGERS; i++) {
-		if ((new_mask & (1 << i)) &&
-				(old_mask & (1 << i)) &&
-				(ts->tdata[i].pressure == pen_z)) {
-			dx = ts->tdata[i].x - d->old_tdata[i].x;
-			dy = ts->tdata[i].y - d->old_tdata[i].y;
-
-			if ((uint)((dx * dx) + (dy * dy)) >
-					(jump_dst * jump_dst)) {
-				TOUCH_D(ABS, "%s : id[%d](%4d,%4d,%4d) is jumpy ghost - old_tdata[%d](%4d,%4d,%4d)(d:%4d)\n",
-						__func__,
-						i,
-						ts->tdata[i].x,
-						ts->tdata[i].y,
-						ts->tdata[i].pressure,
-						i,
-						d->old_tdata[i].x,
-						d->old_tdata[i].y,
-						d->old_tdata[i].pressure,
-						jump_dst);
-
-				memcpy(&(ts->tdata[i]), &(d->old_tdata[i]),
-						sizeof(struct touch_data));
-				temp_mask &= ~(1 << i);
-				TOUCH_D(ABS, "%s: new_mask = 0x%04X , temp_mask = 0x%04X\n",
-						__func__, new_mask, temp_mask);
-			}
-		}
-	}
-
-	if (temp_mask != new_mask) {
-		ts->new_mask = temp_mask;
-		new_mask = ts->new_mask;
-		change_mask = old_mask ^ new_mask;
-		press_mask = new_mask & change_mask;
-		release_mask = old_mask & change_mask;
-	}
-
-	/* check pen z value change */
-	for (i = 0; i < MAX_NUM_OF_FINGERS; i++) {
-		if ((new_mask & (1 << i)) &&
-				(ts->tdata[i].pressure == palm_z) &&
-				(d->old_tdata[i].pressure == pen_z)) {
-			TOUCH_D(ABS, "%s : id[%d](%4d,%4d,%4d) is changed to small finger - old_tdata[%d](%4d,%4d,%4d)\n",
-					__func__,
-					i,
-					ts->tdata[i].x,
-					ts->tdata[i].y,
-					ts->tdata[i].pressure,
-					i,
-					d->old_tdata[i].x,
-					d->old_tdata[i].y,
-					d->old_tdata[i].pressure);
-
-			ts->tdata[i].pressure = small_finger_z;
-		}
-	}
-
-	/* clear all palm_mask when tcount is 0 */
-	if ((ts->tcount == 0) && (d->palm_mask)) {
-		mod_delayed_work(ts->wq, &d->palm_filter_work,
-				msecs_to_jiffies(delay));
-		TOUCH_I("%s : tcount is 0, clear all palm_mask after %ums\n",
-				__func__, delay);
-	}
-
-	/* update palm_mask */
-	for (i = 0; i < MAX_NUM_OF_FINGERS; i++) {
-		if ((press_mask & (1 << i)) && (d->palm_mask & (1 << i)) &&
-				((ts->tdata[i].width_major < palm_w) ||
-				(ts->tdata[i].pressure < palm_z))) {
-			dx = ts->tdata[i].x - d->palm_point[i].x;
-			dy = ts->tdata[i].y - d->palm_point[i].y;
-
-			if ((uint)((dx * dx) + (dy * dy)) >
-					(palm_dst * palm_dst)) {
-				d->palm_mask &= ~(1 << i);
-				TOUCH_I("%s : prev palm region[%d](%4d,%4d)(d:%4d)\n",
-						__func__,
-						i,
-						d->palm_point[i].x,
-						d->palm_point[i].y,
-						palm_dst);
-				TOUCH_I("%s : id[%d](%4d,%4d,%4d) is not palm - palm_mask id[%d] is cleared! palm_mask = 0x%04X\n",
-						__func__,
-						i,
-						ts->tdata[i].x,
-						ts->tdata[i].y,
-						ts->tdata[i].pressure,
-						i,
-						d->palm_mask);
-			}
-		}
-
-		if ((new_mask & (1 << i)) && !(d->palm_mask & (1 << i)) &&
-				((ts->tdata[i].width_major >= palm_w) ||
-				(ts->tdata[i].pressure >= palm_z))) {
-			d->palm_mask |= (1 << i);
-			TOUCH_I("%s : id[%d](%4d,%4d,%4d) is palm - palm_mask id[%d] set! palm_mask = 0x%04X\n",
-					__func__,
-					i,
-					ts->tdata[i].x,
-					ts->tdata[i].y,
-					ts->tdata[i].pressure,
-					i,
-					d->palm_mask);
-		}
-	}
-
-	/* update palm_point */
-	for (i = 0; i < MAX_NUM_OF_FINGERS; i++) {
-		if ((new_mask & (1 << i)) && (d->palm_mask & (1 << i)) &&
-				((ts->tdata[i].width_major >= palm_w) ||
-				(ts->tdata[i].pressure >= palm_z))) {
-			d->palm_point[i].x = ts->tdata[i].x;
-			d->palm_point[i].y = ts->tdata[i].y;
-		}
-	}
-
-	/* change palm area touch z value & cancel clearing palm_mask */
-	for (i = 0; i < MAX_NUM_OF_FINGERS; i++) {
-		if (new_mask & (1 << i)) {
-			for (j = 0; j < MAX_NUM_OF_FINGERS; j++) {
-				if (d->palm_mask & (1 << j)) {
-					dx = ts->tdata[i].x -
-						d->palm_point[j].x;
-					dy = ts->tdata[i].y -
-						d->palm_point[j].y;
-
-					if ((uint)((dx * dx) + (dy * dy)) <
-							(palm_dst * palm_dst)) {
-						ts->tdata[i].pressure = 255;
-
-						TOUCH_D(ABS, "%s : id[%d](%4d,%4d) is in palm region[%d](%4d,%4d)(d:%4d)\n",
-								__func__,
-								i,
-								ts->tdata[i].x,
-								ts->tdata[i].y,
-								j,
-								d->palm_point[j].x,
-								d->palm_point[j].y,
-								palm_dst);
-
-						if (delayed_work_pending(&d->palm_filter_work)) {
-							cancel_delayed_work_sync(&d->palm_filter_work);
-							TOUCH_I("%s; cancel clearing palm_mask\n",
-									__func__);
-						}
-					}
-				}
-			}
-		}
-	}
-
-	/* store old_tdata */
-	for (i = 0; i < MAX_NUM_OF_FINGERS; i++) {
-		if ((new_mask & (1 << i))) {
-			memcpy(&(d->old_tdata[i]), &(ts->tdata[i]),
-					sizeof(struct touch_data));
-		} else {
-			memset(&(d->old_tdata[i]), 0,
-					sizeof(struct touch_data));
-		}
-	}
-	return;
 }
 
 int td4310_ic_info(struct device *dev)
@@ -1268,27 +1045,19 @@ static int td4310_get_status(struct device *dev)
 
 static int td4310_irq_clear(struct device *dev)
 {
-	struct touch_core_data *ts = to_touch_core(dev);
 	struct td4310_data *d = to_td4310_data(dev);
-	u8 status[2] = {0, };
+	u8 status = 0;
 	int ret = 0;
-	u8 retry = 0;
-	u8 int_pin_status = 0;
 
 	TOUCH_TRACE();
 
-	do {
-		memset(status, 0x00, sizeof(status));
-		ret = td4310_read(dev, DEVICE_STATUS_REG, &status, sizeof(status));
-		if (ret < 0) {
-			TOUCH_E("failed to read device status - ret:%d\n", ret);
-			return ret;
-		}
-		++retry;
-		int_pin_status = gpio_get_value(ts->int_pin);
-		TOUCH_I("%s: status[device:0x%02x, interrupt:0x%02x, int_pin: %s], retry:%d\n",
-					__func__, status[0], status[1], int_pin_status? "HIGH":"LOW", retry);
-	} while(!int_pin_status && (retry <= 6));
+	ret = td4310_read(dev, INTERRUPT_STATUS_REG, &status, sizeof(status));
+	if (ret < 0) {
+		TOUCH_E("failed to read device status - ret:%d\n", ret);
+		return ret;
+	}
+
+	TOUCH_I("%s - Touch irq cleared\n", __func__);
 
 	return ret;
 }
@@ -1545,7 +1314,7 @@ error:
 	return ret;
 }
 
-static int td4310_irq_abs_data(struct device *dev)
+static int td4310_irq_abs_data(struct device *dev, int object_to_read)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct td4310_data *d = to_td4310_data(dev);
@@ -1578,7 +1347,7 @@ static int td4310_irq_abs_data(struct device *dev)
 			TOUCH_D(ABS, "id : %d, type : %d\n",
 					i, d->info.data[i].type);
 
-		if (d->info.data[i].type == F12_FINGER_STATUS || d->info.data[i].type == F12_PALM_STATUS) {
+		if (d->info.data[i].type == F12_FINGER_STATUS) {
 			ts->new_mask |= (1 << i);
 			tdata = ts->tdata + i;
 
@@ -1622,9 +1391,6 @@ end:
 	ts->tcount = finger_index;
 	ts->intr_status = TOUCH_IRQ_FINGER;
 
-	if (d->use_palm_filter)
-		td4310_palm_filter(dev);
-
 	return ret;
 }
 
@@ -1641,9 +1407,8 @@ static int td4310_irq_abs(struct device *dev)
 		return ret;
 	}
 
-	return td4310_irq_abs_data(dev);
+	return td4310_irq_abs_data(dev, d->info.touch_cnt);
 }
-
 static int td4310_update_stylus_mode(struct device *dev)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
@@ -1714,15 +1479,9 @@ static int td4310_update_stylus_mode(struct device *dev)
 		TOUCH_E("STYLUS_CTRL_REG not updated properly, value = 0x%x\n", buffer);
 	}
 
-	d->use_palm_filter = (atomic_read(&ts->state.debug_option_mask) & DEBUG_OPTION_0)
-				&& check_stylus_mode;
-	TOUCH_I("%s : palm filter %s\n", __func__,
-			(d->use_palm_filter ? "ON" : "OFF"));
-	if (d->use_palm_filter)
-		td4310_clear_palm_filter_data(d);
-
 	return ret;
 }
+
 
 static int td4310_tci_getdata(struct device *dev, int count)
 {
@@ -2165,7 +1924,7 @@ static int td4310_get_cmd_version(struct device *dev, char *buf)
 			td4310_productcode_parse(d->ic_info.raws));
 	offset += snprintf(buf + offset, PAGE_SIZE - offset,
 			"IC_product_id[%s]\n", d->ic_info.product_id);
-	if (td4310_is_product(d, "PLG639", 6))
+	if (td4310_is_product(d, "PLG639", 6) || td4310_is_product(d, "PLG639", 6))
 		offset += snprintf(buf + offset, PAGE_SIZE - offset,
 			"Touch IC : TD4310\n\n");
 	else
@@ -2182,7 +1941,7 @@ static int td4310_get_cmd_version(struct device *dev, char *buf)
 			td4310_productcode_parse(d->ic_info.img_raws));
 	offset += snprintf(buf + offset, PAGE_SIZE - offset,
 			"Img_product_id[%s]\n", d->ic_info.img_product_id);
-	if (td4310_is_img_product(d, "PLG639", 6))
+	if (td4310_is_img_product(d, "PLG639", 6) || td4310_is_img_product(d, "PLG639", 6))
 		offset += snprintf(buf + offset, PAGE_SIZE - offset,
 			"Touch IC : TD4310\n\n");
 	else
@@ -2281,7 +2040,7 @@ static int td4310_debug_option(struct device *dev, u32 *data)
 
 	switch (chg_mask) {
 	case DEBUG_OPTION_0:
-		TOUCH_I("DEBUG_OPTION_0 : Palm filter %s\n", enable ? "Enable" : "Disable");
+		TOUCH_I("Debug Option 0 %s\n", enable ? "Enable" : "Disable");
 		break;
 	case DEBUG_OPTION_4:
 		TOUCH_I("TA Simulator mode %s\n",
@@ -2613,83 +2372,6 @@ static ssize_t store_lpwg_fail_reason(struct device *dev, const char *buf, size_
 	return count;
 }
 
-static ssize_t store_sensing_test(struct device *dev, const char *buf, size_t count)
-{
-        struct touch_core_data *ts = to_touch_core(dev);
-        struct td4310_data *d = to_td4310_data(dev);
-        int value = 0;
-        int ret = 0;
-        u8 buffer = 0;
-
-        TOUCH_TRACE();
-
-        if ((sscanf(buf, "%d", &value) > 1) || (sscanf(buf, "%d", &value) < 0) )
-                return -EINVAL;
-
-        mutex_lock(&ts->lock);
-
-		ret = td4310_set_page(dev, LPWG_PAGE);
-		if (ret < 0) {
-			TOUCH_E("Write LPWG_PAGE error\n");
-			return ret;
-		}
-
-        ret = td4310_read(dev, STYLUS_CTRL_REG, &buffer, sizeof(buffer));
-        if (ret < 0) {
-                TOUCH_E("failed to read i2c - ret:%d\n", ret);
-                goto exit;
-        }
-
-        /* Set Sensing Ctrl Bit */
-        if (value)
-                buffer |= SENSING_MODE_ENABLE;
-        else
-                buffer &= ~SENSING_MODE_ENABLE;
-
-        ret = td4310_write(dev, STYLUS_CTRL_REG, &buffer, sizeof(buffer));
-        if (ret < 0) {
-                TOUCH_E("failed to write i2c - ret:%d\n", ret);
-                goto exit;
-        }
-
-        ret = td4310_read(dev, STYLUS_CTRL_REG, &buffer, sizeof(buffer));
-        if (ret < 0) {
-                TOUCH_E("failed to read i2c - ret:%d\n", ret);
-                goto exit;
-		}
-
-		ret = td4310_set_page(dev, DEFAULT_PAGE);
-		if (ret < 0) {
-			TOUCH_E("Write LPWG_PAGE error\n");
-			return ret;
-		}
-
-		if( !!(buffer & SENSING_MODE_ENABLE) == value) {
-		TOUCH_I("%s : Sensing State = %s\n",
-						__func__, value ? "ON" : "OFF");
-		} else {
-			TOUCH_E("SENSING_MODE_REG not updated properly, buffer = 0x%x\n", buffer);
-		}
-
-exit:
-		mutex_unlock(&ts->lock);
-
-		return count;
-}
-
-static ssize_t show_sensing_test(struct device *dev, char *buf)
-{
-	struct td4310_data *d = to_td4310_data(dev);
-	int offset = 0;
-
-	offset += snprintf(buf + offset, PAGE_SIZE - offset, "%d\n",
-					(atomic_read(&d->state.sensing_test) ? 1 : 0));
-	TOUCH_I("%s : SENSING BIT %s",
-				__func__, atomic_read(&d->state.sensing_test) ? "SET" : "CLEAR");
-
-	return offset;
-}
-
 static ssize_t show_esd_test(struct device *dev, char *buf)
 {
 	int ret = 0;
@@ -2717,7 +2399,6 @@ static TOUCH_ATTR(fw_recovery, show_fw_recovery, NULL);
 static TOUCH_ATTR(reset_ctrl, NULL, store_reset_ctrl);
 static TOUCH_ATTR(lpwg_fail_reason, show_lpwg_fail_reason, store_lpwg_fail_reason);
 static TOUCH_ATTR(esd_test, show_esd_test, NULL);
-static TOUCH_ATTR(sensing_test, show_sensing_test, store_sensing_test);
 
 static struct attribute *td4310_attribute_list[] = {
 	&touch_attr_reg_ctrl.attr,
@@ -2728,7 +2409,6 @@ static struct attribute *td4310_attribute_list[] = {
 	&touch_attr_reset_ctrl.attr,
 	&touch_attr_lpwg_fail_reason.attr,
 	&touch_attr_esd_test.attr,
-	&touch_attr_sensing_test.attr,
 	NULL,
 };
 
@@ -2905,29 +2585,6 @@ static int td4310_upgrade(struct device *dev)
 	return 0;
 }
 
-static void td4310_palm_filter_work_func(struct work_struct *palm_filter_work)
-{
-	struct td4310_data *d =
-		container_of(to_delayed_work(palm_filter_work),
-				struct td4310_data, palm_filter_work);
-
-	TOUCH_TRACE();
-
-	td4310_clear_palm_filter_data(d);
-
-	return;
-}
-
-static void td4310_init_works(struct device *dev)
-{
-	struct td4310_data *d = to_td4310_data(dev);
-
-	TOUCH_TRACE();
-
-	INIT_DELAYED_WORK(&d->palm_filter_work,
-			td4310_palm_filter_work_func);
-}
-
 int td4310_init(struct device *dev)
 {
 	struct td4310_data *d = to_td4310_data(dev);
@@ -2964,6 +2621,7 @@ int td4310_init(struct device *dev)
 	}
 
 	td4310_lpwg_mode(dev);
+	td4310_irq_clear(dev);
 	td4310_set_configured(dev);
 	td4310_rmidev_init(dev);
 
@@ -2973,9 +2631,6 @@ int td4310_init(struct device *dev)
 
 	/* update stylus state */
 	ret = td4310_update_stylus_mode(dev);
-	TOUCH_I("%s: int_pin is %s", __func__, gpio_get_value(ts->int_pin)?"HIGH":"LOW");
-	td4310_irq_clear(dev);
-
 	return 0;
 
 panel_reset:
@@ -3009,20 +2664,14 @@ static int td4310_probe(struct device *dev)
 	touch_power_init(dev);
 	touch_bus_init(dev, 4096);
 
-	td4310_init_works(dev);
-
 	td4310_init_tci_info(dev);
 	pm_qos_add_request(&d->pm_qos_req, PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
 
 	atomic_set(&d->state.scan_pdt,true);
-	//atomic_set(&ts->state.debug_option_mask, DEBUG_OPTION_0);
 	d->ic_info.fw_pid_addr = 0x10; //[bringup] need to check
 	d->ic_info.fw_ver_addr = 0x1d100;
 	d->lpwg_fail_reason = 1;
 	d->uBL_addr = 0x2c;/* uBL mode i2c slave address */
-
-	/* Sensing Bit set/clear when 7X13 Grid App Open/Closed*/
-	atomic_set(&d->state.sensing_test, SENSING_BIT_SET);
 
 	return 0;
 }

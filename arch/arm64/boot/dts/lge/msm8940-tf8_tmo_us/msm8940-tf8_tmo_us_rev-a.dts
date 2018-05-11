@@ -32,12 +32,4 @@
                 interrupt-parent = <&tlmm>;
                 serial,irq-gpio = <&tlmm 45 0x00>;
         };
-        lge,battery-id{
-                /* 4.35V Battery*/
-                lge,default-battery = "LGE_BLT20_LGC_4800mAh";
-                lge,battery-num = <2>;
-                lge,battery-id-num = <0 1>;
-                lge,battery-profile-name = 	"LGE_BLT20_LGC_4800mAh",
-                                                "LGE_BLT20_LGC_4800mAh";
-        };
 };

@@ -120,11 +120,11 @@ static int32_t msm_cci_set_clk_param(struct cci_device *cci_dev,
 			__func__, __LINE__, i2c_freq_mode);
 		return -EINVAL;
 	}
+
 	if (cci_dev->i2c_freq_mode[master] == i2c_freq_mode)
 		return 0;
 
 	clk_params = &cci_dev->cci_clk_params[i2c_freq_mode];
-
 	if (MASTER_0 == master) {
 		msm_camera_io_w_mb(clk_params->hw_thigh << 16 |
 			clk_params->hw_tlow,
@@ -201,6 +201,7 @@ static int32_t msm_cci_validate_queue(struct cci_device *cci_dev,
 	enum cci_i2c_queue_t queue)
 {
 	int32_t rc = 0;
+	unsigned long flags;
 	uint32_t read_val = 0;
 	uint32_t reg_offset = master * 0x200 + queue * 0x100;
 	read_val = msm_camera_io_r_mb(cci_dev->base +
@@ -223,6 +224,8 @@ static int32_t msm_cci_validate_queue(struct cci_device *cci_dev,
 			CCI_I2C_M0_Q0_EXEC_WORD_CNT_ADDR + reg_offset);
 		reg_val = 1 << ((master * 2) + queue);
 		CDBG("%s:%d CCI_QUEUE_START_ADDR\n", __func__, __LINE__);
+		spin_lock_irqsave(&cci_dev->cci_master_info[master].
+						lock_q[queue], flags);
 		atomic_set(&cci_dev->cci_master_info[master].
 						done_pending[queue], 1);
 		msm_camera_io_w_mb(reg_val, cci_dev->base +
@@ -230,6 +233,8 @@ static int32_t msm_cci_validate_queue(struct cci_device *cci_dev,
 		CDBG("%s line %d wait_for_completion_timeout\n",
 			__func__, __LINE__);
 		atomic_set(&cci_dev->cci_master_info[master].q_free[queue], 1);
+		spin_unlock_irqrestore(&cci_dev->cci_master_info[master].
+						lock_q[queue], flags);
 		rc = wait_for_completion_timeout(&cci_dev->
 			cci_master_info[master].report_q[queue], CCI_TIMEOUT);
 		if (rc <= 0) {
@@ -439,10 +444,17 @@ static int32_t msm_cci_wait_report_cmd(struct cci_device *cci_dev,
 	enum cci_i2c_master_t master,
 	enum cci_i2c_queue_t queue)
 {
+	unsigned long flags;
 	uint32_t reg_val = 1 << ((master * 2) + queue);
 	msm_cci_load_report_cmd(cci_dev, master, queue);
+
+	spin_lock_irqsave(&cci_dev->cci_master_info[master].
+					lock_q[queue], flags);
 	atomic_set(&cci_dev->cci_master_info[master].q_free[queue], 1);
 	atomic_set(&cci_dev->cci_master_info[master].done_pending[queue], 1);
+	spin_unlock_irqrestore(&cci_dev->cci_master_info[master].
+					lock_q[queue], flags);
+
 	msm_camera_io_w_mb(reg_val, cci_dev->base +
 		CCI_QUEUE_START_ADDR);
 	return msm_cci_wait(cci_dev, master, queue);
@@ -452,12 +464,21 @@ static void msm_cci_process_half_q(struct cci_device *cci_dev,
 	enum cci_i2c_master_t master,
 	enum cci_i2c_queue_t queue)
 {
+	unsigned long flags;
 	uint32_t reg_val = 1 << ((master * 2) + queue);
+
+	spin_lock_irqsave(&cci_dev->cci_master_info[master].
+					lock_q[queue], flags);
 	if (0 == atomic_read(&cci_dev->cci_master_info[master].q_free[queue])) {
 		msm_cci_load_report_cmd(cci_dev, master, queue);
 		atomic_set(&cci_dev->cci_master_info[master].q_free[queue], 1);
 		msm_camera_io_w_mb(reg_val, cci_dev->base +
 			CCI_QUEUE_START_ADDR);
+		spin_unlock_irqrestore(&cci_dev->cci_master_info[master].
+						lock_q[queue], flags);
+	} else {
+		spin_unlock_irqrestore(&cci_dev->cci_master_info[master].
+						lock_q[queue], flags);
 	}
 }
 
@@ -466,19 +487,23 @@ static int32_t msm_cci_process_full_q(struct cci_device *cci_dev,
 	enum cci_i2c_queue_t queue)
 {
 	int32_t rc = 0;
-	unsigned long flags; /*LGE_CHANGE, fix I2C write timeout, 2016-04-08, Camera-Stability@lge.com*/
-	spin_lock_irqsave(&cci_dev->cci_master_info[master].report_lock[queue], flags); /*LGE_CHANGE, fix I2C write timeout, 2016-04-08, Camera-Stability@lge.com*/
+	unsigned long flags;
+
+	spin_lock_irqsave(&cci_dev->cci_master_info[master].
+					lock_q[queue], flags);
 	if (1 == atomic_read(&cci_dev->cci_master_info[master].q_free[queue])) {
 		atomic_set(&cci_dev->cci_master_info[master].
 						done_pending[queue], 1);
-		spin_unlock_irqrestore(&cci_dev->cci_master_info[master].report_lock[queue], flags); /*LGE_CHANGE, fix I2C write timeout, 2016-04-08, Camera-Stability@lge.com*/
+		spin_unlock_irqrestore(&cci_dev->cci_master_info[master].
+					lock_q[queue], flags);
 		rc = msm_cci_wait(cci_dev, master, queue);
 		if (rc < 0) {
 			pr_err("%s: %d failed rc %d\n", __func__, __LINE__, rc);
 			return rc;
 		}
 	} else {
-		spin_unlock_irqrestore(&cci_dev->cci_master_info[master].report_lock[queue], flags); /*LGE_CHANGE, fix I2C write timeout, 2016-04-08, Camera-Stability@lge.com*/
+		spin_unlock_irqrestore(&cci_dev->cci_master_info[master].
+						lock_q[queue], flags);
 		rc = msm_cci_wait_report_cmd(cci_dev, master, queue);
 		if (rc < 0) {
 			pr_err("%s: %d failed rc %d\n", __func__, __LINE__, rc);
@@ -506,11 +531,13 @@ static int32_t msm_cci_transfer_end(struct cci_device *cci_dev,
 	enum cci_i2c_queue_t queue)
 {
 	int32_t rc = 0;
-	unsigned long flags; /*LGE_CHANGE, fix I2C write timeout, 2016-04-08, Camera-Stability@lge.com*/
+	unsigned long flags;
 
-	spin_lock_irqsave(&cci_dev->cci_master_info[master].report_lock[queue], flags); /*LGE_CHANGE, fix I2C write timeout, 2016-04-08, Camera-Stability@lge.com*/
+	spin_lock_irqsave(&cci_dev->cci_master_info[master].
+					lock_q[queue], flags);
 	if (0 == atomic_read(&cci_dev->cci_master_info[master].q_free[queue])) {
-		spin_unlock_irqrestore(&cci_dev->cci_master_info[master].report_lock[queue], flags); /*LGE_CHANGE, fix I2C write timeout, 2016-04-08, Camera-Stability@lge.com*/
+		spin_unlock_irqrestore(&cci_dev->cci_master_info[master].
+						lock_q[queue], flags);
 		rc = msm_cci_lock_queue(cci_dev, master, queue, 0);
 		if (rc < 0) {
 			pr_err("%s failed line %d\n", __func__, __LINE__);
@@ -524,7 +551,8 @@ static int32_t msm_cci_transfer_end(struct cci_device *cci_dev,
 	} else {
 		atomic_set(&cci_dev->cci_master_info[master].
 						done_pending[queue], 1);
-		spin_unlock_irqrestore(&cci_dev->cci_master_info[master].report_lock[queue], flags); /*LGE_CHANGE, fix I2C write timeout, 2016-04-08, Camera-Stability@lge.com*/
+		spin_unlock_irqrestore(&cci_dev->cci_master_info[master].
+						lock_q[queue], flags);
 		rc = msm_cci_wait(cci_dev, master, queue);
 		if (rc < 0) {
 			pr_err("%s: %d failed rc %d\n", __func__, __LINE__, rc);
@@ -579,6 +607,7 @@ static int32_t msm_cci_data_queue(struct cci_device *cci_dev,
 	uint32_t reg_offset;
 	uint32_t val = 0;
 	uint32_t max_queue_size, queue_size = 0;
+	unsigned long flags;
 
 	if (i2c_cmd == NULL) {
 		pr_err("%s:%d Failed line\n", __func__,
@@ -622,7 +651,11 @@ static int32_t msm_cci_data_queue(struct cci_device *cci_dev,
 	msm_camera_io_w_mb(val, cci_dev->base + CCI_I2C_M0_Q0_LOAD_DATA_ADDR +
 		reg_offset);
 
+	spin_lock_irqsave(&cci_dev->cci_master_info[master].
+					lock_q[queue], flags);
 	atomic_set(&cci_dev->cci_master_info[master].q_free[queue], 0);
+	spin_unlock_irqrestore(&cci_dev->cci_master_info[master].
+					lock_q[queue], flags);
 
 	max_queue_size = cci_dev->cci_i2c_queue_info[master][queue].
 			max_queue_size;
@@ -789,6 +822,7 @@ static int32_t msm_cci_i2c_read(struct v4l2_subdev *sd,
 	enum cci_i2c_queue_t queue = QUEUE_1;
 	struct cci_device *cci_dev = NULL;
 	struct msm_camera_cci_i2c_read_cfg *read_cfg = NULL;
+
 	CDBG("%s line %d\n", __func__, __LINE__);
 	cci_dev = v4l2_get_subdevdata(sd);
 	master = c_ctrl->cci_info->cci_i2c_master;
@@ -1393,8 +1427,10 @@ static int32_t msm_cci_init(struct v4l2_subdev *sd,
 			MSM_CCI_WRITE_DATA_PAYLOAD_SIZE_10;
 	cci_dev->support_seq_write = 0;
 	if (cci_dev->hw_version >= 0x10020000) {
-		cci_dev->payload_size =
-			MSM_CCI_WRITE_DATA_PAYLOAD_SIZE_11;
+		//LGE_UPDATE yt.jeon@lge.com
+		//cci_dev->payload_size =
+		//	MSM_CCI_WRITE_DATA_PAYLOAD_SIZE_11;
+
 		cci_dev->support_seq_write = 1;
 	}
 	for (i = 0; i < NUM_MASTERS; i++) {
@@ -1566,7 +1602,6 @@ static int32_t msm_cci_write(struct v4l2_subdev *sd,
 		pr_err("%s:%d Invalid I2C master addr\n", __func__, __LINE__);
 		return -EINVAL;
 	}
-
 	master = c_ctrl->cci_info->cci_i2c_master;
 	cci_master_info = &cci_dev->cci_master_info[master];
 
@@ -1646,8 +1681,8 @@ static int32_t msm_cci_config(struct v4l2_subdev *sd,
 static irqreturn_t msm_cci_irq(int irq_num, void *data)
 {
 	uint32_t irq;
+	unsigned long flags;
 	struct cci_device *cci_dev = data;
-	unsigned long flags; /*LGE_CHANGE, fix I2C write timeout, 2016-04-08, Camera-Stability@lge.com*/
 	irq = msm_camera_io_r_mb(cci_dev->base + CCI_IRQ_STATUS_0_ADDR);
 	msm_camera_io_w_mb(irq, cci_dev->base + CCI_IRQ_CLEAR_0_ADDR);
 	msm_camera_io_w_mb(0x1, cci_dev->base + CCI_IRQ_GLOBAL_CLEAR_CMD_ADDR);
@@ -1673,26 +1708,30 @@ static irqreturn_t msm_cci_irq(int irq_num, void *data)
 	if (irq & CCI_IRQ_STATUS_0_I2C_M0_Q0_REPORT_BMSK) {
 		struct msm_camera_cci_master_info *cci_master_info;
 		cci_master_info = &cci_dev->cci_master_info[MASTER_0];
-		spin_lock_irqsave(&cci_master_info->report_lock[QUEUE_0], flags); /*LGE_CHANGE, fix I2C write timeout, 2016-04-08, Camera-Stability@lge.com*/
+		spin_lock_irqsave(&cci_dev->cci_master_info[MASTER_0].
+						lock_q[QUEUE_0], flags);
 		atomic_set(&cci_master_info->q_free[QUEUE_0], 0);
 		cci_master_info->status = 0;
 		if (atomic_read(&cci_master_info->done_pending[QUEUE_0]) == 1) {
 			complete(&cci_master_info->report_q[QUEUE_0]);
 			atomic_set(&cci_master_info->done_pending[QUEUE_0], 0);
 		}
-		spin_unlock_irqrestore(&cci_master_info->report_lock[QUEUE_0], flags); /*LGE_CHANGE, fix I2C write timeout, 2016-04-08, Camera-Stability@lge.com*/
+		spin_unlock_irqrestore(&cci_dev->cci_master_info[MASTER_0].
+					lock_q[QUEUE_0], flags);
 	}
 	if (irq & CCI_IRQ_STATUS_0_I2C_M0_Q1_REPORT_BMSK) {
 		struct msm_camera_cci_master_info *cci_master_info;
 		cci_master_info = &cci_dev->cci_master_info[MASTER_0];
-		spin_lock_irqsave(&cci_master_info->report_lock[QUEUE_1], flags); /*LGE_CHANGE, fix I2C write timeout, 2016-04-08, Camera-Stability@lge.com*/
+		spin_lock_irqsave(&cci_dev->cci_master_info[MASTER_0].
+						lock_q[QUEUE_1], flags);
 		atomic_set(&cci_master_info->q_free[QUEUE_1], 0);
 		cci_master_info->status = 0;
 		if (atomic_read(&cci_master_info->done_pending[QUEUE_1]) == 1) {
 			complete(&cci_master_info->report_q[QUEUE_1]);
 			atomic_set(&cci_master_info->done_pending[QUEUE_1], 0);
 		}
-		spin_unlock_irqrestore(&cci_master_info->report_lock[QUEUE_1], flags); /*LGE_CHANGE, fix I2C write timeout, 2016-04-08, Camera-Stability@lge.com*/
+		spin_unlock_irqrestore(&cci_dev->cci_master_info[MASTER_0].
+						lock_q[QUEUE_1], flags);
 	}
 	if (irq & CCI_IRQ_STATUS_0_I2C_M1_RD_DONE_BMSK) {
 		cci_dev->cci_master_info[MASTER_1].status = 0;
@@ -1701,26 +1740,30 @@ static irqreturn_t msm_cci_irq(int irq_num, void *data)
 	if (irq & CCI_IRQ_STATUS_0_I2C_M1_Q0_REPORT_BMSK) {
 		struct msm_camera_cci_master_info *cci_master_info;
 		cci_master_info = &cci_dev->cci_master_info[MASTER_1];
-		spin_lock_irqsave(&cci_master_info->report_lock[QUEUE_0], flags); /*LGE_CHANGE, fix I2C write timeout, 2016-04-08, Camera-Stability@lge.com*/
+		spin_lock_irqsave(&cci_dev->cci_master_info[MASTER_1].
+						lock_q[QUEUE_0], flags);
 		atomic_set(&cci_master_info->q_free[QUEUE_0], 0);
 		cci_master_info->status = 0;
 		if (atomic_read(&cci_master_info->done_pending[QUEUE_0]) == 1) {
 			complete(&cci_master_info->report_q[QUEUE_0]);
 			atomic_set(&cci_master_info->done_pending[QUEUE_0], 0);
 		}
-		spin_unlock_irqrestore(&cci_master_info->report_lock[QUEUE_0], flags); /*LGE_CHANGE, fix I2C write timeout, 2016-04-08, Camera-Stability@lge.com*/
+		spin_unlock_irqrestore(&cci_dev->cci_master_info[MASTER_1].
+						lock_q[QUEUE_0], flags);
 	}
 	if (irq & CCI_IRQ_STATUS_0_I2C_M1_Q1_REPORT_BMSK) {
 		struct msm_camera_cci_master_info *cci_master_info;
 		cci_master_info = &cci_dev->cci_master_info[MASTER_1];
-		spin_lock_irqsave(&cci_master_info->report_lock[QUEUE_1], flags); /*LGE_CHANGE, fix I2C write timeout, 2016-04-08, Camera-Stability@lge.com*/
+		spin_lock_irqsave(&cci_dev->cci_master_info[MASTER_1].
+						lock_q[QUEUE_1], flags);
 		atomic_set(&cci_master_info->q_free[QUEUE_1], 0);
 		cci_master_info->status = 0;
 		if (atomic_read(&cci_master_info->done_pending[QUEUE_1]) == 1) {
 			complete(&cci_master_info->report_q[QUEUE_1]);
 			atomic_set(&cci_master_info->done_pending[QUEUE_1], 0);
 		}
-		spin_unlock_irqrestore(&cci_master_info->report_lock[QUEUE_1], flags); /*LGE_CHANGE, fix I2C write timeout, 2016-04-08, Camera-Stability@lge.com*/
+		spin_unlock_irqrestore(&cci_dev->cci_master_info[MASTER_1].
+						lock_q[QUEUE_1], flags);
 	}
 	if (irq & CCI_IRQ_STATUS_0_I2C_M0_Q0Q1_HALT_ACK_BMSK) {
 		cci_dev->cci_master_info[MASTER_0].reset_pending = TRUE;
@@ -1806,11 +1849,12 @@ static void msm_cci_init_cci_params(struct cci_device *new_cci_dev)
 			cci_master_info[i].reset_complete);
 
 		for (j = 0; j < NUM_QUEUES; j++) {
-			spin_lock_init(&new_cci_dev->cci_master_info[i].report_lock[j]); /*LGE_CHANGE, fix I2C write timeout, 2016-04-08, Camera-Stability@lge.com*/
 			mutex_init(&new_cci_dev->cci_master_info[i].mutex_q[j]);
 			init_completion(&new_cci_dev->
 				cci_master_info[i].report_q[j]);
-			}
+			spin_lock_init(&new_cci_dev->
+				cci_master_info[i].lock_q[j]);
+		}
 	}
 	return;
 }

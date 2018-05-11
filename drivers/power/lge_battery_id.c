@@ -20,9 +20,6 @@
 #include <linux/interrupt.h>
 #include <linux/gpio.h>
 #include <linux/slab.h>
-#ifdef CONFIG_LGE_PM_BATT_ID_RESISTOR
-#include <linux/of_gpio.h>
-#endif
 
 #include <linux/power/lge_battery_id.h>
 #include <soc/qcom/smem.h>
@@ -32,7 +29,7 @@
 #ifdef CONFIG_LGE_PM_CABLE_DETECTION
 #include <soc/qcom/lge/lge_cable_detection.h>
 #endif
-#ifdef CONFIG_MACH_MSM8940_TF8_TMO_US
+#if defined(CONFIG_MACH_MSM8940_TF8_TMO_US) || defined(CONFIG_LGE_PM_CABLE_DETECTION)
 #include <soc/qcom/lge/board_lge.h>
 #endif
 
@@ -42,10 +39,6 @@ struct lge_battery_id_info {
 	bool                    enabled;
 	const char              *default_battery;
 	struct power_supply     psy_batt_id;
-#ifdef CONFIG_LGE_PM_BATT_ID_RESISTOR
-	int     id_pullup_gpio;
-	int     id_gpio;
-#endif
 };
 
 static enum power_supply_property lge_battery_id_battery_props[] = {
@@ -66,13 +59,9 @@ static bool is_battery_valid(uint batt_id)
 		batt_id == BATT_ID_DEFAULT)
 		return true;
 #elif defined(CONFIG_MACH_MSM8917_SF317_CRK_US) || defined(CONFIG_MACH_MSM8917_SF317_TRF_US) || defined(CONFIG_MACH_MSM8917_SF317_TRF_US_VZW) \
-|| defined(CONFIG_MACH_MSM8940_SF3_MPCS_US) || defined(CONFIG_MACH_MSM8940_SF3_SPR_US) || defined(CONFIG_MACH_MSM8940_SF3_TMO_US) || defined(CONFIG_MACH_MSM8940_SF3_CLR_PR) || defined(CONFIG_MACH_MSM8940_SF3_GLOBAL_CA)
+|| defined(CONFIG_MACH_MSM8940_SF3_MPCS_US) || defined(CONFIG_MACH_MSM8940_SF3_SPR_US) || defined(CONFIG_MACH_MSM8940_SF3_TMO_US) || defined(CONFIG_MACH_MSM8940_SF3_GLOBAL_CA)
 	if(batt_id == BATT_ID_RA4301_VC1 || batt_id == BATT_ID_SW3800_VC0 ||
 		batt_id == BATT_ID_SW3800_VC1 || batt_id == BATT_ID_ISL6296_C ||
-		batt_id == BATT_ID_DEFAULT)
-		return true;
-#elif defined(CONFIG_LGE_PM_BATT_ID_RESISTOR)
-	if(batt_id == BATT_ID_RESISTOR_NC || batt_id == BATT_ID_RESISTOR_PD ||
 		batt_id == BATT_ID_DEFAULT)
 		return true;
 #else
@@ -92,6 +81,9 @@ bool lge_battery_check()
 	union power_supply_propval prop = {0,};
 	uint battery_id;
 	int usb_online;
+#ifdef CONFIG_LGE_PM_CABLE_DETECTION
+	enum lge_boot_mode_type boot_mode;
+#endif
 
 	psy = power_supply_get_by_name("battery_id");
 	if(psy) {
@@ -112,6 +104,11 @@ bool lge_battery_check()
 	}
 
 #ifdef CONFIG_LGE_PM_CABLE_DETECTION
+	boot_mode = lge_get_boot_mode();
+
+	if(boot_mode == LGE_BOOT_MODE_QEM_56K || boot_mode == LGE_BOOT_MODE_QEM_130K || boot_mode == LGE_BOOT_MODE_QEM_910K)
+		return is_battery_valid(battery_id);
+
 	if(lge_is_factory_cable() && usb_online)
 		return true;
 	else
@@ -186,63 +183,10 @@ static int lge_battery_id_dt_to_pdata(struct platform_device *pdev,
 	for (i = 0; i < battery_num; i++) {
 		pr_info("[FG_EST] battery cell type [%s]\n", battery_id_list.batt_type[i] );
 	}
-#ifdef CONFIG_LGE_PM_BATT_ID_RESISTOR
-	pdata->id_pullup_gpio = of_get_named_gpio(node, "lge,batt-id-pullup-gpio", 0);
-	pdata->id_gpio = of_get_named_gpio(node, "lge,batt-id-gpio", 0);
-	pr_info("[FG_EST] checking battery id gpio, pullup = %d id = %d \n"
-					,pdata->id_pullup_gpio,pdata->id_gpio);
-#endif
+
 	return 0;
 }
-#ifdef CONFIG_LGE_PM_BATT_ID_RESISTOR
-static uint read_battery_id_gpio(struct lge_battery_id_info *pdata)
-{
-	int rc;
-	uint batt_id = BATT_ID_DEFAULT;
 
-	if (!gpio_is_valid(pdata->id_pullup_gpio)
-		|| !gpio_is_valid(pdata->id_gpio)) {
-		pr_info("[FG_EST] battery id gpio does not exist, rc=%d\n",rc);
-		return BATT_ID_DEFAULT;
-	}
-
-	rc = gpio_request(pdata->id_pullup_gpio, "batt_id_pullup");
-	if (rc) {
-		pr_err("batt_id_pullup request failed, rc=%d \n", rc);
-		goto err_id_pullup_gpio;
-	}
-	rc =  gpio_direction_output(pdata->id_pullup_gpio, 1);
-	if (rc) {
-		pr_err("set_direction for batt_id_pullup failed, rc=%d\n",rc);
-		goto err_id_pullup_gpio;
-	}
-
-	rc = gpio_request(pdata->id_gpio, "batt_id");
-	if (rc) {
-		pr_err("batt_id request failed, rc=%d \n", rc);
-		goto err_id_gpio;
-	}
-	rc = gpio_direction_input(pdata->id_gpio);
-	if (rc) {
-		pr_err("set_direction for batt_id failed, rc=%d\n",rc);
-		goto err_id_gpio;
-	}
-
-	if (gpio_get_value(pdata->id_gpio))
-		batt_id = BATT_ID_RESISTOR_NC;
-	else
-		batt_id = BATT_ID_RESISTOR_PD;
-
-err_id_gpio:
-	gpio_free(pdata->id_gpio);
-err_id_pullup_gpio:
-	gpio_set_value(pdata->id_pullup_gpio, 0);
-	gpio_free(pdata->id_pullup_gpio);
-
-	pr_err("[FG_EST] battery_id is detected %d now\n",batt_id);
-	return batt_id;
-}
-#endif
 static int lge_battery_id_probe(struct platform_device *pdev)
 {
 	struct lge_battery_id_info *info;
@@ -278,12 +222,11 @@ static int lge_battery_id_probe(struct platform_device *pdev)
 		info->batt_info_from_smem = 0;
 	} else {
 		_smem_batt_id = *smem_batt;
-
-		pr_info("Battery was read in sbl is = %d\n", _smem_batt_id);
-#ifdef CONFIG_LGE_PM_BATT_ID_RESISTOR
-		if (_smem_batt_id != BATT_NOT_PRESENT)
-			_smem_batt_id = read_battery_id_gpio(info);
+#ifdef CONFIG_MACH_MSM8940_TF8_TMO_US
+		if (lge_get_board_revno() < HW_REV_A_2)
+			_smem_batt_id = BATT_ID_SW3800_VC0;
 #endif
+		pr_info("Battery was read in sbl is = %d\n", _smem_batt_id);
 		if (_smem_batt_id == BATT_ID_DEFAULT) {
 			for (i = 0; i < BATT_ID_LIST_MAX;i++) {
 				if (BATT_ID_DEFAULT == battery_id_list.batt_id[i]) {

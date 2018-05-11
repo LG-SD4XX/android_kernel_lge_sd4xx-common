@@ -48,6 +48,9 @@
 #include <linux/cpufreq.h>
 #include <linux/reboot.h>
 #include <soc/qcom/lge/board_lge.h>
+#ifdef CONFIG_LGE_PM_BATTERY_TEMP_VTS
+#include <linux/qpnp/qpnp-adc.h>
+#endif
 #endif
 
 /* Register offsets */
@@ -348,7 +351,7 @@ static void fg_set_minfreq(bool enable) {
 	pr_info("Set minfreq %sable\n", enable ? "en" : "dis");
 }
 #if defined(CONFIG_MACH_MSM8917_SF317_CRK_US) || defined(CONFIG_MACH_MSM8917_SF317_TRF_US) || defined(CONFIG_MACH_MSM8917_SF317_TRF_US_VZW) \
-|| defined(CONFIG_MACH_MSM8940_SF3_MPCS_US) || defined(CONFIG_MACH_MSM8940_SF3_SPR_US) || defined(CONFIG_MACH_MSM8940_SF3_TMO_US) || defined(CONFIG_MACH_MSM8940_SF3_CLR_PR) || defined(CONFIG_MACH_MSM8940_SF3_GLOBAL_CA)
+|| defined(CONFIG_MACH_MSM8940_SF3_MPCS_US) || defined(CONFIG_MACH_MSM8940_SF3_SPR_US) || defined(CONFIG_MACH_MSM8940_SF3_TMO_US) || defined(CONFIG_MACH_MSM8940_SF3_GLOBAL_CA)
 #define NUMBER_DELTA_TEMP 26
 #else
 #define NUMBER_DELTA_TEMP 25
@@ -386,7 +389,7 @@ static int temp_comp[NUMBER_DELTA_TEMP][2] = {
     { 900,   0},
 };
 #elif defined(CONFIG_MACH_MSM8917_SF317_CRK_US) || defined(CONFIG_MACH_MSM8917_SF317_TRF_US) || defined(CONFIG_MACH_MSM8917_SF317_TRF_US_VZW) \
-|| defined(CONFIG_MACH_MSM8940_SF3_MPCS_US) || defined(CONFIG_MACH_MSM8940_SF3_SPR_US) || defined(CONFIG_MACH_MSM8940_SF3_TMO_US) || defined(CONFIG_MACH_MSM8940_SF3_CLR_PR) || defined(CONFIG_MACH_MSM8940_SF3_GLOBAL_US)
+|| defined(CONFIG_MACH_MSM8940_SF3_MPCS_US) || defined(CONFIG_MACH_MSM8940_SF3_SPR_US) || defined(CONFIG_MACH_MSM8940_SF3_TMO_US) || defined(CONFIG_MACH_MSM8940_SF3_GLOBAL_US)
 static int temp_comp[NUMBER_DELTA_TEMP][2] = {
     /* Measured  degree *10 ,  delta degree
      * delta degree = (Measured Temp - FG temp) * 10 */
@@ -417,9 +420,7 @@ static int temp_comp[NUMBER_DELTA_TEMP][2] = {
     { 800, -20},
     { 900, -20},
 };
-#elif defined(CONFIG_MACH_MSM8917_LV7_TRF_US) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US_VZW) || defined(CONFIG_MACH_MSM8917_LV7_CRK_US) \
-|| defined(CONFIG_MACH_MSM8917_LV7_GLOBAL_CA) || defined(CONFIG_MACH_MSM8917_LV7_CCT_US_VZW) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US_VZW_R) \
-|| defined(CONFIG_MACH_MSM8917_LV7_TRF_US_R)
+#elif defined(CONFIG_MACH_MSM8917_LV7_TRF_US) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US_VZW)|| defined(CONFIG_MACH_MSM8917_LV7_CRK_US) || defined(CONFIG_MACH_MSM8917_LV7_GLOBAL_CA)
 static int temp_comp[NUMBER_DELTA_TEMP][2] = {
     /* Measured  degree *10 ,  delta degree
      * delta degree = (Measured Temp - FG temp) * 10 */
@@ -449,8 +450,7 @@ static int temp_comp[NUMBER_DELTA_TEMP][2] = {
     { 800, 0},
     { 900, 0},
 };
-#elif defined(CONFIG_MACH_MSM8940_LV9_ATT_US) || defined(CONFIG_MACH_MSM8940_LV9_NAO_US) || defined(CONFIG_MACH_MSM8940_LV9_GLOBAL_COM) \
-|| defined(CONFIG_MACH_MSM8940_LV9_GLOBAL_CA)
+#elif defined(CONFIG_MACH_MSM8940_LV9_ATT_US) || defined(CONFIG_MACH_MSM8940_LV9_NAO_US) || defined(CONFIG_MACH_MSM8940_LV9_GLOBAL_COM)
 static int temp_comp[NUMBER_DELTA_TEMP][2] = {
     /* Measured  degree *10 ,  delta degree
      * delta degree = (Measured Temp - FG temp) * 10 */
@@ -480,33 +480,96 @@ static int temp_comp[NUMBER_DELTA_TEMP][2] = {
     { 800, -30},
     { 900, -30},
 };
-#elif defined(CONFIG_MACH_MSM8940_TF8_TMO_US) || defined(CONFIG_MACH_MSM8940_TF8_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_GLOBAL_CA)
+#elif defined(CONFIG_MACH_MSM8940_MH_CRK_US) || defined(CONFIG_MACH_MSM8940_MH_GLOBAL_COM) || defined(CONFIG_MACH_MSM8940_MH_KT_KR) \
+|| defined(CONFIG_MACH_MSM8940_MH_LGU_KR)  || defined(CONFIG_MACH_MSM8940_MH_MPCS_US) || defined(CONFIG_MACH_MSM8940_MH_SKT_KR) \
+|| defined(CONFIG_MACH_MSM8940_MH_TMO_US) || defined(CONFIG_MACH_MSM8940_MH_TRF_US) || defined(CONFIG_MACH_MSM8940_MH_GLOBAL_CA) || defined(CONFIG_MACH_MSM8940_MH_LAO_COM) || defined(CONFIG_MACH_MSM8940_L6_DCM_JP)
 static int temp_comp[NUMBER_DELTA_TEMP][2] = {
     /* Measured  degree *10 ,  delta degree
      * delta degree = (Measured Temp - FG temp) * 10 */
-    {-300, -70},
-    {-200, -70},
-    {-190, -60},
-    {-180, -60},
-    {-170, -35},
-    {-160, -35},
-    {-150, -10},
-    {-100, -10},
-    { -60,  5},
-    {  0,  15},
-    {  50, 20},
-    { 100, 20},
-    { 150, 15},
-    { 200, 10},
-    { 250, 10},
-    { 300, 5},
-    { 350, -10},
-    { 400, -20},
-    { 450, -30},
-    { 500, -20},
-    { 550, -30},
-    { 600, -30},
-    { 700, 10},
+    {-300, -80},
+    {-200, -80},
+    {-180, -75},
+    {-170, -75},
+    {-160, -60},
+    {-150, -50},
+    {-130, -30},
+    {-100, -17},
+    { -50, -7},
+    {  0,  -7},
+    {  50, -7},
+    { 100, -7},
+    { 150, -12},
+    { 200, -15},
+    { 250, -15},
+    { 300, -20},
+    { 350, -26},
+    { 400, -23},
+    { 450, -23},
+    { 500, -22},
+    { 550, -17},
+    { 600, 0},
+    { 700, 0},
+    { 800, 0},
+    { 900, 0},
+};
+#elif defined(CONFIG_MACH_MSM8917_CV1_LAO_COM) || defined(CONFIG_MACH_MSM8917_CV1_VZW) || defined(CONFIG_MACH_MSM8917_CV1_ATT_US) || defined(CONFIG_MACH_MSM8917_CV1_CRK_US)
+static int temp_comp[NUMBER_DELTA_TEMP][2] = {
+    /* Measured  degree *10 ,  delta degree
+     * delta degree = (Measured Temp - FG temp) * 10 */
+    {-300, -110},
+    {-200, -110},
+    {-190, -100},
+    {-180, -100},
+    {-170, -75},
+    {-160, -75},
+    {-150, -50},
+    {-100, -50},
+    { -60, -35},
+    {  0,  -0},
+    {  50, -0},
+    { 100, -0},
+    { 150, -0},
+    { 200, -0},
+    { 250, -0},
+    { 300, -0},
+    { 350, -0},
+    { 400, -0},
+    { 450, -0},
+    { 500, -0},
+    { 550, -0},
+    { 600, -0},
+    { 700, -0},
+    { 800, -0},
+    { 900, -0},
+};
+#elif defined(CONFIG_MACH_MSM8917_CV3_KT_KR) || defined(CONFIG_MACH_MSM8917_CV3_LAO_COM) || defined(CONFIG_MACH_MSM8917_CV3_LGU_KR) \
+|| defined(CONFIG_MACH_MSM8917_CV3_SKT_KR) || defined(CONFIG_MACH_MSM8917_CV3_VZW) || defined(CONFIG_MACH_MSM8917_CV3_CRK_US) || defined(CONFIG_MACH_MSM8917_CV3_CCT_US)
+static int temp_comp[NUMBER_DELTA_TEMP][2] = {
+    /* Measured  degree *10 ,  delta degree
+     * delta degree = (Measured Temp - FG temp) * 10 */
+    {-300, -20},
+    {-200, -20},
+    {-190, -20},
+    {-180, -20},
+    {-170, -20},
+    {-160, -20},
+    {-150, -20},
+    {-100, -20},
+    { -60, -20},
+    {  0,  -20},
+    {  50, -20},
+    { 100, 0},
+    { 150, 0},
+    { 200, 0},
+    { 250, 0},
+    { 300, 0},
+    { 350, 0},
+    { 400, 0},
+    { 450, 0},
+    { 500, 0},
+    { 550, 0},
+    { 600, 0},
+    { 700, 0},
     { 800, 0},
     { 900, 0},
 };
@@ -705,6 +768,10 @@ struct dischg_gain_soc {
 };
 
 #define THERMAL_COEFF_N_BYTES		6
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+#define MAX_CYCLE_STEP	4
+#define DEFAULT_VFLOAT_VOTLAGE	4350
+#endif
 struct fg_chip {
 	struct device		*dev;
 	struct spmi_device	*spmi;
@@ -907,13 +974,54 @@ struct fg_chip {
 	bool		check_ima_err_handling;
 	bool		wait_for_cc_soc_store;
 	struct delayed_work	guarantee_soc_interval_work;
+#ifdef CONFIG_LGE_PM_TEMP_BY_CHG
+	int			temp_by_chg_factor;
+#endif
+#ifdef CONFIG_LGE_PM_SOC_RECHARGING_WA
+	int			batt_recharge_threshold;
 #endif
 #ifdef CONFIG_LGE_PM_CHARGERLOGO_WAIT_FOR_FG_INIT
 	int			first_soc_est_done;
 #endif
+#ifdef CONFIG_LGE_PM_SOC_SCALING
+	int			batt_scale_criteria;
+#endif
 #if defined(CONFIG_MACH_MSM8937_L5_DCM_JP) || defined(CONFIG_MACH_MSM8937_JSG_KDDI_JP)
 	int			invalid_batt_temp;
 	bool			is_invalid_batt_temp;
+#endif
+
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	u32			batt_life_cycle_set[MAX_CYCLE_STEP];
+	u32			batt_life_cycle_offset[MAX_CYCLE_STEP];
+	u32			batt_life_cycle_vfloat[MAX_CYCLE_STEP];
+	int			battery_cycle;
+	int			rescale_offset;
+	int			cycle_based_vfloat;
+	int			batt_life_prev_cycle[BUCKET_COUNT];
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_WEIGHT
+	int			cycle_weight_integer[BUCKET_COUNT];
+	int			cycle_weight_fraction[BUCKET_COUNT];
+	ktime_t			cycle_weight_update_time;
+	int			cycle_weight_update_time_delta;
+	int			cycle_weight_update_count;
+	u32			cycle_weight_batt_temp_sum;
+	int			cycle_weight_avg_batt_temp;
+	u32			cycle_weight_batt_voltage_sum;
+	int			cycle_weight_avg_batt_voltage;
+#endif
+#endif
+#ifdef CONFIG_LGE_PM_CCD
+	int			ccd_adjusted_vfloat;
+	int			rescale_offset;
+#endif
+#ifdef CONFIG_LGE_PM_BATTERY_TEMP_VTS
+	struct		qpnp_vadc_chip  *vadc_fg;
+	int			batt_vts_raw;
+	int			batt_vts_xo;
+	int			batt_vts_quiet;
+	int			batt_vts_constant;
+#endif
 #endif
 };
 
@@ -987,6 +1095,15 @@ static char *fg_supplicants[] = {
 
 #if defined(CONFIG_TOUCHSCREEN_UNIFIED_DRIVER_3)
 int touch_ref_batt_temp = 0;
+#endif
+
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+static bool is_charger_available(struct fg_chip *chip);
+static void fg_set_cycle_based_offset(struct fg_chip *chip, int battery_cycle);
+static void update_cc_cv_setpoint(struct fg_chip *chip);
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_WEIGHT
+static void fg_cycle_weight_update(struct fg_chip *chip, int batt_voltage, int batt_temp);
+#endif
 #endif
 
 #define DEBUG_PRINT_BUFFER_SIZE 64
@@ -1300,30 +1417,102 @@ static int fg_set_ram_addr(struct fg_chip *chip, u16 *address)
 
 	return rc;
 }
-
 #ifdef CONFIG_LGE_PM
-#ifdef CONFIG_LGE_PM_TEMP_BY_CHG
-#if defined(CONFIG_MACH_MSM8917_LV7_TRF_US) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US_VZW) || defined(CONFIG_MACH_MSM8917_LV7_CRK_US) \
-|| defined(CONFIG_MACH_MSM8917_LV7_GLOBAL_CA) || defined(CONFIG_MACH_MSM8917_LV7_CCT_US_VZW) || defined(CONFIG_MACH_MSM8917_LV7_TRF_US_VZW_R) \
-|| defined(CONFIG_MACH_MSM8917_LV7_TRF_US_R)
-#define COMP_FACTOR             65     /* 0.6 degree/1A */
-#elif defined(CONFIG_MACH_MSM8917_SF317_CRK_US) || defined(CONFIG_MACH_MSM8917_SF317_TRF_US) || defined(CONFIG_MACH_MSM8917_SF317_TRF_US_VZW) \
-|| defined(CONFIG_MACH_MSM8940_SF3_SPR_US)
-#define COMP_FACTOR             330     /* -3.3degree/1A */
-#elif defined(CONFIG_MACH_MSM8940_SF3_TMO_US) || defined(CONFIG_MACH_MSM8940_SF3_CLR_PR) || defined(CONFIG_MACH_MSM8940_SF3_MPCS_US) || defined(CONFIG_MACH_MSM8940_SF3_GLOBAL_CA)
-#define COMP_FACTOR             135     /* -1.7degree/1A */
-#else
-#define COMP_FACTOR             170     /* -1.7degree/1A */
-#endif
-#define CHG_CURR_SAMPLE_COUNT   3
+#ifdef CONFIG_LGE_PM_BATTERY_TEMP_VTS
+#define BATT_VTS_RAW_DEFAULT (362)
+#define BATT_VTS_XO_DEFAULT (190)
+#define BATT_VTS_QUIET_DEFAULT (455)
+#define BATT_VTS_CONSTANT_DEFAULT (93)
+#define BATT_VTS_BASE (-100)
+void init_batt_vts(struct fg_chip * chip)
+{
+	int rc;
+	struct device_node *node = chip->spmi->dev.of_node;
 
+	rc = of_property_read_u32(node, "lge_batt_vts_raw", &chip->batt_vts_raw);
+	pr_info("[FG_VTS] read batt_vts_raw = %d\n", chip->batt_vts_raw);
+	if(rc) {
+		chip->batt_vts_raw = BATT_VTS_RAW_DEFAULT;
+		pr_info("[FG_VTS] use default raw value! %d\n", chip->batt_vts_raw);
+	}
+
+	rc = of_property_read_u32(node, "lge_batt_vts_xo", &chip->batt_vts_xo);
+	pr_info("[FG_VTS] read batt_vts_xo = %d\n", chip->batt_vts_xo);
+	if(rc) {
+		chip->batt_vts_xo = BATT_VTS_XO_DEFAULT;
+		pr_info("[FG_VTS] use default xo value! %d\n", chip->batt_vts_xo);
+	}
+
+	rc = of_property_read_u32(node, "lge_batt_vts_quiet", &chip->batt_vts_quiet);
+	pr_info("[FG_VTS] read batt_vts_quiet = %d\n", chip->batt_vts_quiet);
+	if(rc) {
+		chip->batt_vts_quiet = BATT_VTS_RAW_DEFAULT;
+		pr_info("[FG_VTS] use default quiet value! %d\n", chip->batt_vts_quiet);
+	}
+
+	rc = of_property_read_u32(node, "lge_batt_vts_constant", &chip->batt_vts_constant);
+	pr_info("[FG_VTS] read batt_vts_constant = %d\n", chip->batt_vts_constant);
+	if(rc) {
+		chip->batt_vts_constant = BATT_VTS_CONSTANT_DEFAULT;
+		pr_info("[FG_VTS] use default constant value! %d\n", chip->batt_vts_constant);
+	}
+}
+static int calc_batt_vts(struct fg_chip *chip, int temp)
+{
+	struct spmi_device *spmi = chip->spmi;
+	struct qpnp_vadc_result results;
+	int rc;
+	int  xo_therm, quiet_therm, temp_vts;
+
+	temp_vts = temp;
+
+	/* read xo therm*/
+	if (IS_ERR_OR_NULL(chip->vadc_fg)) {
+		chip->vadc_fg = qpnp_get_vadc(&spmi->dev, "xo_therm");
+		if (IS_ERR_OR_NULL(chip->vadc_fg)) {
+			pr_err("vadc init fail (xo therm)\n");
+			return temp;
+		}
+	}
+	rc = qpnp_vadc_read(chip->vadc_fg, LR_MUX3_XO_THERM, &results);
+	xo_therm = results.physical * 10;
+
+	/* read quiet therm*/
+	if (IS_ERR_OR_NULL(chip->vadc_fg)) {
+		chip->vadc_fg = qpnp_get_vadc(&spmi->dev, "quiet_therm");
+		if (IS_ERR_OR_NULL(chip->vadc_fg)) {
+			pr_err("vadc init fail (quiet therm)\n");
+			return temp;
+		}
+	}
+	rc = qpnp_vadc_read(chip->vadc_fg, P_MUX4_1_1, &results);
+	quiet_therm = results.physical * 10;
+
+	/* Regression equation */
+	/* MH = -0.67 + 0.362 * raw + 0.190 * xo + 0.455 * quiet */
+	/* This value varies by model */
+	temp_vts = (((temp_vts * chip->batt_vts_raw) +
+				(xo_therm * chip->batt_vts_xo) +
+				(quiet_therm * chip->batt_vts_quiet)) / 1000) +
+				(chip->batt_vts_constant + BATT_VTS_BASE);
+
+	/*raw = org temp, xo, quiet, vts*/
+	pr_info("[FG_VTS] Raw = %d, xo = %d quiet = %d vts = %d \n",
+			temp, xo_therm, quiet_therm, temp_vts);
+
+	return temp_vts;
+}
+#endif
+#ifdef CONFIG_LGE_PM_TEMP_BY_CHG
+#define DEFAULT_COMP_FACTOR		170
+#define CHG_CURR_SAMPLE_COUNT   3
 /*
  * Compensate batt temp by charging current
  * @fg_temp : original temp reading from fuel gauge hw block
  * @first_ctemp : 1st compensated temp by pre-defined table (temp_comp[][])
  * @return 2nd compensated temp by charging current
  */
-static int comp_temp_by_chg_current(int fg_temp, int first_ctemp)
+static int comp_temp_by_chg_current(struct fg_chip *chip, int fg_temp, int first_ctemp)
 {
 	struct power_supply *batt_psy;
 	union power_supply_propval pval = {0, };
@@ -1381,30 +1570,30 @@ static int comp_temp_by_chg_current(int fg_temp, int first_ctemp)
 
 	/* assume that temp is proportional to current*current */
 	comp_delta = ((chg_current / 3) * (chg_current / 3) *
-		      COMP_FACTOR) / 10000000;
+			chip->temp_by_chg_factor / 10000000);
 	comp_temp = temp - comp_delta;
 
 	if (pre_delta / 10 != (fg_temp - comp_temp) / 10) {
-		pr_info("fg_temp = %d comp_temp1 = %d comp_temp2 = %d "
-			"delta1 = %d delta2 = %d avg_chg_curr = %d "
-			"now_chg_curr = %d batt_charging = %d\n",
+		pr_info("Raw = %d comp_1 = %d comp_2 = %d "
+			"dt1 = %d dt2 = %d avg_curr = %d "
+			"now_curr = %d batt_chg = %d",
 			fg_temp, temp, comp_temp,
 			temp - fg_temp, comp_delta, chg_current / 3,
 			chg_curr_data[0], is_batt_charging);
 		pre_delta = fg_temp - comp_temp;
-	} else
-		pr_debug("fg_temp = %d  comp_temp1 = %d comp_temp2 = %d "
-			 "delta1 = %d delta2 = %d avg_chg_curr = %d "
-			 "now_chg_curr = %d  batt_charging = %d\n",
+	} else {
+		pr_debug("Raw = %d comp_1 = %d comp_2 = %d "
+			 "dt1 = %d dt2 = %d avg_curr = %d "
+			 "now_curr = %d batt_chg = %d",
 			 fg_temp, temp, comp_temp,
 			 temp - fg_temp, comp_delta, chg_current / 3,
 			 chg_curr_data[0], is_batt_charging);
-
+	}
 	return comp_temp;
 }
 #endif
 
-static int calc_tuned_temp(int temp)
+static int calc_tuned_temp(struct fg_chip *chip, int temp)
 {
 	int i = 0;
 	int delta_temp = 0;
@@ -1427,8 +1616,8 @@ static int calc_tuned_temp(int temp)
 
 #ifdef CONFIG_LGE_PM_TEMP_BY_CHG
 	pr_info("comp_factor = %d, org temp : %d, delta temp : %d, report temp : %d\n",
-			COMP_FACTOR,temp, delta_temp, (temp + delta_temp));
-	return comp_temp_by_chg_current(temp, temp + delta_temp);
+			chip->temp_by_chg_factor,temp, delta_temp, (temp + delta_temp));
+	return comp_temp_by_chg_current(chip, temp, temp + delta_temp);
 #else
 	return (temp + delta_temp);
 #endif
@@ -2638,15 +2827,6 @@ static int get_sram_prop_now(struct fg_chip *chip, unsigned int type);
 		}
 		return batt_soc_temp;
 	}
-#endif
-#define EMPTY_CAPACITY      0
-#define DEFAULT_CAPACITY    50
-#define MISSING_CAPACITY    100
-#define FULL_CAPACITY       100
-#define FULL_SOC_RAW        0xFF
-#ifdef CONFIG_LGE_PM
-#ifndef CONFIG_LGE_PM_RELY_ON_QCT_MSOC
-#ifdef CONFIG_LGE_PM_SOC_UNDER_5LEVEL
 void check_update_soc_lge_5level(struct fg_chip *chip, int msoc_raw,
 int msoc_origin, int msoc_scale_raw, int msoc_scale,
 int msoc_under_5level_raw, int msoc_under_5level)
@@ -2705,21 +2885,34 @@ void check_update_soc_lge(struct fg_chip *chip, int msoc_raw,
 	}
 	return;
 }
+
 #endif
-#endif
+#define EMPTY_CAPACITY      0
+#define DEFAULT_CAPACITY    50
+#define MISSING_CAPACITY    100
+#define FULL_CAPACITY       100
+#define FULL_SOC_RAW        0xFF
 static bool is_usb_present(struct fg_chip *chip);
+#ifdef CONFIG_LGE_PM_SOC_SCALING
+#define LGE_SOC_SCALE_CRITERIA	0xF0 //94% in 256 scale soc.
+#endif
 static int get_prop_capacity(struct fg_chip *chip)
 {
 	int msoc;
 	int msoc_raw;
 	int current_st;
 	static int pre_soc;
-#ifdef CONFIG_LGE_PM
 #ifdef CONFIG_LGE_PM_SOC_SCALING
     int msoc_origin, msoc_scale_raw, msoc_scale, batt_soc_temp;
 #endif
 #ifdef CONFIG_LGE_PM_SOC_UNDER_5LEVEL
     int msoc_under_5level_raw, msoc_under_5level;
+#endif
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	int rescale_threshold;
+#endif
+#ifdef CONFIG_LGE_PM_CCD
+	int rescale_threshold;
 #endif
 	if (chip->wait_for_cc_soc_store || chip->check_ima_err_handling) {
 		pr_info("[FG_INFO]capacity return pre cc soc = %d\n",pre_soc);
@@ -2752,6 +2945,24 @@ static int get_prop_capacity(struct fg_chip *chip)
 	current_st = get_sram_prop_now(chip, FG_DATA_CURRENT);
 	msoc_raw = get_monotonic_soc_raw(chip);
 
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	if (msoc_raw > (chip->batt_scale_criteria - chip->rescale_offset)){
+		fg_set_cycle_based_offset(chip, chip->battery_cycle);
+		if (fg_debug_mask & FG_STATUS)
+			pr_debug("[FG_INFO]msoc_raw = %x cycle = %d rescale_offset %d \n", msoc_raw,
+						chip->battery_cycle, chip->rescale_offset);
+	}
+#endif
+
+#ifdef CONFIG_LGE_PM_CCD
+	if (msoc_raw > (chip->batt_scale_criteria - chip->rescale_offset)){
+		fg_adjust_vfloat_rescale_offset(chip);
+		if (fg_debug_mask & FG_STATUS)
+			pr_debug("[FG_INFO]msoc_raw = %x vfloat = %d rescale_offset %d \n", msoc_raw,
+						chip->ccd_adjusted_vfloat, chip->rescale_offset);
+	}
+#endif
+
 #ifdef CONFIG_LGE_PM_SOC_SCALING
 	/*QCT SCALING*/
 	if (msoc_raw == 0)
@@ -2768,8 +2979,17 @@ static int get_prop_capacity(struct fg_chip *chip)
 		msoc_scale_raw = EMPTY_CAPACITY;
 	}
 	/* 0xF0 94% -> 100% */
-	msoc_scale_raw = (((msoc_raw - 1) * (FULL_CAPACITY - 2))*100/(0xF0 - 2)) + 100;
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+        rescale_threshold = chip->batt_scale_criteria - (chip->rescale_offset);
+        msoc_scale_raw = (((msoc_raw - 1) * (FULL_CAPACITY - 2))*100/(rescale_threshold - 2)) + 100;
+#else
+	msoc_scale_raw = (((msoc_raw - 1) * (FULL_CAPACITY - 2))*100/(chip->batt_scale_criteria - 2)) + 100;
+#endif
 
+#ifdef CONFIG_LGE_PM_CCD
+        rescale_threshold = chip->batt_scale_criteria - (chip->rescale_offset);
+        msoc_scale_raw = (((msoc_raw - 1) * (FULL_CAPACITY - 2))*100/(rescale_threshold - 2)) + 100;
+#endif
 	batt_soc_temp = msoc_scale_raw;
 	msoc_scale = msoc_scale_raw / 100;
 	if (msoc_scale > 100)
@@ -2812,7 +3032,6 @@ static int get_prop_capacity(struct fg_chip *chip)
 	return msoc_under_5level;
 #endif
 #endif
-#endif
 
 	if (chip->battery_missing)
 		return MISSING_CAPACITY;
@@ -2834,111 +3053,123 @@ static int get_prop_capacity(struct fg_chip *chip)
 	return DIV_ROUND_CLOSEST((msoc - 1) * (FULL_CAPACITY - 2),
 			FULL_SOC_RAW - 2) + 1;
 }
-#else	/*CONFIG_LGE_PM_RELY_ON_QCT_MSOC*/
-#ifdef CONFIG_LGE_PM
-static int convert_msoc_to_uisoc(struct fg_chip *chip,int msoc)
-{
-	int ui_soc, ui_soc_in_converting;
-	bool logging = 0;
 
-	if (chip->msoc_raw != msoc) {
-		chip->msoc_raw = msoc;
-		logging = 1;
-	}
-
-	if (msoc == 0)
-		chip->msoc_origin = EMPTY_CAPACITY;
-	else if (msoc == FULL_SOC_RAW)
-		chip->msoc_origin = FULL_CAPACITY;
-	else
-		/*QCT SCALING*/
-		chip->msoc_origin = DIV_ROUND_CLOSEST(
-			(msoc - 1) * (FULL_CAPACITY - 2),FULL_SOC_RAW - 2) + 1;
-
-#ifdef CONFIG_LGE_PM_SOC_SCALING
-	/* 0xF0 94% -> 100% */
-	ui_soc = (((msoc - 1) * (FULL_CAPACITY - 2))*100/(0xF0 - 2)) + 100;
-#else
-	ui_soc  = chip->msoc_origin*100;
-#endif
-
-	ui_soc_in_converting = ui_soc;
-#ifdef CONFIG_LGE_PM_SOC_UNDER_5LEVEL
-	/*LGE DGMS Apply Cases*/
-	ui_soc = soc_rescale_under_5level(ui_soc);
-#endif
-	ui_soc /= 100;
-	if (ui_soc > 100)
-		ui_soc = 100;
-
-	if (logging)
-		pr_info("[FG_DELTA]:MSOC=0x%X,QCT_SOC=%d,SOC1=%d,SOC2=%d,"
-			"VBAT=%d,OCV=%d,IBAT=%d,temp=%d\n"
-			,chip->msoc_raw,chip->msoc_origin,ui_soc_in_converting, ui_soc,
-			get_sram_prop_now(chip, FG_DATA_VOLTAGE) / 1000,
-			get_sram_prop_now(chip, FG_DATA_OCV) / 1000,
-			get_sram_prop_now(chip, FG_DATA_CURRENT) / 1000,
-			get_sram_prop_now(chip, FG_DATA_BATT_TEMP) / 10);
-
-	return ui_soc;
-}
-#endif
-
-static int get_prop_capacity(struct fg_chip *chip)
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+static int get_prop_time_to_full_capacity(struct fg_chip *chip)
 {
 	int msoc;
-#ifdef CONFIG_LGE_PM
+	int msoc_raw;
+	int current_st;
 	static int pre_soc;
-	int ui_soc;
-
-	if (chip->wait_for_cc_soc_store || chip->check_ima_err_handling) {
-		pr_info("[FG_INFO]capacity return pre cc soc = %d\n",pre_soc);
-		return pre_soc;
-	}
+#ifdef CONFIG_LGE_PM_SOC_SCALING
+    int msoc_origin, msoc_scale_raw, msoc_scale, batt_soc_temp;
+#endif
+#ifdef CONFIG_LGE_PM_SOC_UNDER_5LEVEL
+    int msoc_under_5level_raw, msoc_under_5level;
 #endif
 
 #ifdef CONFIG_LGE_PM_CABLE_DETECTION
-	if((get_sram_prop_now(chip, FG_DATA_VOLTAGE) / 1000) > 4200 && lge_is_factory_cable()
-			&& !(lge_get_boot_mode() == LGE_BOOT_MODE_NORMAL))
-		return FULL_CAPACITY;
+	if((get_sram_prop_now(chip, FG_DATA_VOLTAGE) / 1000) > 4200 && lge_is_factory_cable())
+		return FULL_CAPACITY * 10;
 #endif
-
 	if (chip->battery_missing) {
-#ifdef CONFIG_LGE_PM
 		if (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO)
 			return pre_soc;
 		else
-#endif
-			return MISSING_CAPACITY;
+			return MISSING_CAPACITY * 10;
 	}
 	if (!chip->profile_loaded && !chip->use_otp_profile)
-		return DEFAULT_CAPACITY;
+		return DEFAULT_CAPACITY * 10;
 	if (chip->charge_full)
-		return FULL_CAPACITY;
+		return FULL_CAPACITY * 10;
 	if (chip->soc_empty) {
 		if (fg_debug_mask & FG_POWER_SUPPLY)
 			pr_info_ratelimited("capacity: %d, EMPTY\n",
 					EMPTY_CAPACITY);
-		return EMPTY_CAPACITY;
+		return EMPTY_CAPACITY * 10;
+	}
+	current_st = get_sram_prop_now(chip, FG_DATA_CURRENT);
+	msoc_raw = get_monotonic_soc_raw(chip);
+
+#ifdef CONFIG_LGE_PM_SOC_SCALING
+	/*QCT SCALING*/
+	if (msoc_raw == 0)
+		msoc_origin = EMPTY_CAPACITY;
+	else if (msoc_raw == FULL_SOC_RAW)
+		msoc_origin = FULL_CAPACITY;
+	else {
+		msoc_origin = DIV_ROUND_CLOSEST((msoc_raw - 1) * (FULL_CAPACITY - 2),
+				FULL_SOC_RAW - 2) + 1;
 	}
 
-	msoc = get_monotonic_soc_raw(chip);
-#ifdef CONFIG_LGE_PM
-	ui_soc = convert_msoc_to_uisoc(chip,msoc);
-
-	if(ui_soc!= pre_soc && chip->init_done) {
-		pre_soc = ui_soc;
-		power_supply_changed(&chip->bms_psy);
+	/*LGE SCALING */
+	if (msoc_raw == 0) {
+		msoc_scale_raw = EMPTY_CAPACITY;
 	}
-	return ui_soc;
+	/* 0xF0 94% -> 100% */
+	msoc_scale_raw = (((msoc_raw - 1) * (FULL_CAPACITY - 2))*100/(0xF0 - 2)) + 100;
+
+	batt_soc_temp = msoc_scale_raw;
+	msoc_scale = msoc_scale_raw / 10;
+	if (msoc_scale > 1000)
+		msoc_scale = 1000;
+
+#ifndef CONFIG_LGE_PM_SOC_UNDER_5LEVEL
+	check_update_soc_lge(chip, msoc_raw, msoc_origin, msoc_scale_raw, msoc_scale);
+	if(pre_soc < msoc_scale && current_st > 0 && !is_usb_present(chip) &&
+			chip->init_done == true && pre_soc != 0) {
+		pr_err("[FG_INFO] soc  update (pre soc = %d\n, msoc = %d\n",pre_soc, msoc_scale);
+		pr_err("[FG_INFO]reverse soc when discharging!");
+		return pre_soc;
+	}
+	if(chip->init_done == true) {
+		pre_soc = msoc_scale;
+		pr_debug("[FG_INFO] pre soc update (pre soc = %d\n, msoc = %d\n",pre_soc, msoc_scale);
+	}
+	return msoc_scale;
 #endif
+#ifdef CONFIG_LGE_PM_SOC_UNDER_5LEVEL
+	/*LGE DGMS Apply Cases*/
+	msoc_under_5level_raw = soc_rescale_under_5level(batt_soc_temp);
 
+	msoc_under_5level = msoc_under_5level_raw / 10;
+	if (msoc_under_5level > 1000)
+		msoc_under_5level = 1000;
+
+	check_update_soc_lge_5level(chip, msoc_raw, msoc_origin, msoc_scale_raw,
+			msoc_scale, msoc_under_5level_raw, msoc_under_5level);
+	if(pre_soc < msoc_under_5level && current_st > 0 && !is_usb_present(chip) &&
+			chip->init_done == true && pre_soc != 0) {
+		pr_err("[FG_INFO] soc  update (pre soc = %d\n, msoc = %d\n",pre_soc, msoc_under_5level);
+		pr_err("[FG_INFO] reverse soc when discharging!");
+		return pre_soc;
+	}
+	if(chip->init_done == true) {
+		pre_soc = msoc_under_5level;
+		pr_debug("[FG_INFO] pre soc update (pre soc = %d\n, msoc = %d\n",pre_soc, msoc_under_5level);
+	}
+	return msoc_under_5level;
+#endif
+#endif
+	if (chip->battery_missing)
+		return MISSING_CAPACITY * 10;
+	if (!chip->profile_loaded && !chip->use_otp_profile)
+		return DEFAULT_CAPACITY * 10;
+	if (chip->charge_full)
+		return FULL_CAPACITY * 10;
+	if (chip->soc_empty) {
+		if (fg_debug_mask & FG_POWER_SUPPLY)
+			pr_info_ratelimited("capacity: %d, EMPTY\n",
+					EMPTY_CAPACITY);
+		return EMPTY_CAPACITY * 10;
+	}
+	msoc = get_monotonic_soc_raw(chip);
 	if (msoc == 0)
-		return EMPTY_CAPACITY;
+		return EMPTY_CAPACITY * 10;
 	else if (msoc == FULL_SOC_RAW)
-		return FULL_CAPACITY;
-	return DIV_ROUND_CLOSEST((msoc - 1) * (FULL_CAPACITY - 2),
-			FULL_SOC_RAW - 2) + 1;
+		return FULL_CAPACITY * 10;
+	return (DIV_ROUND_CLOSEST((msoc - 1) * (FULL_CAPACITY - 2),
+			FULL_SOC_RAW - 2) + 1) * 10;
 }
 #endif
 int fg_get_remain_capacity(struct fg_chip *chip)
@@ -2967,8 +3198,7 @@ int fg_age_detection(struct fg_chip *chip)
 
 	age = (full_cap*100) / design_cap;
 	pr_debug("age = %d\n ",age);
-
-#ifdef CONFIG_LGE_PM_AGE_DCM
+#if defined(CONFIG_LGE_PM_AGE_CONDITION) || defined(CONFIG_LGE_PM_AGE_DCM)
 	if(age == 999){
 		pr_info("battery age error or uncalculated batterty age\n");
 		return 0;
@@ -3384,6 +3614,16 @@ static int update_sram_data(struct fg_chip *chip, int *resched_ms)
 		get_sram_prop_now(chip, FG_DATA_CC_CHARGE),
 		chip->learning_data.learned_cc_uah
 		);
+
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_WEIGHT
+if (battid_valid) {
+	fg_cycle_weight_update(chip, fg_data[FG_DATA_VOLTAGE].value/1000,
+				fg_data[FG_DATA_BATT_TEMP].value);
+	}
+#endif
+#endif
+
 #endif
 
  resched:
@@ -3476,6 +3716,8 @@ static ssize_t fg_batt_temp_show(struct device *dev,
 DEVICE_ATTR(batt_temp, 0444, fg_batt_temp_show, NULL);
 #endif
 #ifdef CONFIG_LGE_PM
+#define OFFSET_FOR_THRESHOLD_MV 100
+#define CHECK_VOLTAGE_COUNT 12
 #define VINT_ERR_FOR_FG_RESET 12
 #define CHECK_VINT_ERR_COUNT 12
 #endif
@@ -3490,6 +3732,8 @@ static void check_sanity_work(struct work_struct *work)
 	bool tried_once = false;
 #ifdef CONFIG_LGE_PM
 	static int vint_err_count = 0;
+	static int vbat_count = 0;
+	int batt_vol;
 
 	if(is_battery_missing(chip)) {
 		pr_err("[FG_INFO] battery missing, skip sanity work\n");
@@ -3508,6 +3752,7 @@ try_again:
 	}
 
 	if (fg_debug_mask & FG_STATUS)
+
 		pr_debug("current: %d, prev: %d\n", beat_count,
 			chip->last_beat_count);
 
@@ -3527,6 +3772,26 @@ try_again:
 	}
 
 #ifdef CONFIG_LGE_PM
+	batt_vol = get_sram_prop_now(chip, FG_DATA_VOLTAGE) / 1000;
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	if (batt_vol > chip->cycle_based_vfloat + OFFSET_FOR_THRESHOLD_MV) {
+#else
+	if (batt_vol > (chip->batt_max_voltage_uv / 1000) + OFFSET_FOR_THRESHOLD_MV) {
+#endif
+		vbat_count++;
+
+		pr_info("vbatt %d, count %d\n", batt_vol, vbat_count);
+
+		if (vbat_count >= CHECK_VOLTAGE_COUNT) {
+			vbat_count = 0;
+			pr_err("abnormal vbatt\n");
+			fg_check_ima_error_handling(chip);
+			goto out;
+		}
+	} else {
+		vbat_count = 0;
+	}
+
 	if ((chip->vint_err_pct/100 > VINT_ERR_FOR_FG_RESET) ||
 		 (chip->vint_err_pct/100 < VINT_ERR_FOR_FG_RESET * (-1))){
 		vint_err_count++;
@@ -3616,6 +3881,9 @@ static void update_temp_data(struct work_struct *work)
 
 #ifdef CONFIG_LGE_PM
 	static int prev_temp;
+#ifdef CONFIG_LGE_PM_BATTERY_TEMP_VTS
+	int fg_raw_temp;
+#endif
 #endif
 #if defined(CONFIG_MACH_MSM8937_L5_DCM_JP) || defined(CONFIG_MACH_MSM8937_JSG_KDDI_JP)
 	static int cnt_invalid_batt_temp = 0;
@@ -3703,19 +3971,29 @@ static void update_temp_data(struct work_struct *work)
 #ifdef CONFIG_LGE_PM
         chip->temp_org = fg_data[0].value;
 
-        if (fg_debug_mask & FG_MEM_DEBUG_READS)
-                pr_info("[BATT_TEMP] before ,%d,%d\n", temp, fg_data[0].value);
+		if (fg_debug_mask & FG_MEM_DEBUG_READS)
+			pr_info("[BATT_TEMP] before ,%d,%d\n", temp, fg_data[0].value);
 
-        fg_data[0].value = calc_tuned_temp(fg_data[0].value);
+#ifdef CONFIG_LGE_PM_BATTERY_TEMP_VTS
+		fg_raw_temp = fg_data[0].value; /* not used for only debugging */
+		fg_data[0].value = calc_batt_vts(chip, fg_data[0].value);
+		fg_raw_temp = calc_tuned_temp(chip, fg_raw_temp); /* not used for only debugging */
+#else
+		fg_data[0].value = calc_tuned_temp(chip, fg_data[0].value);
+#endif
 
-        if (prev_temp / 10 != fg_data[0].value / 10) {
-                pr_info("batt temp was changed !! %d => %d\n",
-                        prev_temp, fg_data[0].value);
-                prev_temp = fg_data[0].value;
+		if (prev_temp / 10 != fg_data[0].value / 10) {
+			if (chip->check_ima_err_handling && fg_data[0].value != 0){
+				fg_data[0].value = prev_temp;
+				pr_info("pre temp wrie (IMA exption!!)\n");
+			}
+			pr_info("batt temp was changed !! %d => %d\n",
+					prev_temp, fg_data[0].value);
+			prev_temp = fg_data[0].value;
 
-                if (chip->power_supply_registered && fg_data[0].value >= 550)
-                        power_supply_changed(&chip->bms_psy);
-        }
+			if (chip->power_supply_registered && fg_data[0].value >= 550)
+				power_supply_changed(&chip->bms_psy);
+		}
 #endif
 
 	if (fg_debug_mask & FG_MEM_DEBUG_READS)
@@ -3769,9 +4047,9 @@ static int fg_set_resume_soc(struct fg_chip *chip, u8 threshold)
 
 	address = settings[FG_MEM_RESUME_SOC].address;
 	offset = settings[FG_MEM_RESUME_SOC].offset;
-#ifdef CONFIG_MACH_MSM8940_TF8_TMO_US
-	pr_err("set recharging soc 0x%x \n",threshold);
-#endif
+
+	pr_err("[FG_INFO]set recharging soc = %d \n",threshold);
+
 	rc = fg_mem_masked_write(chip, address, 0xFF, threshold, offset);
 
 	if (rc)
@@ -3797,8 +4075,15 @@ static void restore_cycle_counter(struct fg_chip *chip)
 		if (rc)
 			pr_err("Failed to read BATT_CYCLE_NUMBER[%d] rc: %d\n",
 			       i, rc);
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+		else{
+			chip->cyc_ctr.count[i] = data[0] | data[1] << 8;
+			chip->batt_life_prev_cycle[i] = chip->cyc_ctr.count[i];
+			}
+#else
 		else
 			chip->cyc_ctr.count[i] = data[0] | data[1] << 8;
+#endif
 	}
 	fg_mem_release(chip);
 }
@@ -3822,7 +4107,348 @@ static void clear_cycle_counter(struct fg_chip *chip)
 	if (rc)
 		pr_err("failed to write BATT_CYCLE_NUMBER rc=%d\n", rc);
 }
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_WEIGHT
+#define CYCLE_WEIGHT_ENABLE	1 //0:Disable cycle weight addition 1: Enable cycle weight addition
+#define MAX_BUCKET_CYCLE_COUNT		65000// 2byte per cycle bucket, max bucket cycle 65536. Weight limit till 65000.
+#define CYCLE_WEIGHT_UPDATE_MAX_DELTA 24
+static int fg_cycle_weight_addition(struct fg_chip *chip, int bucket)
+{
+	int cycle_weight_enable;
+	int cycle_weight;
+	int rc = 0, address;
+	u16 cyc_count;
+	u8 data[2];
 
+	cycle_weight_enable = CYCLE_WEIGHT_ENABLE;
+
+	pr_info("[CWU] cycle weight update bucket = %d \n", bucket);
+	//Cycle weight addition could be disabled.
+	if (cycle_weight_enable == 0)
+		return 0;
+
+	//Bucket number check.
+	if (bucket < 0 || (bucket > BUCKET_COUNT - 1))
+		return 0;
+
+	cyc_count = chip->cyc_ctr.count[bucket];
+	//No Cycle weight addition if the bucket has already max cycle.
+	if(cyc_count > MAX_BUCKET_CYCLE_COUNT)
+		return 0;
+
+	mutex_lock(&chip->cyc_ctr.lock);
+	if ( chip->cycle_weight_integer[bucket] >= 1){
+		cycle_weight = chip->cycle_weight_integer[bucket]*8; //Integer cycle bucket weight return. 1 cycle add = 8 bucket update.
+		chip->cycle_weight_integer[bucket] = 0;
+		pr_info("[CWU] cycle_weight = %d \n", cycle_weight);
+		pr_info("[CWU] bucket[%d] cyc_count(%d)", bucket, cyc_count);
+		cyc_count = cyc_count + cycle_weight;
+		pr_info(" + cycle_weight(%d) = final cyc_count(%d)\n", cycle_weight, cyc_count);
+		if ((cyc_count - chip->batt_life_prev_cycle[bucket]) > CYCLE_WEIGHT_UPDATE_MAX_DELTA){
+			pr_err("Sanity Error skip weight addition Bucket[%d]-over max\n", bucket);
+			goto out;
+		}else if ((cyc_count - chip->batt_life_prev_cycle[bucket]) < 0){
+			pr_err("Update cycle Sanity Error Bucket[%d]-under min\n", bucket);
+			goto out;
+		}
+
+		data[0] = cyc_count & 0xFF;
+		data[1] = cyc_count >> 8;
+
+		address = BATT_CYCLE_NUMBER_REG + bucket * 2;
+
+		rc = fg_mem_write(chip, data, address, 2, BATT_CYCLE_OFFSET, 0);
+		if (rc)
+			pr_err("failed to write BATT_CYCLE_NUMBER[%d] rc=%d\n",
+					bucket, rc);
+		else
+			chip->cyc_ctr.count[bucket] = cyc_count;
+		}
+	else
+		cycle_weight = 0; //Minimum Cycle Weight.
+out:
+	chip->batt_life_prev_cycle[bucket] = chip->cyc_ctr.count[bucket];
+	mutex_unlock(&chip->cyc_ctr.lock);
+
+	return rc;
+}
+
+#define CYCLE_WEIGHT_1ST_HIGHEST_TEMP_CONSTANT 2222 //(C44)
+#define CYCLE_WEIGHT_1ST_HIGH_TEMP_CONSTANT 1604 //(F44)
+#define CYCLE_WEIGHT_1ST_ROOM_TEMP_CONSTANT 418 //(I44)
+
+#define CYCLE_WEIGHT_2ND_HIGHEST_TEMP_CONSTANT 516 //(C45)
+
+#define CYCLE_WEIGHT_3RD_HIGHEST_TEMP_CONSTANT 205 //(C46)
+
+#define CYCLE_WEIGHT_ROOM_TEMP_CONSTANT 51//(I46)Default TEMP Constant
+
+#define SLOPE_1ST_HIGH_TEMP 2931  //(D45)
+#define SLOPE_2ND_HIGH_TEMP 3721   //(G45)
+#define SLOPE_3RD_HIGH_TEMP 19217  //(J45)
+
+#define SLOPE_1ST_ROOM_TEMP 48175  //(D46)
+#define SLOPE_2ND_ROOM_TEMP 97688   //(G46)
+#define SLOPE_3RD_ROOM_TEMP 140670   //(J46)
+
+#define OFFSET_1ST_HIGH_TEMP 38488   //(E45) 38.488 degree
+#define OFFSET_2ND_HIGH_TEMP 39032    //(H45) 39.032 degree
+#define OFFSET_3RD_HIGH_TEMP 36967   //(K45) 36.967 degree
+
+#define OFFSET_1ST_ROOM_TEMP 15137   //(E46) 15.137 degree
+#define OFFSET_2ND_ROOM_TEMP 14583   //(H46) 14.583 degree
+#define OFFSET_3RD_ROOM_TEMP 17800    //(K46) 17.8 degree
+
+#define HIGHEST_BATT_VOLT 4400 //(C43)
+#define HIGH_BATT_VOLT	4350 //(F43)
+#define MID_HIGH_BATT_VOLT 4000 //(I43)
+
+#define HIGHEST_TEMP_DEGREE 450   //(B44)
+#define HIGH_TEMP_DEGREE 400     //(B45)
+#define ROOM_TEMP_DEGREE 250    //(B46)
+
+
+#define BUCKET_7_HIGH_BATT_VOLT 4330  //100% OCV Voltage (C38,
+#define BUCKET_7_LOW_BATT_VOLT 4190  //87.5% OCV Voltage (C38,
+
+#define BUCKET_6_HIGH_BATT_VOLT 4189  //87.4% OCV Voltage
+#define BUCKET_6_LOW_BATT_VOLT 4060  //75% OCV Voltage
+
+#define BUCKET_5_HIGH_BATT_VOLT 4059  //74.9% OCV Voltage
+#define BUCKET_5_LOW_BATT_VOLT 3950  //62.5% OCV Voltage
+
+#define BUCKET_4_HIGH_BATT_VOLT 3949  //62.4% OCV Voltage
+#define BUCKET_4_LOW_BATT_VOLT 3850  //50% OCV Voltage
+#define BUCKET_3_HIGH_BATT_VOLT 3849  //49.9% OCV Voltage
+#define BUCKET_3_LOW_BATT_VOLT 3820  //37.5% OCV Voltage
+
+#define BUCKET_2_HIGH_BATT_VOLT 3819  //37.4% OCV Voltage
+#define BUCKET_2_LOW_BATT_VOLT 3790  //25% OCV Voltage
+
+#define BUCKET_1_HIGH_BATT_VOLT 3789  //24.9% OCV Voltage
+#define BUCKET_1_LOW_BATT_VOLT 3710  //12.5% OCV Voltage
+#define MAX_CYCLE_WEIGHT_RESULT	2000 //Max cycle weight 2.0 cycle * 1000
+static int fg_cycle_weight_calculation(struct fg_chip *chip)
+{
+	u32 cycle_weight = 0;
+	u32 cycle_factor = 0;
+	u32 calc_swap_variable;
+	int cycle_weight_integer;
+	int cycle_weight_fraction;
+	int avg_batt_voltage;
+	int avg_batt_temp;
+	int bucket;
+	int update_time_delta;
+	u32 rate_time;
+
+	avg_batt_voltage = chip->cycle_weight_avg_batt_voltage;
+	avg_batt_temp = chip->cycle_weight_avg_batt_temp;
+
+	update_time_delta = chip->cycle_weight_update_time_delta/1000; //
+	rate_time = (update_time_delta/24)*(update_time_delta/24);
+	rate_time = rate_time/1000;
+	rate_time = rate_time*update_time_delta/1000;
+
+	pr_info("[CWU]: avg volt %dmV, avg temp %d\n", avg_batt_voltage,  avg_batt_temp);
+	pr_info("[CWU]: weight delta time = %d mS\n", chip->cycle_weight_update_time_delta);
+	pr_info("[CWU]: calculated rate time = %d mS\n", rate_time);
+
+	//Find bucket number by avg battery voltage
+	if (avg_batt_voltage > BUCKET_7_LOW_BATT_VOLT)
+		bucket = 7;
+	else if (avg_batt_voltage > BUCKET_6_LOW_BATT_VOLT)
+		bucket = 6;
+	else if (avg_batt_voltage > BUCKET_5_LOW_BATT_VOLT)
+		bucket = 5;
+	else if (avg_batt_voltage > BUCKET_4_LOW_BATT_VOLT)
+		bucket = 4;
+	else if (avg_batt_voltage > BUCKET_3_LOW_BATT_VOLT)
+		bucket = 3;
+	else if (avg_batt_voltage > BUCKET_2_LOW_BATT_VOLT)
+		bucket = 2;
+	else if (avg_batt_voltage > BUCKET_1_LOW_BATT_VOLT)
+		bucket = 1;
+	else
+		bucket = 0;
+
+	if ((avg_batt_temp > HIGHEST_TEMP_DEGREE) &&
+								(avg_batt_voltage > HIGHEST_BATT_VOLT)){
+		cycle_factor = CYCLE_WEIGHT_1ST_HIGHEST_TEMP_CONSTANT;
+	} else if ((avg_batt_temp > HIGHEST_TEMP_DEGREE) &&
+								(avg_batt_voltage > HIGH_BATT_VOLT)){
+		cycle_factor = (CYCLE_WEIGHT_1ST_HIGHEST_TEMP_CONSTANT-
+							CYCLE_WEIGHT_1ST_HIGH_TEMP_CONSTANT)*1000;
+		calc_swap_variable = (HIGHEST_BATT_VOLT-HIGH_BATT_VOLT);
+		cycle_factor = cycle_factor/calc_swap_variable;
+		cycle_factor = cycle_factor*(avg_batt_voltage - HIGH_BATT_VOLT)/1000 +
+										CYCLE_WEIGHT_1ST_HIGH_TEMP_CONSTANT;
+	} else if ((avg_batt_temp > HIGHEST_TEMP_DEGREE) &&
+							(avg_batt_voltage > (MID_HIGH_BATT_VOLT-100))){
+		cycle_factor = (CYCLE_WEIGHT_1ST_HIGH_TEMP_CONSTANT-
+							CYCLE_WEIGHT_1ST_ROOM_TEMP_CONSTANT)*1000;
+		calc_swap_variable = (HIGH_BATT_VOLT-MID_HIGH_BATT_VOLT);
+		cycle_factor = cycle_factor/calc_swap_variable;
+		cycle_factor = cycle_factor*(avg_batt_voltage-MID_HIGH_BATT_VOLT)/1000+
+							CYCLE_WEIGHT_1ST_ROOM_TEMP_CONSTANT;
+	} else if ((avg_batt_temp > HIGH_TEMP_DEGREE) &&
+									(avg_batt_voltage > HIGHEST_BATT_VOLT)){
+		cycle_factor = (CYCLE_WEIGHT_1ST_HIGHEST_TEMP_CONSTANT-
+						CYCLE_WEIGHT_2ND_HIGHEST_TEMP_CONSTANT)*1000;
+		calc_swap_variable = (HIGHEST_TEMP_DEGREE-HIGH_TEMP_DEGREE);
+		cycle_factor = cycle_factor/calc_swap_variable;
+		cycle_factor = cycle_factor*(avg_batt_temp-HIGH_TEMP_DEGREE)/1000+
+						CYCLE_WEIGHT_2ND_HIGHEST_TEMP_CONSTANT;
+	} else if ((avg_batt_temp > HIGH_TEMP_DEGREE) &&
+									(avg_batt_voltage > HIGH_BATT_VOLT)){
+		cycle_factor = (avg_batt_temp*100-OFFSET_1ST_HIGH_TEMP)*1000;
+		cycle_factor = cycle_factor/SLOPE_1ST_HIGH_TEMP;
+		calc_swap_variable = (avg_batt_temp*100-OFFSET_2ND_HIGH_TEMP)*1000;
+		calc_swap_variable = calc_swap_variable/SLOPE_2ND_HIGH_TEMP;
+		cycle_factor = (cycle_factor	-calc_swap_variable)*1000;
+		calc_swap_variable = (HIGHEST_BATT_VOLT-HIGH_BATT_VOLT);
+		cycle_factor = cycle_factor/calc_swap_variable;
+		calc_swap_variable = (avg_batt_temp*100-OFFSET_2ND_HIGH_TEMP )*1000;
+		calc_swap_variable = calc_swap_variable/SLOPE_2ND_HIGH_TEMP;
+		cycle_factor = cycle_factor*(avg_batt_voltage-HIGH_BATT_VOLT)/1000+calc_swap_variable;
+	} else if ((avg_batt_temp > HIGH_TEMP_DEGREE) &&
+						(avg_batt_voltage > (MID_HIGH_BATT_VOLT-100))){
+		cycle_factor = (avg_batt_temp*100-OFFSET_2ND_HIGH_TEMP)*1000;
+		cycle_factor = cycle_factor/SLOPE_2ND_HIGH_TEMP;
+		calc_swap_variable = (avg_batt_temp*100-OFFSET_3RD_HIGH_TEMP)*1000;
+		calc_swap_variable = calc_swap_variable/SLOPE_3RD_HIGH_TEMP;
+		cycle_factor = (cycle_factor	-calc_swap_variable)*1000;
+		calc_swap_variable = (HIGH_BATT_VOLT-MID_HIGH_BATT_VOLT);
+		cycle_factor = cycle_factor/calc_swap_variable;
+		calc_swap_variable = (avg_batt_temp*100-OFFSET_3RD_HIGH_TEMP )*1000;
+		calc_swap_variable = calc_swap_variable/SLOPE_3RD_HIGH_TEMP;
+		cycle_factor = cycle_factor *(avg_batt_voltage-MID_HIGH_BATT_VOLT)/1000+calc_swap_variable;
+	} else	if ((avg_batt_temp > (ROOM_TEMP_DEGREE-1)) &&
+							(avg_batt_voltage > HIGHEST_BATT_VOLT)){
+		cycle_factor = (CYCLE_WEIGHT_2ND_HIGHEST_TEMP_CONSTANT-CYCLE_WEIGHT_3RD_HIGHEST_TEMP_CONSTANT)*1000;
+		calc_swap_variable = (HIGH_TEMP_DEGREE-ROOM_TEMP_DEGREE);
+		cycle_factor = cycle_factor/calc_swap_variable;
+		cycle_factor = cycle_factor*(avg_batt_temp-ROOM_TEMP_DEGREE)/1000+
+							CYCLE_WEIGHT_3RD_HIGHEST_TEMP_CONSTANT;
+	} else if ((avg_batt_temp > (ROOM_TEMP_DEGREE-1)) &&
+										(avg_batt_voltage > HIGH_BATT_VOLT)){
+		cycle_factor = (avg_batt_temp*100-OFFSET_1ST_ROOM_TEMP)*1000;
+		cycle_factor = cycle_factor/SLOPE_1ST_ROOM_TEMP;
+		calc_swap_variable = (avg_batt_temp*100-OFFSET_2ND_ROOM_TEMP)*1000;
+		calc_swap_variable = calc_swap_variable/SLOPE_2ND_ROOM_TEMP;
+		cycle_factor = (cycle_factor	-calc_swap_variable)*1000;
+		calc_swap_variable = (HIGHEST_BATT_VOLT-HIGH_BATT_VOLT);
+		cycle_factor = cycle_factor/calc_swap_variable;
+		calc_swap_variable = (avg_batt_temp*100-OFFSET_2ND_ROOM_TEMP )*1000;
+		calc_swap_variable = calc_swap_variable/SLOPE_2ND_ROOM_TEMP;
+		cycle_factor = cycle_factor*(avg_batt_voltage-HIGH_BATT_VOLT)/1000 +calc_swap_variable;
+	} else if ((avg_batt_temp > (ROOM_TEMP_DEGREE-1)) &&
+							(avg_batt_voltage > (MID_HIGH_BATT_VOLT-100))){
+		cycle_factor = (avg_batt_temp*100-OFFSET_2ND_ROOM_TEMP)*1000;
+		cycle_factor = cycle_factor/SLOPE_2ND_ROOM_TEMP;
+		calc_swap_variable = (avg_batt_temp*100-OFFSET_3RD_ROOM_TEMP)*1000;
+		calc_swap_variable = calc_swap_variable/SLOPE_3RD_ROOM_TEMP;
+		cycle_factor = (cycle_factor	-calc_swap_variable)*1000;
+		calc_swap_variable = (HIGH_BATT_VOLT-MID_HIGH_BATT_VOLT);
+		cycle_factor = cycle_factor/calc_swap_variable;
+		calc_swap_variable = (avg_batt_temp*100-OFFSET_3RD_ROOM_TEMP )*1000;
+		calc_swap_variable = calc_swap_variable/SLOPE_3RD_ROOM_TEMP;
+		cycle_factor = cycle_factor*(avg_batt_voltage-MID_HIGH_BATT_VOLT)/1000 +calc_swap_variable;
+	} else {
+		cycle_factor = CYCLE_WEIGHT_ROOM_TEMP_CONSTANT;
+	}
+	pr_info("[CWU]avg_batt_voltage = %d avg_temp = %d cycle_factor = %d \n",
+		avg_batt_voltage, avg_batt_temp, cycle_factor);
+
+	cycle_weight = cycle_factor * rate_time; //bucket_charging_time_delta is 'mS' unit.
+	cycle_weight = cycle_weight/46656; // 3600^3 (rate time) /1000000
+
+	if(cycle_weight >= MAX_CYCLE_WEIGHT_RESULT)
+		cycle_weight = MAX_CYCLE_WEIGHT_RESULT;
+
+	cycle_weight_integer = cycle_weight/1000; //Factor 10^3 * ms to Sec 10^3, total 10^6
+	cycle_weight_fraction = cycle_weight - (cycle_weight_integer*1000);
+	pr_info("[CWU] cycle_weight_integer= %d, cycle_weight_fraction = %d \n",
+		cycle_weight_integer, cycle_weight_fraction);
+
+	chip->cycle_weight_integer[bucket] = cycle_weight_integer;
+	chip->cycle_weight_fraction[bucket] = chip->cycle_weight_fraction[bucket] + cycle_weight_fraction;
+
+	if (chip->cycle_weight_fraction[bucket] > 1000){
+		cycle_weight_integer = chip->cycle_weight_fraction[bucket]/1000;
+		cycle_weight_fraction = chip->cycle_weight_fraction[bucket] - (cycle_weight_integer*1000);
+		chip->cycle_weight_integer[bucket] += cycle_weight_integer;
+		chip->cycle_weight_fraction[bucket] = cycle_weight_fraction;
+		pr_info("[CWU] update integer[%d] = %d,  updatefraction[%d] = %d \n",
+			bucket, chip->cycle_weight_integer[bucket], bucket, chip->cycle_weight_fraction[bucket]);
+		fg_cycle_weight_addition(chip, bucket);
+	}
+
+	return cycle_weight;
+}
+
+//#define CYCLE_WEIGHT_WINDOW_SIZE	5
+#define CYCLE_WEIGHT_WINDOW_SIZE	960
+#define MIN_CALCULATED_TIME		20000000
+//#define MIN_CALCULATED_TIME		100000
+
+static void fg_cycle_weight_update(struct fg_chip *chip, int batt_voltage, int batt_temp)
+{
+	int calculated_weight;
+	ktime_t now_kt, delta_kt;
+
+	chip->cycle_weight_update_count++;
+
+	if (chip->cycle_weight_update_count == 1){
+		pr_info("[CWU]Cycle weight update Time Start count = 1\n");
+		chip->cycle_weight_batt_voltage_sum = batt_voltage;
+		chip->cycle_weight_batt_temp_sum = batt_temp;
+		chip->cycle_weight_update_time = ktime_get_boottime();
+		pr_info("[CWU]Cycle weight Update Time = %d mS\n",
+			(int)div64_s64(ktime_to_ns(chip->cycle_weight_update_time), 1000000));
+		goto out;
+	}else if(chip->cycle_weight_update_count <1){
+			pr_err("[CWU]cycle_weight_update_count error(%d)\n",chip->cycle_weight_update_count);
+			goto out;
+	}
+
+	chip->cycle_weight_batt_voltage_sum = chip->cycle_weight_batt_voltage_sum +
+							batt_voltage;
+	chip->cycle_weight_batt_temp_sum = chip->cycle_weight_batt_temp_sum +
+							batt_temp;
+
+	chip->cycle_weight_avg_batt_voltage =
+		chip->cycle_weight_batt_voltage_sum/chip->cycle_weight_update_count;
+
+	chip->cycle_weight_avg_batt_temp =
+		chip->cycle_weight_batt_temp_sum/chip->cycle_weight_update_count;
+
+	if (chip->cycle_weight_update_count >= CYCLE_WEIGHT_WINDOW_SIZE){
+		now_kt= ktime_get_boottime();
+		delta_kt = ktime_sub(now_kt, chip->cycle_weight_update_time);
+		chip->cycle_weight_update_time_delta =
+					(int)div64_s64(ktime_to_ns(delta_kt), 1000000);
+		pr_info("[CWU]Update time delta %d mS\n", chip->cycle_weight_update_time_delta);
+		if (chip->cycle_weight_update_time_delta < MIN_CALCULATED_TIME){
+			pr_err("[CWU] Under Min calc time = %d, add count\n", chip->cycle_weight_update_time_delta );
+			goto out;
+			}
+		else{
+			calculated_weight = fg_cycle_weight_calculation(chip);
+			pr_info("[CWU]calculated_weight = %d \n", calculated_weight);
+			chip->cycle_weight_update_count = 0;
+			}
+		}
+
+ out:
+	pr_info("[CWU]: now volt %dmV, now temp %d, avg volt %dmV, avg temp %d\n",
+		batt_voltage, batt_temp, chip->cycle_weight_avg_batt_voltage,  chip->cycle_weight_avg_batt_temp);
+}
+
+#endif
+#endif
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+#define CYCLE_UPDATE_MAX_DELTA  2
+#endif
 static int fg_inc_store_cycle_ctr(struct fg_chip *chip, int bucket)
 {
 	int rc = 0, address;
@@ -3834,6 +4460,16 @@ static int fg_inc_store_cycle_ctr(struct fg_chip *chip, int bucket)
 
 	cyc_count = chip->cyc_ctr.count[bucket];
 	cyc_count++;
+
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	if ((cyc_count - chip->batt_life_prev_cycle[bucket]) > CYCLE_UPDATE_MAX_DELTA){
+		pr_err("Update cycle Sanity Error Bucket[%d]-over max\n", bucket);
+		goto out;
+	}else if ((cyc_count - chip->batt_life_prev_cycle[bucket]) < 0){
+		pr_err("Update cycle Sanity Error Bucket[%d]-under min\n", bucket);
+		goto out;
+	}
+#endif
 	data[0] = cyc_count & 0xFF;
 	data[1] = cyc_count >> 8;
 
@@ -3845,6 +4481,10 @@ static int fg_inc_store_cycle_ctr(struct fg_chip *chip, int bucket)
 		       bucket, rc);
 	else
 		chip->cyc_ctr.count[bucket] = cyc_count;
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+out:
+		chip->batt_life_prev_cycle[bucket] = chip->cyc_ctr.count[bucket];
+#endif
 	return rc;
 }
 
@@ -3910,6 +4550,26 @@ static void update_cycle_count(struct work_struct *work)
 	mutex_unlock(&chip->cyc_ctr.lock);
 }
 
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+static int fg_get_battery_cycle(struct fg_chip *chip)
+{
+	int i;
+	int cycle_bucket_sum = 0;
+
+	if (!chip->cyc_ctr.en)
+		return 0;
+
+	for (i = 0; i < BUCKET_COUNT; i++)
+		cycle_bucket_sum = cycle_bucket_sum + chip->cyc_ctr.count[i];
+
+	chip->battery_cycle = cycle_bucket_sum/8;
+
+	pr_info("Get battery cycle = %d\n", chip->battery_cycle);
+
+	return chip->battery_cycle;
+}
+#endif
+
 static int fg_get_cycle_count(struct fg_chip *chip)
 {
 	int count;
@@ -3922,9 +4582,117 @@ static int fg_get_cycle_count(struct fg_chip *chip)
 
 	mutex_lock(&chip->cyc_ctr.lock);
 	count = chip->cyc_ctr.count[chip->cyc_ctr.id - 1];
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	fg_get_battery_cycle(chip);
+#endif
 	mutex_unlock(&chip->cyc_ctr.lock);
 	return count;
 }
+
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+static int fg_set_battery_cycle(struct fg_chip *chip, int cycle_write)
+{
+	int rc = 0, i, address;
+	u8 data[2];
+
+	mutex_lock(&chip->cyc_ctr.lock);
+	//Write Battery Cycle data to FG SRAM.
+	for (i = 0; i < BUCKET_COUNT; i++) {
+		chip->cyc_ctr.count[i] = cycle_write;
+		chip->batt_life_prev_cycle[i] = chip->cyc_ctr.count[i];
+		data[0] = cycle_write & 0xFF;
+		data[1] = cycle_write >> 8;
+
+		address = BATT_CYCLE_NUMBER_REG + i * 2;
+
+		rc = fg_mem_write(chip, data, address, 2, BATT_CYCLE_OFFSET, 0);
+		if (rc)
+			pr_err("failed to write BATT_CYCLE_NUMBER[%d] rc=%d\n",
+			       i, rc);
+
+		pr_info(" Write cycle count, [%d] = %d\n",i, cycle_write);
+	}
+
+	mutex_unlock(&chip->cyc_ctr.lock);
+	return rc;
+}
+#define DECCUR_FLOAT_VOLTAGE	4000
+static void fg_set_cycle_based_offset(struct fg_chip *chip, int battery_cycle)
+{
+	int i, rc = 0;
+	int full_chg_offset = 0;
+	int vfloat_set = DEFAULT_VFLOAT_VOTLAGE;
+	union power_supply_propval val = {0, };
+
+	for( i =0; i < MAX_CYCLE_STEP; i++ ) {
+		if(battery_cycle > chip->batt_life_cycle_set[i]) {
+			full_chg_offset = chip->batt_life_cycle_offset[i];
+			vfloat_set = chip->batt_life_cycle_vfloat[i];
+		}
+	}
+
+	if (!is_charger_available(chip)) {
+		pr_err("Charger not available yet!\n");
+		return;
+	}
+
+	rc = chip->batt_psy->get_property(chip->batt_psy,
+		POWER_SUPPLY_PROP_VOLTAGE_MAX, &val);
+	if (val.intval == DECCUR_FLOAT_VOLTAGE) {
+		pr_err("Skip setting vfloat at DECCUR state of OTP\n");
+                return;
+	}
+
+	if (vfloat_set != chip->cycle_based_vfloat) {
+		val.intval = vfloat_set;
+		rc = chip->batt_psy->set_property(chip->batt_psy,
+				POWER_SUPPLY_PROP_VOLTAGE_MAX, &val);
+		if(rc) {
+			pr_err("couldn't config cycle based vfloat %d\n", rc);
+		} else {
+			chip->rescale_offset = full_chg_offset;
+			chip->cycle_based_vfloat = vfloat_set;
+			update_cc_cv_setpoint(chip);
+		}
+	}
+}
+#endif
+
+#ifdef CONFIG_LGE_PM_CCD
+#define DECCUR_FLOAT_VOLTAGE	4000
+
+static void fg_adjust_vfloat_rescale_offset(struct fg_chip *chip){
+	int rc = 0;
+	int full_chg_offset = 0;
+	int vfloat_set;
+	union power_supply_propval val = {0, };
+
+	if (!is_charger_available(chip)) {
+		pr_err("Charger not available yet!\n");
+		return;
+	}
+
+	vfloat_set = chip->ccd_adjusted_vfloat;
+
+	rc = chip->batt_psy->get_property(chip->batt_psy,
+		POWER_SUPPLY_PROP_VOLTAGE_MAX, &val);
+	if (val.intval == DECCUR_FLOAT_VOLTAGE) {
+		pr_err("Skip setting vfloat at DECCUR state of OTP\n");
+                return;
+	}
+
+	if (vfloat_set != val.intval) {
+		chip->ccd_adjusted_vfloat = val.intval;
+		full_chg_offset = (chip->batt_max_voltage_uv/1000) - chip->ccd_adjusted_vfloat;
+		full_chg_offset = full_chg_offset*2/10; //FG Raw SOC rescale fomular.
+		chip->rescale_offset = full_chg_offset;
+		update_cc_cv_setpoint(chip);
+		}
+	}
+
+}
+
+#endif
 
 static void half_float_to_buffer(int64_t uval, u8 *buffer)
 {
@@ -4458,6 +5226,7 @@ static int fg_cap_learning_process_full_data(struct fg_chip *chip)
 	int cc_pc_val, rc = -EINVAL;
 	unsigned int cc_soc_delta_pc;
 	int64_t delta_cc_uah;
+	uint64_t temp;
 	bool batt_missing = is_battery_missing(chip);
 
 	if (batt_missing) {
@@ -4480,9 +5249,8 @@ static int fg_cap_learning_process_full_data(struct fg_chip *chip)
 		goto fail;
 	}
 
-	cc_soc_delta_pc = DIV_ROUND_CLOSEST(
-					    abs(cc_pc_val - chip->learning_data.init_cc_pc_val)
-					    * 100, FULL_PERCENT_28BIT);
+	temp = abs(cc_pc_val - chip->learning_data.init_cc_pc_val);
+	cc_soc_delta_pc = DIV_ROUND_CLOSEST_ULL(temp * 100, FULL_PERCENT_28BIT);
 
 	delta_cc_uah = div64_s64(
 				 chip->learning_data.learned_cc_uah * cc_soc_delta_pc,
@@ -4490,9 +5258,12 @@ static int fg_cap_learning_process_full_data(struct fg_chip *chip)
 	chip->learning_data.cc_uah = delta_cc_uah + chip->learning_data.cc_uah;
 
 	if (fg_debug_mask & FG_AGING)
-		pr_info("current cc_soc=%d cc_soc_pc=%d total_cc_uah = %lld\n",
-			cc_pc_val, cc_soc_delta_pc,
-			chip->learning_data.cc_uah);
+		pr_info("current cc_soc=%d cc_soc_pc=%d init_cc_pc_val=%d delta_cc_uah=%lld learned_cc_uah=%lld total_cc_uah = %lld\n",
+				cc_pc_val, cc_soc_delta_pc,
+				chip->learning_data.init_cc_pc_val,
+				delta_cc_uah,
+				chip->learning_data.learned_cc_uah,
+				chip->learning_data.cc_uah);
 
 	return 0;
 
@@ -5012,11 +5783,11 @@ static void status_change_work(struct work_struct *work)
 		}
 	}
 	if ((chip->wa_flag & USE_CC_SOC_REG) && chip->bad_batt_detection_en
-	    && chip->safety_timer_expired) {
-		chip->sw_cc_soc_data.delta_soc =
-			DIV_ROUND_CLOSEST(abs(cc_soc -
-					      chip->sw_cc_soc_data.init_cc_soc)
-					  * 100, FULL_PERCENT_28BIT);
+			&& chip->safety_timer_expired) {
+		uint64_t delta_cc_soc = abs(cc_soc -
+					chip->sw_cc_soc_data.init_cc_soc);
+		chip->sw_cc_soc_data.delta_soc = DIV_ROUND_CLOSEST_ULL(
+				delta_cc_soc * 100, FULL_PERCENT_28BIT);
 		chip->sw_cc_soc_data.full_capacity =
 			chip->sw_cc_soc_data.delta_soc +
 			chip->sw_cc_soc_data.init_sys_soc;
@@ -5194,7 +5965,7 @@ static int fg_restore_soc(struct fg_chip *chip)
 		return 0;
 
 	if (fg_debug_mask & FG_STATUS)
-		pr_info("Restored soc: %d\n", msoc);
+		pr_info("[FG_INFO]Restored soc: %d\n", msoc);
 
 	rc = fg_mem_write(chip, (u8 *)&msoc, SRAM_MONOTONIC_SOC_REG, 2,
 			SRAM_MONOTONIC_SOC_OFFSET, 0);
@@ -5205,7 +5976,7 @@ static int fg_restore_soc(struct fg_chip *chip)
 }
 
 #define NOM_CAP_REG			0x4F4
-#define CAPACITY_DELTA_DECIPCT		500
+#define CAPACITY_DELTA_DECIPCT		210
 static int load_battery_aging_data(struct fg_chip *chip)
 {
 	int rc = 0;
@@ -5377,6 +6148,24 @@ static bool fg_validate_battery_info(struct fg_chip *chip)
 	return true;
 }
 
+#ifdef CONFIG_LGE_PM_FG_AGE
+int fg_age_detection_level(struct fg_chip *chip)
+{
+        int age_level = 0;
+
+        age_level = fg_age_detection(chip);
+
+        if(age_level == 1)
+            age_level = 100;
+        else if(age_level == 2)
+            age_level = 80;
+        else
+            age_level = 49;
+
+        return age_level;
+}
+#endif
+
 static int fg_set_battery_info(struct fg_chip *chip, int val)
 {
 	if (chip->batt_info_id < 0 ||
@@ -5429,6 +6218,9 @@ static enum power_supply_property fg_power_props[] = {
 	POWER_SUPPLY_PROP_CYCLE_COUNT,
 	POWER_SUPPLY_PROP_CYCLE_COUNT_ID,
 	POWER_SUPPLY_PROP_HI_POWER,
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+	POWER_SUPPLY_PROP_TIME_TO_FULL_CAPACITY,
+#endif
 #ifdef CONFIG_LGE_PM_CHARGERLOGO_WAIT_FOR_FG_INIT
 	POWER_SUPPLY_PROP_FIRST_SOC_EST_DONE,
 #endif
@@ -5439,6 +6231,12 @@ static enum power_supply_property fg_power_props[] = {
 #endif
 	POWER_SUPPLY_PROP_BATTERY_INFO,
 	POWER_SUPPLY_PROP_BATTERY_INFO_ID,
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	POWER_SUPPLY_PROP_BATTERY_CYCLE,
+#endif
+#ifdef CONFIG_LGE_PM_FG_AGE
+        POWER_SUPPLY_PROP_BATTERY_AGE_LEVEL,
+#endif
 };
 
 static int fg_power_get_property(struct power_supply *psy,
@@ -5550,17 +6348,33 @@ static int fg_power_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_BATTERY_INFO_ID:
 		val->intval = chip->batt_info_id;
 		break;
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	case POWER_SUPPLY_PROP_BATTERY_CYCLE:
+		val->intval = fg_get_battery_cycle(chip);
+		break;
+#endif
 	case POWER_SUPPLY_PROP_CHARGE_REMAIN_CAPACITY:
 		val->intval = fg_get_remain_capacity(chip);
 		break;
 	case POWER_SUPPLY_PROP_BATTERY_CONDITION:
 		val->intval = fg_age_detection(chip);
 		break;
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+	case POWER_SUPPLY_PROP_TIME_TO_FULL_CAPACITY:
+		val->intval = get_prop_time_to_full_capacity(chip);
+		break;
+#endif
 #ifdef CONFIG_LGE_PM_CHARGERLOGO_WAIT_FOR_FG_INIT
 	case POWER_SUPPLY_PROP_FIRST_SOC_EST_DONE:
 		val->intval = chip->first_soc_est_done;
 		break;
 #endif
+#ifdef CONFIG_LGE_PM_FG_AGE
+	case POWER_SUPPLY_PROP_BATTERY_AGE_LEVEL:
+		val->intval = fg_age_detection_level(chip);
+		break;
+#endif
+
 	default:
 		return -EINVAL;
 	}
@@ -5712,6 +6526,11 @@ static int fg_power_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_BATTERY_INFO_ID:
 		chip->batt_info_id = val->intval;
 		break;
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	case POWER_SUPPLY_PROP_BATTERY_CYCLE:
+		rc = fg_set_battery_cycle(chip, val->intval);
+		break;
+#endif
 #ifdef CONFIG_LGE_PM_BATT_MANAGER
 	case POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN:
 		batt_mngr_get_ocv_table(chip, val);
@@ -5733,6 +6552,9 @@ static int fg_property_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CYCLE_COUNT_ID:
 	case POWER_SUPPLY_PROP_BATTERY_INFO:
 	case POWER_SUPPLY_PROP_BATTERY_INFO_ID:
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	case POWER_SUPPLY_PROP_BATTERY_CYCLE:
+#endif
 		return 1;
 	default:
 		break;
@@ -6268,7 +7090,9 @@ static irqreturn_t fg_mem_avail_irq_handler(int irq, void *_chip)
 
 	return IRQ_HANDLED;
 }
-
+#ifdef CONFIG_LGE_PM_SOC_RECHARGING_WA
+#define SOC_BASE_RECHARGE_THRESHOLD 0xF5 //default recharging 96%
+#endif
 #ifdef CONFIG_LGE_PM
 #define GUARANTEE_INTERVAL_MS 1470
 static void guarantee_soc_interval_work(struct work_struct *work) {
@@ -6338,11 +7162,12 @@ static irqreturn_t fg_soc_irq_handler(int irq, void *_chip)
 	}
 
 	schedule_work(&chip->battery_age_work);
-	
+
 	if (chip->power_supply_registered) {
 		pr_info("power_supply_changed by soc_irq with msoc %d\n", msoc);
 		power_supply_changed(&chip->bms_psy);
 	}
+
 	if (chip->rslow_comp.chg_rs_to_rslow > 0 &&
 	    chip->rslow_comp.chg_rslow_comp_c1 > 0 &&
 	    chip->rslow_comp.chg_rslow_comp_c2 > 0)
@@ -6425,17 +7250,18 @@ static irqreturn_t fg_first_soc_irq_handler(int irq, void *_chip)
 static void fg_external_power_changed(struct power_supply *psy)
 {
 	struct fg_chip *chip = container_of(psy, struct fg_chip, bms_psy);
+	bool input_present = is_input_present(chip);
 
-	if (is_input_present(chip) && chip->rslow_comp.active &&
-	    chip->rslow_comp.chg_rs_to_rslow > 0 &&
-	    chip->rslow_comp.chg_rslow_comp_c1 > 0 &&
-	    chip->rslow_comp.chg_rslow_comp_c2 > 0)
+	if (input_present ^ chip->rslow_comp.active &&
+			chip->rslow_comp.chg_rs_to_rslow > 0 &&
+			chip->rslow_comp.chg_rslow_comp_c1 > 0 &&
+			chip->rslow_comp.chg_rslow_comp_c2 > 0)
 		schedule_work(&chip->rslow_comp_work);
-	if (!is_input_present(chip) && chip->resume_soc_lowered) {
+	if (!input_present && chip->resume_soc_lowered) {
 		fg_stay_awake(&chip->resume_soc_wakeup_source);
 		schedule_work(&chip->set_resume_soc_work);
 	}
-	if (!is_input_present(chip) && chip->charge_full)
+	if (!input_present && chip->charge_full)
 		schedule_work(&chip->charge_full_work);
 }
 
@@ -6446,6 +7272,17 @@ static void set_resume_soc_work(struct work_struct *work)
 					    set_resume_soc_work);
 	int rc, resume_soc_raw;
 
+#ifdef CONFIG_LGE_PM_SOC_RECHARGING_WA
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	settings[FG_MEM_RESUME_SOC].value = chip->batt_recharge_threshold - (chip->rescale_offset);
+	pr_info("[FG_INFO] value = %d, threshold =  %d, offset = %d\n",
+			settings[FG_MEM_RESUME_SOC].value, chip->batt_recharge_threshold, chip->rescale_offset);
+#else
+	settings[FG_MEM_RESUME_SOC].value = chip->batt_recharge_threshold;
+	pr_info("[FG_INFO] value = %d, threshold =  %d\n",
+			settings[FG_MEM_RESUME_SOC].value, chip->batt_recharge_threshold);
+#endif
+#endif
 	if (is_input_present(chip) && !chip->resume_soc_lowered) {
 		if (!chip->charge_done)
 			goto done;
@@ -6500,7 +7337,25 @@ static void set_resume_soc_work(struct work_struct *work)
 #define RSLOW_COMP_REG			0x528
 #define RSLOW_COMP_C1_OFFSET		0
 #define RSLOW_COMP_C2_OFFSET		2
-//#define CAPACITY_DELTA_DECIPCT		210
+#define BATT_PROFILE_OFFSET		0x4C0
+static void get_default_rslow_comp_settings(struct fg_chip *chip)
+{
+	int offset;
+
+	offset = RSLOW_CFG_REG + RSLOW_CFG_OFFSET - BATT_PROFILE_OFFSET;
+	memcpy(&chip->rslow_comp.rslow_cfg, chip->batt_profile + offset, 1);
+
+	offset = RSLOW_THRESH_REG + RSLOW_THRESH_OFFSET - BATT_PROFILE_OFFSET;
+	memcpy(&chip->rslow_comp.rslow_thr, chip->batt_profile + offset, 1);
+
+	offset = TEMP_RS_TO_RSLOW_REG + RS_TO_RSLOW_CHG_OFFSET -
+		BATT_PROFILE_OFFSET;
+	memcpy(&chip->rslow_comp.rs_to_rslow, chip->batt_profile + offset, 2);
+
+	offset = RSLOW_COMP_REG + RSLOW_COMP_C1_OFFSET - BATT_PROFILE_OFFSET;
+	memcpy(&chip->rslow_comp.rslow_comp, chip->batt_profile + offset, 4);
+}
+
 static int populate_system_data(struct fg_chip *chip)
 {
 	u8 buffer[24];
@@ -6549,41 +7404,11 @@ static int populate_system_data(struct fg_chip *chip)
 	chip->cutoff_voltage = voltage_2b(buffer);
 	if (fg_debug_mask & FG_AGING)
 		pr_info("cutoff_voltage = %lld, nom_cap_uah = %d p1p2 = %d, p2p3 = %d\n",
-			chip->cutoff_voltage, chip->nom_cap_uah,
-			chip->ocv_junction_p1p2,
-			chip->ocv_junction_p2p3);
+				chip->cutoff_voltage, chip->nom_cap_uah,
+				chip->ocv_junction_p1p2,
+				chip->ocv_junction_p2p3);
 
-	rc = fg_mem_read(chip, buffer, RSLOW_CFG_REG, 1, RSLOW_CFG_OFFSET, 0);
-	if (rc) {
-		pr_err("unable to read rslow cfg: %d\n", rc);
-		goto done;
-	}
-
-	chip->rslow_comp.rslow_cfg = buffer[0];
-	rc = fg_mem_read(chip, buffer, RSLOW_THRESH_REG, 1,
-			 RSLOW_THRESH_OFFSET, 0);
-	if (rc) {
-		pr_err("unable to read rslow thresh: %d\n", rc);
-		goto done;
-	}
-
-	chip->rslow_comp.rslow_thr = buffer[0];
-	rc = fg_mem_read(chip, buffer, TEMP_RS_TO_RSLOW_REG, 2,
-			RS_TO_RSLOW_CHG_OFFSET, 0);
-	if (rc) {
-		pr_err("unable to read rs to rslow_chg: %d\n", rc);
-		goto done;
-	}
-
-	memcpy(chip->rslow_comp.rs_to_rslow, buffer, 2);
-	rc = fg_mem_read(chip, buffer, RSLOW_COMP_REG, 4,
-			 RSLOW_COMP_C1_OFFSET, 0);
-	if (rc) {
-		pr_err("unable to read rslow comp: %d\n", rc);
-		goto done;
-	}
-
-	memcpy(chip->rslow_comp.rslow_comp, buffer, 4);
+	get_default_rslow_comp_settings(chip);
 done:
 	fg_mem_release(chip);
 	return rc;
@@ -6798,7 +7623,16 @@ static void update_cc_cv_setpoint(struct fg_chip *chip)
 
 	if (!chip->cc_cv_threshold_mv)
 		return;
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	batt_to_setpoint_adc(chip->cycle_based_vfloat - 10, tmp);
+#else
 	batt_to_setpoint_adc(chip->cc_cv_threshold_mv, tmp);
+#endif
+
+#ifdef CONFIG_LGE_PM_CCD
+	batt_to_setpoint_adc(chip->ccd_adjusted_vfloat - 10, tmp);
+#endif
+
 	rc = fg_mem_write(chip, tmp, CC_CV_SETPOINT_REG, 2,
 			  CC_CV_SETPOINT_OFFSET, 0);
 	if (rc) {
@@ -6827,7 +7661,7 @@ static int fg_config_imptr_pulse(struct fg_chip *chip, bool slow)
 
 	if (slow == chip->imptr_pulse_slow_en) {
 		if (fg_debug_mask & FG_STATUS)
-			pr_debug("imptr_pulse_slow is %sabled already\n",
+			pr_info("imptr_pulse_slow is %sabled already\n",
 				slow ? "en" : "dis");
 		return 0;
 	}
@@ -6980,7 +7814,7 @@ static void discharge_gain_work(struct work_struct *work)
 	}
 
 	if (fg_debug_mask & FG_STATUS)
-		pr_debug("Capacity: %d, medc_gain: %lld highc_gain: %lld\n",
+		pr_info("Capacity: %d, medc_gain: %lld highc_gain: %lld\n",
 			capacity, medc_val, highc_val);
 
 	medc_val *= MICRO_UNIT;
@@ -6990,7 +7824,7 @@ static void discharge_gain_work(struct work_struct *work)
 	if (rc)
 		pr_err("Couldn't write to ki_coeff_medc_reg, rc=%d\n", rc);
 	else if (fg_debug_mask & FG_STATUS)
-		pr_debug("Value [%x %x] written to ki_coeff_medc\n", buf[0],
+		pr_info("Value [%x %x] written to ki_coeff_medc\n", buf[0],
 			buf[1]);
 
 	highc_val *= MICRO_UNIT;
@@ -7000,14 +7834,13 @@ static void discharge_gain_work(struct work_struct *work)
 	if (rc)
 		pr_err("Couldn't write to ki_coeff_highc_reg, rc=%d\n", rc);
 	else if (fg_debug_mask & FG_STATUS)
-		pr_debug("Value [%x %x] written to ki_coeff_highc\n", buf[0],
+		pr_info("Value [%x %x] written to ki_coeff_highc\n", buf[0],
 			buf[1]);
 
 	fg_relax(&chip->dischg_gain_wakeup_source);
 }
 
 #define LOW_LATENCY			BIT(6)
-#define BATT_PROFILE_OFFSET		0x4C0
 #define PROFILE_INTEGRITY_REG		0x53C
 #define PROFILE_INTEGRITY_BIT		BIT(0)
 #define MAX_TRIES_FIRST_EST		3
@@ -7394,6 +8227,21 @@ static int fg_batt_profile_init(struct fg_chip *chip)
 	if (rc)
 		pr_warn("couldn't find battery max voltage\n");
 
+#ifdef CONFIG_LGE_PM_BATTERY_ID_QCT
+	rc = of_property_read_u32(profile_node, "qcom,batt-scale-criteria",
+				  &chip->batt_scale_criteria);
+	if (rc) {
+		pr_err("Could not read batt scale criteria: %d\n", rc);
+	}
+	rc = of_property_read_u32(profile_node, "qcom,batt-recharge-threshold",
+				  &chip->batt_recharge_threshold);
+	if (rc) {
+		pr_err("Could not read batt recharge threshold: %d\n", rc);
+	}
+	pr_info("scale criteria : [%d], recharge threshold : [%d]\n",
+		chip->batt_scale_criteria, chip->batt_recharge_threshold);
+#endif
+
 	/*
 	 * Only configure from profile if fg-cc-cv-threshold-mv is not
 	 * defined in the charger device node.
@@ -7471,6 +8319,12 @@ static int fg_batt_profile_init(struct fg_chip *chip)
 				pr_info("[FG_EST]:Battery profiles same, same battery\n");
 			if (fg_est_dump)
 				schedule_work(&chip->dump_sram);
+			/*
+			 * Copy the profile read from device tree for
+			 * getting profile parameters later.
+			 */
+			memcpy(chip->batt_profile, data, len);
+			chip->batt_profile_len = len;
 			goto done;
 		}
 	} else {
@@ -7514,7 +8368,7 @@ static int fg_batt_profile_init(struct fg_chip *chip)
 		goto no_profile;
 	}
 #ifdef CONFIG_LGE_PM_BATTERY_COFF_4250K
-	if (chip->use_thermal_coefficients && strstr(fg_batt_type, "Tocad")) {
+	if (chip->use_thermal_coefficients) {
 		data = of_get_property(chip->spmi->dev.of_node,
 					"qcom,thermal-coefficients-4250k", &len);
 		if (data && len == THERMAL_COEFF_N_BYTES) {
@@ -7559,7 +8413,7 @@ static int fg_batt_profile_init(struct fg_chip *chip)
 	}
 done:
 #ifdef CONFIG_LGE_PM
-        fg_set_minfreq(false);
+	fg_set_minfreq(false);
 #endif
 	if (chip->charging_disabled) {
 		rc = set_prop_enable_charging(chip, true);
@@ -7601,6 +8455,16 @@ done:
 	}
 	estimate_battery_age(chip, &chip->actual_cap_uah);
 	schedule_work(&chip->status_change_work);
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	fg_set_cycle_based_offset(chip, fg_get_battery_cycle(chip));
+	pr_info("[FG_INFO]rescale_offset:[%d], cycle_based_vfloat:[%d]\n",
+			chip->rescale_offset, chip->cycle_based_vfloat);
+
+	pr_info("[FG_INFO]overwrite resume soc to %d\n", chip->batt_recharge_threshold);
+	rc = fg_set_resume_soc(chip, chip->batt_recharge_threshold - chip->rescale_offset);
+	if (rc)
+		pr_err("fail to write resume soc!\n");
+#endif
 	if (chip->power_supply_registered)
 		power_supply_changed(&chip->bms_psy);
 	fg_relax(&chip->profile_wakeup_source);
@@ -7632,14 +8496,15 @@ done:
 	return rc;
 no_profile:
 	chip->soc_reporting_ready = true;
-	if (chip->charging_disabled) {
-		rc = set_prop_enable_charging(chip, true);
-		if (rc)
-			pr_err("Failed to enable charging, rc=%d\n", rc);
-		else
-			chip->charging_disabled = false;
+	if(!lge_is_factory_cable()) {
+		if (chip->charging_disabled) {
+			rc = set_prop_enable_charging(chip, true);
+			if (rc)
+				pr_err("Failed to enable charging, rc=%d\n", rc);
+			else
+				chip->charging_disabled = false;
+		}
 	}
-
 	if (chip->power_supply_registered)
 		power_supply_changed(&chip->bms_psy);
 	fg_relax(&chip->profile_wakeup_source);
@@ -8105,6 +8970,123 @@ out:
 	return rc;
 }
 
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+#define DEFAULT_FLOAT_VOLTAGE	4350
+static int fg_batt_cycle_offset_dt_init(struct fg_chip *chip)
+{
+	struct device_node *node = chip->spmi->dev.of_node;
+	struct property *prop;
+	int i, rc = 0;
+	size_t size;
+
+	prop = of_find_property(node, "qcom,fg-batt-life-cycle-set",
+			NULL);
+	if (!prop) {
+		pr_err("qcom-fg-batt-life-cycle-set not specified\n");
+		goto out;
+	}
+
+	size = prop->length / sizeof(u32);
+	if (size != MAX_CYCLE_STEP) {
+		pr_err("Battery Life Cycle Set specified is of incorrect size\n");
+		goto out;
+	}
+
+	rc = of_property_read_u32_array(node,
+		"qcom,fg-batt-life-cycle-set", chip->batt_life_cycle_set, size);
+	if (rc < 0) {
+		pr_err("Reading qcom-fg-batt-life-cycle-set failed, rc=%d\n",
+			rc);
+		goto out;
+	}
+
+	for (i = 0; i < MAX_CYCLE_STEP; i++) {
+		if (chip->batt_life_cycle_set[i] < 0 ||
+				chip->batt_life_cycle_set[i] > 1000) {
+			pr_err("Incorrect fg-batt-life-cycle-set\n");
+			goto out;
+		}
+	}
+
+	prop = of_find_property(node, "qcom,fg-batt-life-cycle-offset",
+			NULL);
+	if (!prop) {
+		pr_err("qcom-fg-batt-life-cycle-offset not specified\n");
+		goto out;
+	}
+
+	size = prop->length / sizeof(u32);
+	if (size != MAX_CYCLE_STEP) {
+		pr_err("fg-batt-life-cycle-offset specified is of incorrect size\n");
+		goto out;
+	}
+
+	rc = of_property_read_u32_array(node,
+		"qcom,fg-batt-life-cycle-offset", chip->batt_life_cycle_offset,
+		size);
+	if (rc < 0) {
+		pr_err("Reading fg-batt-life-cycle-offset failed, rc=%d\n",
+			rc);
+		goto out;
+	}
+
+	for (i = 0; i < MAX_CYCLE_STEP; i++) {
+		if (chip->batt_life_cycle_offset[i] < 0 ||
+				chip->batt_life_cycle_offset[i] > 100) {
+			pr_err("Incorrect fg-batt-life-cycle-offset\n");
+			goto out;
+		}
+	}
+
+	prop = of_find_property(node, "qcom,fg-batt-life-cycle-vfloat",
+			NULL);
+	if (!prop) {
+		pr_err("qcom-fg-batt-life-cycle-vfloat not specified\n");
+		goto out;
+	}
+
+	size = prop->length / sizeof(u32);
+	if (size != MAX_CYCLE_STEP) {
+		pr_err("fg-batt-life-cycle-vfloat specified is of incorrect size\n");
+		goto out;
+	}
+
+	rc = of_property_read_u32_array(node,
+		"qcom,fg-batt-life-cycle-vfloat", chip->batt_life_cycle_vfloat,
+		size);
+	if (rc < 0) {
+		pr_err("Reading fg-batt-life-cycle-vfloat failed, rc=%d\n",
+			rc);
+		goto out;
+	}
+
+	for (i = 0; i < MAX_CYCLE_STEP; i++) {
+		if (chip->batt_life_cycle_vfloat[i] < 3900 ||
+				chip->batt_life_cycle_vfloat[i] > 4500) {
+			pr_err("Incorrect fg-batt-life-cycle-vfloat\n");
+			goto out;
+		}
+	}
+
+	if (fg_debug_mask & FG_AGING) {
+		for (i = 0; i < MAX_CYCLE_STEP; i++)
+			pr_err("Cycle %d - Offset = %d Vfloat=%d\n",
+				chip->batt_life_cycle_set[i],
+				chip->batt_life_cycle_offset[i],
+				chip->batt_life_cycle_vfloat[i]);
+	}
+	return 0;
+out:
+	//Write default cycle step & offset value
+	for (i = 0; i < MAX_CYCLE_STEP; i++){
+		chip->batt_life_cycle_set[i] = 0;
+		chip->batt_life_cycle_offset[i] = 0;
+		chip->batt_life_cycle_vfloat[i] = DEFAULT_FLOAT_VOLTAGE;
+	}
+	return rc;
+}
+#endif
+
 #define DEFAULT_EVALUATION_CURRENT_MA	1000
 static int fg_of_init(struct fg_chip *chip)
 {
@@ -8249,6 +9231,15 @@ static int fg_of_init(struct fg_chip *chip)
 	chip->cyc_ctr.en = of_property_read_bool(node,
 						 "qcom,cycle-counter-en");
 #ifdef CONFIG_LGE_PM
+#ifdef CONFIG_LGE_PM_TEMP_BY_CHG
+	rc = of_property_read_u32(node, "qcom,temp-by-chg-factor",
+			&chip->temp_by_chg_factor);
+	pr_info("read temp-by-chg-factor value! %d\n", chip->temp_by_chg_factor);
+	if(rc) {
+		chip->temp_by_chg_factor = DEFAULT_COMP_FACTOR;
+		pr_info("use default factor value! %d\n", chip->temp_by_chg_factor);
+	}
+#endif
 #ifdef CONFIG_LGE_PM_BATT_PROFILE
 	chip->batt_profile_enabled = of_property_read_bool(node,
 							   "qcom,lge_batt_profile");
@@ -8971,7 +9962,7 @@ static ssize_t fg_memif_dfs_reg_read(struct file *file, char __user *buf,
 	*ppos += len;
 	log->rpos += len;
 
- unlock_mutex:
+unlock_mutex:
 	mutex_unlock(&trans->memif_dfs_lock);
 	return len;
 }
@@ -9045,7 +10036,7 @@ static ssize_t fg_memif_dfs_reg_write(struct file *file, const char __user *buf,
 
  free_buf:
 	kfree(kbuf);
- unlock_mutex:
+unlock_mutex:
 	mutex_unlock(&trans->memif_dfs_lock);
 	return ret;
 }
@@ -9227,7 +10218,20 @@ static int fg_common_hw_init(struct fg_chip *chip)
 	if (!chip->use_vbat_low_empty_soc)
 		update_irq_volt_empty(chip);
 
+#ifdef CONFIG_LGE_PM_SOC_RECHARGING_WA
+	resume_soc_raw = settings[FG_MEM_RESUME_SOC].value =
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+		chip->batt_recharge_threshold - (chip->rescale_offset);
+	pr_info("[FG_INFO] value = %d, threshold =  %d, offset = %d\n",
+			settings[FG_MEM_RESUME_SOC].value, chip->batt_recharge_threshold, chip->rescale_offset);
+#else
+		chip->batt_recharge_threshold;
+	pr_info("[FG_INFO] value = %d, threshold =  %d\n",
+			settings[FG_MEM_RESUME_SOC].value, chip->batt_recharge_threshold);
+#endif
+#else
 	resume_soc_raw = settings[FG_MEM_RESUME_SOC].value;
+#endif
 	if (resume_soc_raw > 0) {
 		rc = fg_set_resume_soc(chip, resume_soc_raw);
 		if (rc) {
@@ -9676,9 +10680,10 @@ static void ima_error_recovery_work(struct work_struct *work)
 
 	/* Cancel all the works */
 	fg_ima_error_cancel_works(chip);
+
 	if (fg_debug_mask & FG_STATUS)
 		pr_info("[FG_INFO]last_soc: %d\n", chip->last_soc);
-	
+
 	mutex_lock(&chip->ima_recovery_lock);
 	/* Acquire IMA access forcibly from FG ALG */
 	rc = fg_masked_write(chip, chip->mem_base + MEM_INTF_IMA_CFG,
@@ -9960,6 +10965,9 @@ static int fg_probe(struct spmi_device *spmi)
 	struct resource *resource;
 	u8 subtype, reg;
 	int rc = 0;
+#if defined(CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE)
+	int i;
+#endif
 
 	if (!spmi) {
 		pr_err("no valid spmi pointer\n");
@@ -10132,6 +11140,48 @@ static int fg_probe(struct spmi_device *spmi)
 		pr_err("failed to parse devicetree rc%d\n", rc);
 		goto of_init_fail;
 	}
+
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	rc = fg_batt_cycle_offset_dt_init(chip);
+	if (rc) {
+		pr_err("failed to parse devicetree rc%d\n", rc);
+		goto of_init_fail;
+	}
+	chip->rescale_offset = 0; //Init rescale offset to 0.
+	//DEFAULT_VFLOAT_VOTLAGE should be same with chip->batt_life_cycle_vfloat[0].
+	chip->cycle_based_vfloat = DEFAULT_VFLOAT_VOTLAGE;
+	for (i = 0; i < BUCKET_COUNT; i++) {
+		chip->batt_life_prev_cycle[i] = 0;
+	}
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_WEIGHT
+	chip->cycle_weight_batt_temp_sum = 0;
+	chip->cycle_weight_avg_batt_temp = 0;
+	chip->cycle_weight_batt_voltage_sum = 0;
+	chip->cycle_weight_avg_batt_voltage = 0;
+	chip->cycle_weight_update_count= 0;
+	chip->cycle_weight_update_time_delta = 0;
+	for (i = 0; i < BUCKET_COUNT; i++){
+		chip->cycle_weight_integer[i] = 0;
+		chip->cycle_weight_fraction[i] = 0;
+		}
+#endif
+#endif
+
+#ifdef CONFIG_LGE_PM_CCD
+	//Set default vfloat votlage
+	chip->ccd_adjusted_vfloat = chip->batt_max_voltage_uv/1000;
+	chip->rescale_offset = 0; //Init rescale offset to 0.
+#endif
+
+#ifdef CONFIG_LGE_PM_BATTERY_TEMP_VTS
+	init_batt_vts(chip);
+#endif
+#ifdef CONFIG_LGE_PM_SOC_SCALING
+	chip->batt_scale_criteria = LGE_SOC_SCALE_CRITERIA;
+#endif
+#ifdef CONFIG_LGE_PM_SOC_RECHARGING_WA
+	chip->batt_recharge_threshold = SOC_BASE_RECHARGE_THRESHOLD;
+#endif
 #ifdef CONFIG_LGE_PM
 	chip->check_ima_err_handling = false;
 #endif
@@ -10380,10 +11430,12 @@ static void fg_shutdown(struct spmi_device *spmi)
 {
 	struct fg_chip *chip = dev_get_drvdata(&spmi->dev);
 
-	pr_debug("FG shutdown started\n");
-	cancel_delayed_work_sync(&chip->check_sanity_work);
-	cancel_delayed_work_sync(&chip->update_sram_data);
-	cancel_delayed_work_sync(&chip->update_temp_work);
+
+	if (fg_debug_mask & FG_STATUS)
+		pr_emerg("FG shutdown started\n");
+	if (chip->rslow_comp.active)
+		fg_rslow_charge_comp_clear(chip);
+	fg_cancel_all_works(chip);
 	fg_check_ima_idle(chip);
 	chip->fg_shutdown = true;
 	pr_debug("FG shutdown complete\n");

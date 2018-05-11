@@ -1,5 +1,7 @@
 
 #include "lge_mdss_debug.h"
+#include <linux/delay.h>
+
 
 #define HEX 16
 #define DEC 10
@@ -23,6 +25,10 @@ static struct debug_event_list evt_list[] = {
 	{DEBUG_BLMAP_CHANGE, "debug_blmap_change"},
 	{DEBUG_WLED_CURR_CHANGE, "debug_wled_curr_change"},
 	{DEBUG_MDSS_FUDGE_FACTOR_CHANGE, "debug_mdss_fudge_factor_change"},
+	{DEBUG_MDSS_DFPS_MODE_CHANGE, "debug_mdss_dfps_mode_change"},
+	{DEBUG_DSV_REG_CHANGE, "debug_dsv_reg_change"},
+	{DEBUG_CABC_MODE_CHANGE, "debug_cabc_mode_change"},
+	{INVALID, "unlock"},
 };
 
 extern void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl, struct dsi_panel_cmds *pcmds, u32 flags);
@@ -55,7 +61,7 @@ static void lge_select_data_type(struct debug_file_info *debug_finfo)
 		break;
 	case DEBUG_DSI_TIMING_CHANGE:
 	case DEBUG_PWR_SEQ_DELAY:
-	case DEBUG_PWR_ALWAYS_ON:	
+	case DEBUG_PWR_ALWAYS_ON:
 	case DEBUG_BLMAP_CHANGE:
 	case DEBUG_WLED_CURR_CHANGE:
 	case DEBUG_MDSS_FUDGE_FACTOR_CHANGE:
@@ -79,14 +85,14 @@ static void lge_change_data_type(struct debug_file_info *debug_finfo)
 	}
 }
 
-#define MAX_PARSED_VAL_LEN 10
+#define MAX_PARSED_VAL_LEN 11
 
 static void lge_skip_comment(struct file *fp, loff_t *pos, int *count, loff_t file_end)
 {
 	struct file *p_fp;
 	loff_t curr_pos;
 	char data[2];
-	bool start_check;
+	bool cmt_found;
 
 	char ref_str1[4] = {'/', '*', '*', '/'};
 	char ref_str2[4] = {'/', '/', 0x0D, 0x0A};
@@ -96,39 +102,46 @@ static void lge_skip_comment(struct file *fp, loff_t *pos, int *count, loff_t fi
 	};
 	int idx;
 
+	if (!(*count < file_end)) // if already file ends, does not need to check comments
+		return;
+
 	p_fp = fp;
 	curr_pos = *pos-1;
-	start_check = false;
+	(*count)--;
+	cmt_found = false;
 
-	pr_debug("%s: start pos[%d]", __func__, (int)*pos);
-
-	while (curr_pos < file_end) {
-		vfs_read(p_fp, data, sizeof(char)*2, &curr_pos);
-		pr_debug("%s: data[%d][%d], curr pos[%d]", __func__, data[0], data[1], (int)curr_pos);
-
-		if (!start_check) {
-			for(idx=0; idx<sizeof(skip_str)/4; idx++) {
-				if (data[0] == skip_str[idx][0] && data[1] == skip_str[idx][1]) {
-					start_check = true;
-					break;
-				}
-			}
-		}
-
-		if (start_check) {
-			if (data[0] == skip_str[idx][2] && data[1] == skip_str[idx][3]) {
-				*pos = curr_pos;
-				*count = curr_pos-1;
-				break;
-			} else {
-				curr_pos -= 1;
-			}
-		} else {
+	vfs_read(p_fp, data, sizeof(char)*2, &curr_pos);
+	*count += 2;
+	for (idx=0; idx<sizeof(skip_str)/sizeof(skip_str[0]); idx++) {
+		if (data[0] == skip_str[idx][0] && data[1] == skip_str[idx][1]) {
+			cmt_found = true;
+			pr_debug("%s        : [%d]-buf[%d][%d] cmt[%d] found", __func__, *count-1, data[0], data[1], idx);
 			break;
 		}
 	}
 
-	pr_debug("%s: end pos[%d]", __func__, (int)*pos);
+	if (cmt_found) {
+		do {
+			if (!(*count < file_end)) {
+				*pos = curr_pos;
+				pr_debug("%s        : [%d]-cmt[%d] ends with file-end", __func__, *count-1, idx);
+				break;
+			}
+
+			vfs_read(p_fp, data, sizeof(char)*2, &curr_pos);
+			*count += 2;
+			if (data[0] == skip_str[idx][2] && data[1] == skip_str[idx][3]) {
+				*pos = curr_pos;
+				pr_debug("%s        : [%d]-buf[%d][%d] cmt[%d] ended", __func__, *count-1, data[0], data[1], idx);
+				break;
+			}
+			curr_pos--;
+			(*count)--;
+		} while (true);
+	} else {
+		*pos = curr_pos-1;
+		(*count)--;
+	}
 }
 
 static int lge_parse_data_from_file(struct debug_file_info *debug_finfo)
@@ -137,7 +150,7 @@ static int lge_parse_data_from_file(struct debug_file_info *debug_finfo)
 	struct file *p_fp, *fp = NULL;
 	loff_t curr_pos = 0;
 	int fd;
-	int i, cnt;
+	int i, read_cnt;
 	char buf[MAX_PARSED_VAL_LEN+1];
 	unsigned long val;
 	int *p_data;
@@ -159,38 +172,36 @@ static int lge_parse_data_from_file(struct debug_file_info *debug_finfo)
 		fp = fget(fd);
 		if (fp) {
 			p_fp = fp;
-			i = cnt = 0;
+			i = read_cnt = 0;
 			do {
 				vfs_read(p_fp, &buf[i], sizeof(char), &curr_pos);
-				pr_debug("%s: %d-buf[%d] : %d \n", __func__, cnt, i, buf[i]);
+				read_cnt++;
+				pr_debug("%s: [%d]-buf[%d] : %d \n", __func__, read_cnt, i, buf[i]);
 				if ((buf[i]>='0' && buf[i]<='9') || (buf[i]>='a' && buf[i]<='f') || (buf[i]>='A' && buf[i]<='F')) {
 					if (i < MAX_PARSED_VAL_LEN) {
 						i++;
-						goto next;
 					} else {
 						pr_err("%s: parsed value's length is out of range!! \n", __func__);
 						ret = -EINVAL;
 						goto error;
 					}
 				} else {
-					lge_skip_comment(p_fp, &curr_pos, &cnt, debug_finfo->file_size);
+					lge_skip_comment(p_fp, &curr_pos, &read_cnt, debug_finfo->file_size);
 
 					buf[i] = '\0';
 					if (kstrtoul(buf, debug_finfo->data_type, &val) < 0) {
-						pr_debug("%s: failed to convert data #%d!! \n", __func__, debug_finfo->data_len);
+						//pr_debug("%s: failed to convert data #%d!! \n", __func__, debug_finfo->data_len);
 					} else {
 						*p_data = (int)val;
-						pr_debug("%s: 0x%x[%d] \n", __func__, *p_data, *p_data);
 						p_data++;
 						debug_finfo->data_len++;
 
 						lge_change_data_type(debug_finfo);
 					}
+					memset(buf, 0, sizeof(buf));
 					i = 0;
 				}
-next:
-				cnt++;
-			}while(cnt <= debug_finfo->file_size);
+			}while(read_cnt < debug_finfo->file_size+1);
 		} else {
 			pr_err("%s: invalid debug file!! \n", __func__);
 			ret = -EINVAL;
@@ -491,7 +502,7 @@ static int lge_apply_parsed_data(struct mdss_panel_data *pdata, struct mdss_dsi_
 		}
 
 		pr_info("%s: parsed wled curr value[%d] \n", __func__, debug_finfo->ibuf[0]);
-		sprintf(buf, "%d", debug_finfo->ibuf[0]);
+		snprintf(buf, sizeof(buf),"%d", debug_finfo->ibuf[0]);
 		lge_write_sysfs_node("/sys/class/leds/wled/fs_curr_ua", buf);
 		break;
 	case DEBUG_MDSS_FUDGE_FACTOR_CHANGE:
@@ -502,15 +513,12 @@ static int lge_apply_parsed_data(struct mdss_panel_data *pdata, struct mdss_dsi_
 		}
 
 		pr_info("%s: parsed fudge factor value[%d %d %d] \n", __func__, debug_finfo->ibuf[0], debug_finfo->ibuf[1], debug_finfo->ibuf[2]);
-		sprintf(buf, "%d", debug_finfo->ibuf[0]);
+		snprintf(buf, sizeof(buf), "%d", debug_finfo->ibuf[0]);
 		lge_write_sysfs_node("/d/mdp/perf/ab_factor", buf);
-		sprintf(buf, "%d", debug_finfo->ibuf[1]);
+		snprintf(buf, sizeof(buf), "%d", debug_finfo->ibuf[1]);
 		lge_write_sysfs_node("/d/mdp/perf/ib_factor", buf);
-		sprintf(buf, "%d", debug_finfo->ibuf[2]);
+		snprintf(buf, sizeof(buf), "%d", debug_finfo->ibuf[2]);
 		lge_write_sysfs_node("/d/mdp/perf/clk_factor", buf);
-		break;
-	case DEBUG_TEST:
-		//TODO
 		break;
 	default:
 		break;
@@ -528,7 +536,7 @@ ssize_t get_lge_debug_event(struct device *dev,
 	int i, num_chars = 0;
 
 	//show available debug events
-	for (i=0; i<INVALID-1; i++) {
+	for (i=0; i<=INVALID; i++) {
 		num_chars += scnprintf(buf + num_chars,
 			PAGE_SIZE - num_chars - 1,
 			" %d - %s\n", evt_list[i].id, evt_list[i].name);
@@ -540,15 +548,22 @@ ssize_t get_lge_debug_event(struct device *dev,
 	return num_chars;
 }
 
+extern int ext_dsv_register_set(u8 address, u8 value);
+
 ssize_t set_lge_debug_event(struct device *dev,
 		struct device_attribute *attr,
 		const char *buf, size_t count)
 {
-	struct fb_info *fbi;
-	struct msm_fb_data_type *mfd;
-	struct mdss_panel_data *pdata;
-	struct mdss_dsi_ctrl_pdata *ctrl;
+	struct fb_info *fbi = NULL;
+	struct msm_fb_data_type *mfd = NULL;
+	struct mdss_panel_data *pdata = NULL;
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	struct mdss_panel_info *pinfo = NULL;
+	struct mdss_mdp_ctl *ctl = NULL;
+	struct dynamic_fps_data data = {0};
+
 	int event;
+	int i, tmp;
 
 	if (dev == NULL) {
 		pr_err("%s: invalid dev \n", __func__);
@@ -579,6 +594,18 @@ ssize_t set_lge_debug_event(struct device *dev,
 		return count;
 	}
 
+	ctl = mfd_to_ctl(mfd);
+	if (ctl == NULL) {
+		pr_err("%s: invalid mdp ctl \n", __func__);
+		return count;
+	}
+
+	pinfo = &(ctrl->panel_data.panel_info);
+	if (pinfo == NULL) {
+		pr_err("%s: invalid panel_info \n", __func__);
+		return count;
+	}
+
 	event = simple_strtoul(buf, NULL, 10);
 
 	switch(event) {
@@ -606,6 +633,72 @@ ssize_t set_lge_debug_event(struct device *dev,
 	case DEBUG_MDSS_FUDGE_FACTOR_CHANGE:
 		lge_debug_event_trigger(pdata, "/etc/debug_mdss_fudge_factor_change", DEBUG_MDSS_FUDGE_FACTOR_CHANGE);
 		break;
+	case DEBUG_MDSS_DFPS_MODE_CHANGE:
+		tmp = simple_strtoul(&buf[2], NULL, 10);
+
+		if (tmp) {
+			if (tmp == pinfo->dynamic_fps) {
+				pr_info("%s: dfps is already enabled \n", __func__);
+				break;
+			}
+
+			pinfo->dynamic_fps = true;
+			data.fps = pinfo->min_fps;
+
+			if (mdss_mdp_dfps_update_params(mfd, pdata, &data) || mdss_mdp_ctl_update_fps(ctl))
+				pr_err("%s: failed to reset dfps \n", __func__);
+			else
+				pr_info("%s: dfps is enabled with min fps[%d] \n", __func__, pinfo->min_fps);
+		} else {
+			pinfo->dynamic_fps = true;
+			if (strlen(buf) > 4) {
+				/*
+				you can set fps when disabled.
+				this value is for finding min fps when you meet LCD issues by dfps.
+				if you change min fps to keep testing with the changed one, would better to restart android to let display hal know it.
+				*/
+				pinfo->min_fps = data.fps = simple_strtoul(&buf[4], NULL, 10);
+			} else {
+				data.fps = pinfo->default_fps;
+			}
+
+			if (mdss_mdp_dfps_update_params(mfd, pdata, &data) || mdss_mdp_ctl_update_fps(ctl))
+				pr_err("%s: failed to reset dfps \n", __func__);
+			else
+				pr_info("%s: dfps is disabled with fps[%d] \n", __func__, data.fps);
+
+			pinfo->dynamic_fps = false;
+		}
+		break;
+	case DEBUG_DSV_REG_CHANGE:
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_EXTERNAL_DSV)
+		for(i=0; i<strlen(buf)/6; i++) {
+			pr_info("%s: DEBUG_DSV_REG_CHANGE [0x%x][0x%x] \n", __func__,
+				(char)(simple_strtoul(&buf[i*6+2], NULL, 16)), (char)(simple_strtoul(&buf[i*6+2+3], NULL, 16)));
+			ext_dsv_register_set((u8)(simple_strtoul(&buf[i*6+2], NULL, 16)), (u8)(simple_strtoul(&buf[i*6+2+3], NULL, 16)));
+			usleep_range(10000, 10000);
+		}
+#else
+		i = 0;
+		pr_info("%s: external DCDC converter is not defined \n", __func__);
+#endif
+		break;
+	case DEBUG_CABC_MODE_CHANGE:
+		tmp = (int)(simple_strtoul(&buf[3], NULL, 10));
+		if (tmp == 0) {
+			lge_mdss_dsi_panel_extra_cmds_send(NULL, "cabc-disable");
+			pr_info("%s: CABC mode will be disabled until next LCD-on \n", __func__);
+		} else if (tmp == 1) {
+			lge_mdss_dsi_panel_extra_cmds_send(NULL, "cabc-enable");
+			pr_info("%s: CABC mode is enabled \n", __func__);
+		} else {
+			pr_info("%s: invalid CABC mode \n", __func__);
+		}
+		break;
+	case INVALID:
+		op_flag = 1;
+		pr_info("%s: debug operation is unlocked \n", __func__);
+		break;
 	default:
 		pr_info("%s: not defined event!!", __func__);
 		break;
@@ -618,7 +711,7 @@ int lge_debug_event_trigger(struct mdss_panel_data *pdata, char *debug_file, int
 {
 	int ret = 0;
 	loff_t size = 0;
-	struct mdss_dsi_ctrl_pdata *ctrl;
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mdss_panel_info *pinfo = NULL;
 
 
@@ -670,7 +763,7 @@ int lge_debug_event_trigger(struct mdss_panel_data *pdata, char *debug_file, int
 		goto finish;
 	}
 
-	strcpy(debug_finfo->file_name, debug_file);
+	strncpy(debug_finfo->file_name, debug_file, sizeof(debug_finfo->file_name)-1);
 	debug_finfo->file_size = size;
 	debug_finfo->event = debug_event;
 

@@ -2894,6 +2894,12 @@ void wlan_hdd_tdls_set_mode(hdd_context_t *pHddCtx,
 
     mutex_unlock(&pHddCtx->tdls_lock);
 
+    if (tdls_mode == eTDLS_SUPPORT_DISABLED) {
+        if (FALSE == sme_IsPmcBmps(pHddCtx->hHal)) {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,"%s: TDLS is disabled. Enable BMPS", __func__);
+             hdd_enable_bmps_imps(pHddCtx);
+        }
+    }
 }
 
 static

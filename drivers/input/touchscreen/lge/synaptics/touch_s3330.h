@@ -128,31 +128,10 @@
 /* Product ID */
 #define PRODUCT_ID_REG                  (d->f01.dsc.query_base + 11)
 #define DEVICE_COMMAND_REG              (d->f01.dsc.command_base)
-/* IME Register*/
-#define FINGER_HYST_RATIO_REG		(d->f51.dsc.control_base + 108)
-
-#define NOISE_FLOOR			0x0F;
-#define IME_NOISE_FLOOR			0x32;
-#define MIN_PEAK			0x14;
-#define IME_MIN_PEAK			0x37;
-#define PEAK_MERGE_THD			0x28;
-#define IME_PEAK_MERGE_THD		0x96;
-#define DRUMMING_ACCELERATION		0x07;
-#define IME_DRUMMING_ACCELERATION	0x02;
-#define DRUMMING_SEPARAION		0x0A;
-#define IME_DRUMMING_SEPARAION  	0x07;
-
-#define FINGER_HYST_RATIO		0x80;
-#define IME_FINGER_HYST_RATIO		0xC8;
 
 enum{
 	NOISE_DISABLE = 0,
 	NOISE_ENABLE,
-};
-
-enum {
-	SW_RESET = 0,
-	HW_RESET,
 };
 
 struct synaptics_f12_reg {
@@ -332,9 +311,5 @@ irqreturn_t touch_irq_thread(int irq, void *dev_id);
 
 /* extern function */
 extern int FirmwareUpgrade(struct device *dev, const struct firmware *fw);
-int synaptics_irq_clear(struct device *dev);
-
-/* check recovery mode */
-extern int check_recovery_boot;
 
 #endif /* LGE_TOUCH_SYNAPTICS_H */

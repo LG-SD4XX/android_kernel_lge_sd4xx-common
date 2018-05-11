@@ -30,6 +30,10 @@
 #include <soc/qcom/lge/lge_handle_panic.h>
 #include <soc/qcom/scm.h>
 #include <linux/input.h>
+#ifdef CONFIG_LGE_BOOT_LOCKUP_DETECT
+#include <linux/reboot.h>
+#include <soc/qcom/lge/board_lge.h>
+#endif
 
 #if defined(CONFIG_ARCH_MSM8909)
 #define NO_ADSP
@@ -65,6 +69,18 @@ static struct panic_handler_data *panic_handler;
 static int gen_key_panic = 0;
 static int key_crash_cnt = 0;
 static unsigned long key_crash_last_time = 0;
+static DEFINE_SPINLOCK(lge_panic_lock);
+static unsigned int sctrl_reg, ttbr0_reg, ttbr1_reg, ttbcr_reg;
+
+void lge_get_mmu_cp15_register(void)
+{
+	asm volatile ("mrc p15, 0, %0, c1, c0, 0\n" : "=r" (sctrl_reg));
+	asm volatile ("mrc p15, 0, %0, c2, c0, 0\n" : "=r" (ttbr0_reg));
+	asm volatile ("mrc p15, 0, %0, c2, c0, 1\n" : "=r" (ttbr1_reg));
+	asm volatile ("mrc p15, 0, %0, c2, c0, 2\n" : "=r" (ttbcr_reg));
+
+	printk("SCTRL: %08x  TTBR0: %08x TTBR1: %08x  TTBCR: %08x \n", sctrl_reg, ttbr0_reg, ttbr1_reg, ttbcr_reg);
+}
 
 void lge_set_subsys_crash_reason(const char *name, int type)
 {
@@ -380,13 +396,73 @@ void lge_panic_handler_fb_cleanup(void)
 	}
 }
 
+#ifdef CONFIG_LGE_BOOT_LOCKUP_DETECT
+#define LOCKUP_WQ_NOT_START_YET (-1)
+#define LOCKUP_WQ_PAUSED        (0)
+#define LOCKUP_WQ_STARTED       (1)
+#define LOCKUP_WQ_CANCELED      (2)
+
+#define REBOOT_DEADLINE msecs_to_jiffies(30 * 1000)
+
+static struct delayed_work lge_panic_reboot_work;
+
+static void lge_panic_reboot_work_func(struct work_struct *work)
+{
+    pr_emerg("==========================================================\n");
+	pr_emerg("WARNING: detecting lockup during reboot! forcing panic....\n");
+	pr_emerg("==========================================================\n");
+
+	BUG();
+}
+
+static int lge_panic_reboot_handler(struct notifier_block *this,
+		unsigned long event, void *ptr)
+{
+	if (lge_get_download_mode() != 1)
+		return NOTIFY_DONE;
+
+	INIT_DELAYED_WORK(&lge_panic_reboot_work, lge_panic_reboot_work_func);
+	queue_delayed_work(system_highpri_wq, &lge_panic_reboot_work,
+		   REBOOT_DEADLINE);
+
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block lge_panic_reboot_notifier = {
+	lge_panic_reboot_handler,
+	NULL,
+	0
+};
+#endif
+
+static int lge_handler_panic(struct notifier_block *this,
+                 unsigned long event,
+                 void *ptr)
+{
+	unsigned long flags;
+	spin_lock_irqsave(&lge_panic_lock, flags);
+
+	printk(KERN_CRIT "%s called\n", __func__);
+	lge_get_mmu_cp15_register();
+
+	spin_unlock_irqrestore(&lge_panic_lock, flags);
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block lge_panic_blk = {
+    .notifier_call  = lge_handler_panic,
+    .priority    = 1004,
+};
+
 static int __init lge_panic_handler_early_init(void)
 {
 	struct device_node *np;
 	uint32_t crash_handler_magic = 0;
 	uint32_t mem_addr = 0;
 	uint32_t mem_size = 0;
-
+#ifdef CONFIG_LGE_BOOT_LOCKUP_DETECT
+	int ret = 0;
+#endif
 	panic_handler = kzalloc(sizeof(*panic_handler), GFP_KERNEL);
 	if (!panic_handler) {
 		pr_err("could not allocate memory for panic_handler\n");
@@ -422,10 +498,16 @@ static int __init lge_panic_handler_early_init(void)
 	lge_set_fb_addr(panic_handler->fb_addr);
 
 	np = of_find_compatible_node(NULL, NULL, "ramoops");
+#ifdef CONFIG_LGE_BOOT_LOCKUP_DETECT
+	/* register reboot notifier for detecting reboot lockup */
+	ret = register_reboot_notifier(&lge_panic_reboot_notifier);
+#endif
 	if (!np) {
 		pr_err("unable to find DT ramoops node\n");
 		return -ENODEV;
 	}
+
+	atomic_notifier_chain_register(&panic_notifier_list, &lge_panic_blk);
 
 	of_property_read_u32(np, "mem-address", &mem_addr);
 	of_property_read_u32(np, "mem-size", &mem_size);

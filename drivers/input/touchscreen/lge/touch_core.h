@@ -39,10 +39,11 @@
 #define LGE_TOUCH_NAME			"lge_touch"
 #define LGE_TOUCH_DRIVER_NAME		"lge_touch_driver"
 #define MAX_FINGER			10
-#define MAX_LPWG_CODE			128
+#define MAX_LPWG_CODE		128
 #define EUPGRADE			140
 #define EHWRESET			141
 #define ESWRESET			142
+#define EGLOBALRESET		143
 
 enum TOUCH_DEBUG {
 	_NONE                      = 0,
@@ -121,8 +122,8 @@ enum {
 };
 
 enum {
-	HOLE_FAR = 0,
-	HOLE_NEAR,
+	HALL_FAR = 0,
+	HALL_NEAR,
 };
 
 enum {
@@ -165,7 +166,15 @@ enum {
 	LPWG_DOUBLE_TAP,
 	LPWG_PASSWORD,
 	LPWG_PASSWORD_ONLY,
+};
+
+enum {
+	LPWG_SLEEP = 0,
+	LPWG_WAKE,
+	LPWG_KNOCK,
+	LPWG_PASSWD,
 	LPWG_PARTIAL,
+	LPWG_NORMAL,
 };
 
 enum {
@@ -176,6 +185,7 @@ enum {
 enum {
 	TCI_1 = 0,
 	TCI_2,
+	SWIPE,
 };
 
 enum {
@@ -209,24 +219,9 @@ enum {
 };
 
 enum {
-	COVER_SETTING_OFF = 0,
-	COVER_SETTING_ON,
-};
-
-enum {
 	INCOMING_CALL_IDLE,
 	INCOMING_CALL_RINGING,
 	INCOMING_CALL_OFFHOOK,
-};
-
-enum {
-	QMEMO_NOT_RUNNING = 0,
-	QMEMO_RUNNING,
-};
-
-enum {
-	PMEMO_NOT_RUNNING = 0,
-	PMEMO_RUNNING,
 };
 
 enum {
@@ -307,7 +302,7 @@ enum {
 };
 
 enum {
-	NORMAL_BOOT = 0,
+	TOUCH_NORMAL_BOOT = 0,
 	MINIOS_AAT,
 	MINIOS_MFTS_FOLDER,
 	MINIOS_MFTS_FLAT,
@@ -338,19 +333,17 @@ struct state_info {
 	atomic_t ime;
 	atomic_t quick_cover;
 	atomic_t incoming_call;
-	atomic_t qmemo;
-	atomic_t pmemo;
 	atomic_t mfts;
 	atomic_t sp_link;
 	atomic_t debug_tool;
 	atomic_t debug_option_mask;
 	atomic_t onhand;
-	atomic_t hw_reset;
 };
 
 struct touch_driver {
 	int (*probe)(struct device *dev);
 	int (*remove)(struct device *dev);
+	int (*shutdown)(struct device *dev);
 	int (*suspend)(struct device *dev);
 	int (*resume)(struct device *dev);
 	int (*init)(struct device *dev);
@@ -368,7 +361,8 @@ struct touch_device_caps {
 	u32 max_x;
 	u32 max_y;
 	u32 max_pressure;
-	u32 max_width;
+	u32 max_width_major;
+	u32 max_width_minor;
 	u32 max_orientation;
 	u32 max_id;
 	u32 hw_reset_delay;
@@ -377,9 +371,7 @@ struct touch_device_caps {
 
 struct touch_operation_role {
 	bool use_lpwg;
-	bool use_firmware;
 	bool use_fw_upgrade;
-	bool use_fw_recovery;
 	u32 use_lpwg_test;
 	u32 mfts_lpwg;
 	bool hide_coordinate;
@@ -460,10 +452,9 @@ struct touch_core_data {
 	struct touch_driver *driver;
 	struct kobject kobj;
 
-        int factory_boot;
-
 	struct wake_lock lpwg_wake_lock;
 
+	int boot_mode;
 	int reset_pin;
 	int int_pin;
 	int maker_id_pin;
@@ -478,7 +469,6 @@ struct touch_core_data {
 	struct state_info state;
 	struct touch_quick_cover qcover;
 	struct touch_pinctrl pinctrl;
-	int use_qcover;
 
 	u32 intr_status;
 	u16 new_mask;
@@ -509,9 +499,7 @@ struct touch_core_data {
 	struct delayed_work upgrade_work;
 	struct delayed_work notify_work;
 	struct delayed_work fb_work;
-#if defined(CONFIG_LGE_DISPLAY_RECOVERY_ESD)
 	struct delayed_work panel_reset_work;
-#endif
 
 	struct notifier_block blocking_notif;
 	struct notifier_block atomic_notif;
@@ -531,8 +519,8 @@ struct touch_core_data {
 	int vio_id;
 	int vio_vol;
 
-	u32 tx_pa;
-	u32 rx_pa;
+	dma_addr_t tx_pa;
+	dma_addr_t rx_pa;
 	void *prd;
 };
 
@@ -609,18 +597,18 @@ extern int touch_init_sysfs(struct touch_core_data *ts);
 extern void touch_interrupt_control(struct device *dev, int on_off);
 extern void touch_report_all_event(struct touch_core_data *ts);
 
+/* touch_get_device_type function deprecated
+ * please see the touch_get_device_type func in touch_hwif.c
+ *
 enum touch_device_type {
-    TYPE_LG4946 = 0,
-    TYPE_LG4945,
-    TYPE_LG4894,
-    TYPE_S3320,
-    TYPE_S3330,
-    TYPE_TD4100,
-    TYPE_TD4302,
-    TYPE_FT8707,
-    TYPE_FT8607,
-    TYPE_MAX,
+	TYPE_LG4946 = 0,
+	TYPE_LG4945,
+	TYPE_LG4894,
+	TYPE_S3320,
+	TYPE_TD4302,
+	TYPE_MAX,
 };
+*/
 
-extern int touch_get_device_type(void);
+extern enum touch_device_type touch_get_device_type(void);
 #endif /* LGE_TOUCH_CORE_H */

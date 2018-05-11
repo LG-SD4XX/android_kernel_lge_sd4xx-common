@@ -40,7 +40,11 @@
 #define DSI_STATUS_CHECK_DISABLE 1
 
 static uint32_t interval = STATUS_CHECK_INTERVAL_MS;
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_RECOVERY_ESD)
+int32_t dsi_status_disable = DSI_STATUS_CHECK_INIT;
+#else
 static int32_t dsi_status_disable = DSI_STATUS_CHECK_INIT;
+#endif
 struct dsi_status_data *pstatus_data;
 
 /*

@@ -12,6 +12,7 @@
  */
 
 #include "../dsi-panel-lgd-td4310-fhd-video.dtsi"
+#include "../dsi-panel-lgd-sw49105-fhd-video.dtsi"
 
 &wled {
 	qcom,cons-sync-write-delay-us = <1000>;
@@ -31,6 +32,13 @@
 	qcom,mdss-dsi-bl-min-level = <1>;
 	qcom,mdss-dsi-bl-max-level = <4095>;
 };
+
+&dsi_lgd_sw49105_fhd_incell_vid {
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+};
+
 
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_lgd_td4310_fhd_incell_vid>;

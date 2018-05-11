@@ -599,6 +599,11 @@ struct mtp_instance {
 /* temporary variable used between mtp_open() and mtp_gadget_bind() */
 static struct mtp_dev *_mtp_dev;
 
+#ifdef CONFIG_LGE_USB_G_ANDROID
+/* variable to handle mtp cancel request */
+static int request_cancel_count;
+#endif
+
 #ifdef CONFIG_LGE_USB_G_MULTIPLE_CONFIGURATION
 static struct mtp_dev *func_to_mtp(struct usb_function *f)
 {
@@ -906,7 +911,7 @@ static int mtp_create_bulk_endpoints(struct mtp_dev *dev,
 	size_t extra_buf_alloc = cdev->gadget->extra_buf_alloc;
 	int i;
 
-	DBG(cdev, "create_bulk_endpoints dev: %p\n", dev);
+	DBG(cdev, "create_bulk_endpoints dev: %pK\n", dev);
 
 	ep = usb_ep_autoconfig(cdev->gadget, in_desc);
 	if (!ep) {
@@ -1082,7 +1087,7 @@ requeue_req:
 		r = -EIO;
 		goto done;
 	} else {
-		DBG(cdev, "rx %p queue\n", req);
+		DBG(cdev, "rx %pK queue\n", req);
 	}
 
 	/* wait for a request to complete */
@@ -1107,7 +1112,7 @@ requeue_req:
 		if (req->actual == 0)
 			goto requeue_req;
 
-		DBG(cdev, "rx %p %d\n", req, req->actual);
+		DBG(cdev, "rx %pK %d\n", req, req->actual);
 		xfer = (req->actual < count) ? req->actual : count;
 		r = xfer;
 		if (copy_to_user(buf, req->buf, xfer))
@@ -1243,6 +1248,11 @@ static void send_file_work(struct work_struct *data)
 	offset = dev->xfer_file_offset;
 	count = dev->xfer_file_length;
 
+	if (count < 0) {
+		dev->xfer_result = -EINVAL;
+		return;
+	}
+
 	DBG(cdev, "send_file_work(%lld %lld)\n", offset, count);
 
 	if (dev->xfer_send_header) {
@@ -1362,6 +1372,11 @@ static void receive_file_work(struct work_struct *data)
 	offset = dev->xfer_file_offset;
 	count = dev->xfer_file_length;
 
+	if (count < 0) {
+		dev->xfer_result = -EINVAL;
+		return;
+	}
+
 	DBG(cdev, "receive_file_work(%lld)\n", count);
 	if (!IS_ALIGNED(count, dev->ep_out->maxpacket))
 		DBG(cdev, "%s- count(%lld) not multiple of mtu(%d)\n", __func__,
@@ -1387,7 +1402,7 @@ static void receive_file_work(struct work_struct *data)
 		}
 
 		if (write_req) {
-			DBG(cdev, "rx %p %d\n", write_req, write_req->actual);
+			DBG(cdev, "rx %pK %d\n", write_req, write_req->actual);
 			start_time = ktime_get();
 			ret = vfs_write(filp, write_req->buf, write_req->actual,
 				&offset);
@@ -1479,6 +1494,40 @@ static int mtp_send_event(struct mtp_dev *dev, struct mtp_event *event)
 
 	return ret;
 }
+
+#ifdef CONFIG_LGE_USB_G_ANDROID
+static int mtp_receive_cancel_event(struct mtp_dev *dev, struct mtp_event *event) {
+
+    int length = event -> length;
+
+    /* DBG(dev->cdev, "mtp_receive_cancel_event(%zu)\n", event->length); */
+
+    if (length  < 0 || length > INTR_BUFFER_SIZE)
+        return -EINVAL;
+
+    if (dev->state == STATE_OFFLINE)
+        return -ENODEV;
+
+	printk(KERN_INFO "request_cancel_count : %d\n", request_cancel_count);
+	if (request_cancel_count > 1) {
+		printk(KERN_INFO "need to check request_cancel_count valid\n");
+		request_cancel_count = 1;
+	}
+
+	event->length = sizeof(int);
+	if (copy_to_user((void __user *)event->data, &request_cancel_count, sizeof(int))) {
+		printk(KERN_INFO "copy cancel event failed.\n");
+	} else {
+		printk(KERN_INFO "copy cancel event success\n");
+		if (request_cancel_count > 0) {
+			printk(KERN_INFO "reset request_cancel_count\n");
+			request_cancel_count = 0;
+		}
+	}
+
+	return 0;
+}
+#endif
 
 static long mtp_send_receive_ioctl(struct file *fp, unsigned code,
 	struct mtp_file_range *mfr)
@@ -1589,6 +1638,18 @@ static long mtp_ioctl(struct file *fp, unsigned code, unsigned long value)
 			ret = mtp_send_event(dev, &event);
 		mtp_unlock(&dev->ioctl_excl);
 	break;
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	case MTP_RECEIVE_CANCEL_EVENT:
+	    if (mtp_lock(&dev->ioctl_excl))
+			return -EBUSY;
+		if (copy_from_user(&event, (void __user *)value, sizeof(event)))
+			ret = -EFAULT;
+		else {
+			ret = mtp_receive_cancel_event(dev, &event);
+		}
+		mtp_unlock(&dev->ioctl_excl);
+	break;
+#endif
 	default:
 		DBG(dev->cdev, "unknown ioctl code: %d\n", code);
 	}
@@ -1629,6 +1690,11 @@ static long compat_mtp_ioctl(struct file *fp, unsigned code,
 	case COMPAT_MTP_SEND_EVENT:
 		cmd = MTP_SEND_EVENT;
 		break;
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	case COMPAT_MTP_RECEIVE_CANCEL_EVENT:
+		cmd = MTP_RECEIVE_CANCEL_EVENT;
+		break;
+#endif
 	default:
 		DBG(dev->cdev, "unknown compat_ioctl code: %d\n", code);
 		goto fail;
@@ -1771,7 +1837,10 @@ static int mtp_ctrlrequest(struct usb_composite_dev *cdev,
 				&& w_value == 0) {
 #endif
 			DBG(cdev, "MTP_REQ_CANCEL\n");
-
+#ifdef CONFIG_LGE_USB_G_ANDROID
+			request_cancel_count++;
+			printk(KERN_INFO "got MTP_REQ_CANCEL. request_cancel_count : %d, dev_state : %d\n", request_cancel_count, dev->state);
+#endif
 			spin_lock_irqsave(&dev->lock, flags);
 			if (dev->state == STATE_BUSY) {
 				dev->state = STATE_CANCELED;
@@ -1906,7 +1975,7 @@ mtp_function_bind(struct usb_configuration *c, struct usb_function *f)
 #endif
 
 	dev->cdev = cdev;
-	DBG(cdev, "mtp_function_bind dev: %p\n", dev);
+	DBG(cdev, "mtp_function_bind dev: %pK\n", dev);
 
 	/* allocate interface ID(s) */
 	id = usb_interface_id(c, f);
@@ -2220,7 +2289,7 @@ static int debug_mtp_read_stats(struct seq_file *s, void *unused)
 	}
 
 	seq_printf(s, "vfs_write(time in usec) min:%d\t max:%d\t avg:%d\n",
-						min, max, sum / iteration);
+				min, max, (iteration ? (sum / iteration) : 0));
 	min = max = sum = iteration = 0;
 	seq_puts(s, "\n=======================\n");
 	seq_puts(s, "MTP Read Stats:\n");
@@ -2242,7 +2311,7 @@ static int debug_mtp_read_stats(struct seq_file *s, void *unused)
 	}
 
 	seq_printf(s, "vfs_read(time in usec) min:%d\t max:%d\t avg:%d\n",
-						min, max, sum / iteration);
+				min, max, (iteration ? (sum / iteration) : 0));
 	spin_unlock_irqrestore(&dev->lock, flags);
 	return 0;
 }

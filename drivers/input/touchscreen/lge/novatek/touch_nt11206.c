@@ -1721,7 +1721,7 @@ static int novatek_lpwg_read(struct device *dev, u8 *buf)
 	u8 read_cmd = 0x22;
 	u8 read_check_addr = 0x4F;
 	u8 tmp = 0;
-	u8 buf_tmp[42] = {0, };
+	u8 buf_tmp[38] = {0, };
 
 	ret = nt11206_reg_write(dev, ADDR_CMD, serial_data, 2);
 	if(ret < 0) {
@@ -1729,7 +1729,7 @@ static int novatek_lpwg_read(struct device *dev, u8 *buf)
 		return ret;
 	}
 
-	ret = nt11206_reg_write(dev, read_data_addr, buf_tmp, 42);
+	ret = nt11206_reg_write(dev, read_data_addr, buf_tmp, 38);
 	if(ret < 0) {
 		TOUCH_E("Read Data Register RESET FAIL\n");
 	}
@@ -1763,7 +1763,7 @@ static int novatek_lpwg_read(struct device *dev, u8 *buf)
 		}
 	}
 
-	ret = nt11206_reg_read(dev, read_data_addr, buf, 42);
+	ret = nt11206_reg_read(dev, read_data_addr, buf, 34);
 	if(ret < 0) {
 		TOUCH_E("Read LPWG Data Fail\n");
 		return ret;
@@ -2002,7 +2002,7 @@ static int nt11206_set_lpwg(struct device *dev, int mode)
 		}
 
 		//XMIN
-		buf[0] = 0x37; //5mm
+		buf[0] = 0x76;
 		buf[1] = 0x00;
 		ret = nt11206_reg_write(dev, start_addr, buf, 2);
 		if(ret < 0) {
@@ -2011,7 +2011,7 @@ static int nt11206_set_lpwg(struct device *dev, int mode)
 		}
 
 		//XMAX
-		buf[0] = 0x79; //5mm
+		buf[0] = 0x3A;
 		buf[1] = 0x04;
 		ret = nt11206_reg_write(dev, start_addr + 2, buf, 2);
 		if(ret < 0) {
@@ -2020,7 +2020,7 @@ static int nt11206_set_lpwg(struct device *dev, int mode)
 		}
 
 		//YMIN
-		buf[0] = 0x37; //5mm
+		buf[0] = 0x6F;
 		buf[1] = 0x00;
 		ret = nt11206_reg_write(dev, start_addr + 4, buf, 2);
 		if(ret < 0) {
@@ -2029,7 +2029,7 @@ static int nt11206_set_lpwg(struct device *dev, int mode)
 		}
 
 		//YMAX
-		buf[0] = 0x49; //5mm
+		buf[0] = 0x11;
 		buf[1] = 0x07;
 		ret = nt11206_reg_write(dev, start_addr + 6, buf, 2);
 		if(ret < 0) {

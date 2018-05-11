@@ -933,6 +933,8 @@ eHalStatus csrRoamDisconnect(tpAniSirGlobal pMac, tANI_U32 sessionId, eCsrRoamDi
 ----------------------------------------------------------------------------*/
 
 void csr_abortConnection(tpAniSirGlobal pMac, tANI_U32 sessionId);
+void csr_set_con_state_not_connected(tpAniSirGlobal pMac, tANI_U8 sessionId);
+
 
 /* ---------------------------------------------------------------------------
     \fn csrScanGetPMKIDCandidateList

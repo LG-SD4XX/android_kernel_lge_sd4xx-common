@@ -32,13 +32,12 @@ void sendnlmsg(char *message)
 	int slen = 0;
 	if(!message || !nl_sk)
 	{
-		return;
+		return ;
 	}
 	skb_1 = alloc_skb(len,GFP_ATOMIC);
 	if(!skb_1)
 	{
 		printk(KERN_ERR "my_net_link:alloc_skb_1 error\n");
-		return;
 	}
 	slen = strlen(message);
 	nlh = nlmsg_put(skb_1,0,0,0,MAX_MSGSIZE,0);
