@@ -272,6 +272,24 @@ config LGE_DISPLAY_MH
 	---help---
     It provides support for MH panel
 
+config LGE_DISPLAY_CV1_TIANMA_FT8006M
+	depends on LGE_DISPLAY_COMMON
+	bool "Use LGE DISPLAY CV1_TIANMA_FT8006M"
+	---help---
+	It provides support for CV1_TIANMA_FT8006M panel
+
+config LGE_DISPLAY_CV1_LGD_LG4894A
+	depends on LGE_DISPLAY_COMMON
+	bool "Use LGE DISPLAY CV1_LGD_LG4894A"
+	---help---
+	It provides support for CV1_LGD_LG4894A panel
+
+config LGE_DISPLAY_CV1_TCL_FT8006M
+	depends on LGE_DISPLAY_COMMON
+	bool "Use LGE DISPLAY CV1_TCL_FT8006M"
+	---help---
+	It provides support for CV1_TCL_FT8006M panel
+
 config LGE_DISPLAY_BL_USE_BLMAP
 	depends on FB_MSM_MDSS
 	bool "Use LGE BLMAP"
@@ -284,6 +302,13 @@ config LGE_DISPLAY_READER_MODE
 	bool "LGE reader mode"
 	---help---
 	The reader mode provides support to change color temperature
+	by sending proper cmds to panel.
+
+config LGE_DISPLAY_COMFORT_MODE
+	depends on FB_MSM_MDSS
+	bool "LGE comfort view"
+	---help---
+	The comfort mode provides support to change color temperature
 	by sending proper cmds to panel.
 
 config LGE_DISPLAY_DAYLIGHT_MODE

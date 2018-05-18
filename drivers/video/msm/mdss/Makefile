@@ -36,9 +36,13 @@ mdss-dsi-objs += mdss_dsi_panel.o
 ifeq ($(CONFIG_LGE_DISPLAY_READER_MODE),y)
 mdss-dsi-objs += lge/reader_mode.o
 endif
+ifeq ($(CONFIG_LGE_DISPLAY_COMFORT_MODE),y)
+mdss-dsi-objs += lge/lge_comfort_view.o
+endif
 ifeq ($(CONFIG_LGE_DISPLAY_COMMON),y)
 mdss-dsi-objs += lge/lge_mdss_dsi.o
 mdss-dsi-objs += lge/lge_mdss_dsi_panel.o
+mdss-dsi-objs += lge/lge_mdss_sysfs.o
 endif
 ifeq ($(CONFIG_LGE_DISPLAY_PH2_GLOBAL_COM),y)
 mdss-dsi-objs += lge_ph2_global_com/lge_mdss_dsi_ph2_global_com.o
@@ -118,6 +122,22 @@ mdss-dsi-objs += lge_tf8/lge_mdss_dsi_tf8.o
 endif
 ifeq ($(CONFIG_LGE_DISPLAY_MH),y)
 mdss-dsi-objs += lge_mh/lge_mdss_dsi_mh.o
+endif
+
+ifneq ($(filter y, \
+	$(CONFIG_LGE_DISPLAY_CV1_TIANMA_FT8006M) \
+	$(CONFIG_LGE_DISPLAY_CV1_LGD_LG4894A) \
+	$(CONFIG_LGE_DISPLAY_CV1_TCL_FT8006M)), )
+mdss-dsi-objs += lge_cv1/lge_mdss_dsi_cv1.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_CV1_TIANMA_FT8006M),y)
+mdss-dsi-objs += lge_cv1/lge_mdss_dsi_cv1_tianma_ft8006m.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_CV1_LGD_LG4894A),y)
+mdss-dsi-objs += lge_cv1/lge_mdss_dsi_cv1_lgd_lg4894a.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_CV1_TCL_FT8006M),y)
+mdss-dsi-objs += lge_cv1/lge_mdss_dsi_cv1_tcl_ft8006m.o
 endif
 
 mdss-dsi-objs += msm_mdss_io_8974.o

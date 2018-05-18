@@ -29,6 +29,9 @@
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
 #include "lge/reader_mode.h"
 #endif
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMFORT_MODE)
+#include "lge/lge_comfort_view.h"
+#endif
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_MFTS)
 #include "lge/mfts_mode.h"
 #endif
@@ -771,6 +774,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
 	lge_mdss_dsi_panel_send_on_cmds(ctrl, on_cmds, lge_get_reader_mode());
+#elif IS_ENABLED(CONFIG_LGE_DISPLAY_COMFORT_MODE)
+	lge_mdss_dsi_panel_send_on_cmds(ctrl, on_cmds, lge_get_comfort_view());
 #else
 	if (on_cmds->cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, on_cmds, CMD_REQ_COMMIT);
@@ -817,6 +822,11 @@ static int mdss_dsi_post_panel_on(struct mdss_panel_data *pdata)
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
 	lge_mdss_dsi_panel_send_post_on_cmds(ctrl, lge_get_reader_mode());
 #endif
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMFORT_MODE)
+	lge_mdss_dsi_panel_send_post_on_cmds(ctrl, lge_get_comfort_view());
+#endif
+
 
 	if (pinfo->is_dba_panel && pinfo->is_pluggable) {
 		/* ensure at least 1 frame transfers to down stream device */
@@ -2641,6 +2651,9 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
 	lge_mdss_dsi_parse_reader_mode_cmds(np, ctrl_pdata);
+#endif
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMFORT_MODE)
+	lge_mdss_dsi_parse_comfort_view_cmds(np, ctrl_pdata);
 #endif
 
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)

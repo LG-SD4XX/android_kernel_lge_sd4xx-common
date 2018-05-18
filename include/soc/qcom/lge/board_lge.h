@@ -199,6 +199,9 @@ enum lge_panel_type {
 	SF3_TOVIS,
 	LV5_TOVIS,
 	LGD_INCELL_SW49106,
+	CV1_TIANMA_FT8006M,
+	CV1_LGD_LG4894A,
+	CV1_TCL_FT8006M,
 };
 
 enum lge_panel_type lge_get_panel_type(void);

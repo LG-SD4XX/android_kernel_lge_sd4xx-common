@@ -41,6 +41,7 @@ struct lge_mdss_dsi_ctrl_pdata {
 #define LGE_OVERRIDE_VALUE(x, v) do { if ((v)) (x) = (v); } while(0)
 
 #include "lge/lge_mdss_dsi_panel.h"
+#include "lge/lge_mdss_sysfs.h"
 
 int lge_mdss_dsi_parse_extra_params(struct platform_device *ctrl_pdev,
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata);
