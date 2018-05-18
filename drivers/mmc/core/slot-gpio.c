@@ -191,6 +191,10 @@ void mmc_gpiod_request_cd_irq(struct mmc_host *host)
 			ctx->cd_label, host);
 		if (ret < 0)
 			irq = ret;
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME_WAKE_UP
+		else
+			enable_irq_wake(host->slot.cd_irq);
+#endif
 	}
 
 	host->slot.cd_irq = irq;

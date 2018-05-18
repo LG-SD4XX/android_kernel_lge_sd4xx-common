@@ -3849,7 +3849,19 @@ void mmc_rescan(struct work_struct *work)
 	int err = 0;
 #endif
 
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME_WAKE_UP
+	if (host->trigger_card_event && host->ops->card_event) {
+		host->ops->card_event(host);
+	}
 
+	spin_lock_irqsave(&host->lock, flags);
+	if (host->rescan_disable) {
+		spin_unlock_irqrestore(&host->lock, flags);
+		return;
+	}
+	spin_unlock_irqrestore(&host->lock, flags);
+	host->trigger_card_event = false;
+#else
 	if (host->trigger_card_event && host->ops->card_event) {
 		host->ops->card_event(host);
 		host->trigger_card_event = false;
@@ -3861,6 +3873,7 @@ void mmc_rescan(struct work_struct *work)
 		return;
 	}
 	spin_unlock_irqrestore(&host->lock, flags);
+#endif
 
 	/* If there is a non-removable card registered, only scan once */
 	if ((host->caps & MMC_CAP_NONREMOVABLE) && host->rescan_entered)
