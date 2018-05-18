@@ -103,6 +103,13 @@ tristate "Support LGE PM Charging scenario"
 	help
 	  LGE PM Charing Scenario
 
+config LGE_PM_CHARGING_TEMP_SCENARIO_V2
+	tristate "Support LGE PM Charging scenario V2"
+	default n
+	depends on LGE_PM_CHARGING_TEMP_SCENARIO
+	help
+	  LGE PM Charging Scenario V2
+
 config LGE_UART_CONTROL
 	tristate "Support LGE uart control"
 	default n

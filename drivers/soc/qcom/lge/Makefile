@@ -3,7 +3,11 @@ obj-$(CONFIG_LGE_HANDLE_PANIC)                  += lge_handle_panic.o
 obj-$(CONFIG_LGE_BOOTLOADER_LOG) += lge_bootloader_log.o
 obj-$(CONFIG_LGE_BOOTLOADER_TIME_CHECKER) += lge_bootloader_time_checker.o
 obj-$(CONFIG_LGE_PM_PSEUDO_BATTERY) += lge_pseudo_batt.o
+ifdef CONFIG_LGE_PM_CHARGING_TEMP_SCENARIO_V2
+obj-$(CONFIG_LGE_PM_CHARGING_TEMP_SCENARIO) += lge_charging_scenario_v2.o
+else
 obj-$(CONFIG_LGE_PM_CHARGING_TEMP_SCENARIO) += lge_charging_scenario.o
+endif
 obj-$(CONFIG_LGE_UART_CONTROL) += lge_uart_control.o
 obj-$(CONFIG_LGE_EARJACK_DEBUGGER) += lge_earjack_debugger.o
 obj-$(CONFIG_LGE_PM_CABLE_DETECTION) += lge_cable_detection.o
