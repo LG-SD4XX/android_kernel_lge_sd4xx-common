@@ -490,3 +490,37 @@ static int  __init lge_add_qsdl_device(void)
 arch_initcall(lge_add_qsdl_device);
 
 #endif /* CONFIG_LGE_QSDL_SUPPORT */
+
+#ifdef CONFIG_LGE_ONE_BINARY_SKU
+/* For LAOP SKU Carrier Support */
+static enum lge_sku_carrier_type lge_sku_carrier = LAO;
+int __init lge_sku_carrier_init(char *s)
+{
+	if (!strcmp(s, "LAO"))
+		lge_sku_carrier = LAO;
+	else if (!strcmp(s, "TMUS"))
+		lge_sku_carrier = TMUS;
+	else if (!strcmp(s, "TRF_C"))
+		lge_sku_carrier = TRF_C;
+	else if (!strcmp(s, "TRF_G"))
+		lge_sku_carrier = TRF_G;
+	else if (!strcmp(s, "USC"))
+		lge_sku_carrier = USC;
+	else if (!strcmp(s, "VZW"))
+		lge_sku_carrier = VZW;
+	else if (!strcmp(s, "TRF"))
+		lge_sku_carrier = TRF;
+	else
+		lge_sku_carrier = LAO;
+
+	pr_info("LGE One Binary Sku carrier : %d %s\n", lge_sku_carrier, s);
+
+	return 1;
+}
+__setup("lge.sku_carrier=", lge_sku_carrier_init);
+
+enum lge_sku_carrier_type lge_get_sku_carrier(void)
+{
+	return lge_sku_carrier;
+}
+#endif //CONFIG_LGE_ONE_BINARY_SKU

@@ -10304,6 +10304,12 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 {
 	int rc = 0, ocp_thresh = -EINVAL;
 	struct device_node *node = chip->dev->of_node;
+#ifdef CONFIG_LGE_ONE_BINARY_SKU
+	struct device_node *child;
+	const char *carrier_dt = NULL;
+	static char *carrier = NULL;
+	enum lge_sku_carrier_type lge_sku_carrier;
+#endif
 	const char *dc_psy_type, *bpd;
 #if defined(CONFIG_LGE_PM_QC20_SCENARIO) || defined(CONFIG_LGE_PM_CHG_LIMIT)
 	int i;
@@ -10329,6 +10335,7 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 		OF_PROP_READ(chip, chip->iterm_ma, "iterm-ma", rc, 1);
 #endif
 #ifdef CONFIG_LGE_PM
+#ifndef CONFIG_LGE_ONE_BINARY_SKU
 #ifdef CONFIG_LGE_PM_CHARGERLOGO_ADAPTIVE_MORE_CHG_CURRENT
 	if (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO)
 		chip->cfg_usb_max_current_ma = DEFAULT_DCP_MAX_ICL_MA;
@@ -10349,7 +10356,9 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 #endif
 #endif
 #endif
+#endif
 
+#ifndef CONFIG_LGE_ONE_BINARY_SKU
 #ifdef CONFIG_LGE_PM_CHARGERLOGO_ADAPTIVE_MORE_CHG_CURRENT
 	if (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO)
 		chip->cfg_fastchg_current_ma = DEFAULT_DCP_MAX_FCC_MA;
@@ -10401,6 +10410,7 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 			rc, 1);
 #ifdef CONFIG_LGE_PM_CHARGING_TEMP_SCENARIO
 	chip->jeita_disabled = of_property_read_bool(node, "lge,jeita-disabled");
+#endif
 #endif
 
 #ifdef CONFIG_LGE_PM
@@ -10577,6 +10587,36 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 
 	chip->cfg_override_usb_current = of_property_read_bool(node,
 				"qcom,override-usb-current");
+
+#ifdef CONFIG_LGE_ONE_BINARY_SKU
+	lge_sku_carrier = lge_get_sku_carrier();
+
+	if (lge_sku_carrier == TMUS)
+		carrier = "TMUS";
+	else
+		carrier = "COMMON";
+
+	for_each_child_of_node(node, child) {
+		if(of_property_read_string(child,"lge,sku_carrier", &carrier_dt))
+			continue;
+
+		if (!strcmp(carrier, carrier_dt)) {
+			pr_info("carrier matched : %s\n", carrier_dt);
+			of_property_read_u32(child, "lge,usb-max-current-ma",
+				&chip->cfg_usb_max_current_ma);
+			of_property_read_u32(child, "lge,fastchg-current-ma",
+				&chip->cfg_fastchg_current_ma);
+			break;
+		}
+	}
+
+	if (chip->cfg_fastchg_current_ma == -EINVAL)
+		chip->cfg_fastchg_current_ma = DEFAULT_FCC_MA;
+#if defined(CONFIG_LGE_PM_EMBEDDED_BATTERY) && defined(CONFIG_LGE_PM_FACTORY_CABLE)
+	if(lge_is_factory_cable())
+		chip->cfg_fastchg_current_ma = FACTORY_FCC_MA;
+#endif
+#endif
 
 	return 0;
 }

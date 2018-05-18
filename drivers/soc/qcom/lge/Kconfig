@@ -165,6 +165,13 @@ config LGE_PM_ONBINARY_ORANGE
 	help
 	  LGE PM Onebinary Orange Detection
 
+config LGE_ONE_BINARY_SKU
+        tristate "Support LGE One binary sku carrier"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE One Binary sku carrier.
+
 config PRE_SELF_DIAGNOSIS
 	tristate "Support LGE self diagnosis for factory"
 	default n

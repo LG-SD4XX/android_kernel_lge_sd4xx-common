@@ -210,6 +210,21 @@ enum lge_panel_type lge_get_panel_type(void);
 char* lge_get_dsv_vendor(void);
 #endif
 
+#ifdef CONFIG_LGE_ONE_BINARY_SKU
+
+enum lge_sku_carrier_type lge_get_sku_carrier(void);
+
+enum lge_sku_carrier_type {
+	LAO = 0,
+	TMUS,
+	TRF_C,
+	TRF_G,
+	USC,
+	VZW,
+	TRF
+};
+#endif
+
 #if defined(CONFIG_PRE_SELF_DIAGNOSIS)
 struct pre_selfd_platform_data {
 	int (*set_values) (int r, int g, int b);

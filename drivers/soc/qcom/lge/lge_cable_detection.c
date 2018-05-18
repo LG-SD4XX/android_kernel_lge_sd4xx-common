@@ -19,6 +19,9 @@
 #include <linux/qpnp/qpnp-adc.h>
 #include <linux/power_supply.h>
 #include <soc/qcom/smem.h>
+#ifdef CONFIG_LGE_ONE_BINARY_SKU
+#include <soc/qcom/lge/board_lge.h>
+#endif
 #ifdef CONFIG_LGE_PM_ONBINARY_ORANGE
 #include <soc/qcom/lge/board_lge.h>
 #endif
@@ -104,7 +107,60 @@ void get_cable_data_from_dt(void *of_node)
 	int i;
 	u32 cable_value[3];
 	struct device_node *node_temp = (struct device_node *)of_node;
+#ifdef CONFIG_LGE_ONE_BINARY_SKU
+	struct device_node *child;
+	const char *carrier_dt = NULL;
+	static char *carrier = NULL;
+	enum lge_sku_carrier_type lge_sku_carrier;
 
+	const char *propname[MAX_CABLE_NUM] = {
+		"lge,no-init-cable",
+		"lge,cable-mhl-1k",
+		"lge,cable-u-28p7k",
+		"lge,cable-28p7k",
+		"lge,cable-56k",
+		"lge,cable-100k",
+		"lge,cable-130k",
+		"lge,cable-180k",
+		"lge,cable-200k",
+		"lge,cable-220k",
+		"lge,cable-270k",
+		"lge,cable-330k",
+		"lge,cable-620k",
+		"lge,cable-910k",
+		"lge,cable-none"
+	};
+
+	if (cable_type_defined) {
+		pr_info("Cable type is already defined\n");
+		return;
+	}
+
+	lge_sku_carrier = lge_get_sku_carrier();
+
+	if (lge_sku_carrier == TMUS)
+		carrier = "TMUS";
+	else
+		carrier = "COMMON";
+
+	for_each_child_of_node(node_temp, child) {
+		if(of_property_read_string(child,"lge,sku_carrier", &carrier_dt))
+			continue;
+
+		if (!strcmp(carrier, carrier_dt)) {
+			pr_info("carrier matched : %s\n", carrier_dt);
+			for (i = 0; i < MAX_CABLE_NUM; i++) {
+				of_property_read_u32_array(child, propname[i], cable_value, 3);
+				lge_acc_cable_type_data[i].threshhold = cable_value[0];
+				lge_acc_cable_type_data[i].type = i;
+				lge_acc_cable_type_data[i].ta_ma = cable_value[1];
+				lge_acc_cable_type_data[i].usb_ma = cable_value[2];
+			}
+			cable_type_defined = 1;
+			break;
+		}
+	}
+#else
 	const char *propname[MAX_CABLE_NUM] = {
 		"lge,no-init-cable",
 		"lge,cable-mhl-1k",
@@ -164,6 +220,7 @@ void get_cable_data_from_dt(void *of_node)
 		lge_acc_cable_type_data[i].usb_ma = cable_value[2];
 	}
 	cable_type_defined = 1;
+#endif
 }
 
 int lge_pm_get_cable_info(struct qpnp_vadc_chip *vadc,
