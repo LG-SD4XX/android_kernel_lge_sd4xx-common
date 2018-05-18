@@ -43,6 +43,7 @@
 #define EUPGRADE			140
 #define EHWRESET			141
 #define ESWRESET			142
+#define EGLOBALRESET			143
 
 enum TOUCH_DEBUG {
 	_NONE                      = 0,
@@ -307,6 +308,7 @@ enum {
 };
 
 enum {
+	TOUCH_NORMAL_BOOT = 0,
 	NORMAL_BOOT = 0,
 	MINIOS_AAT,
 	MINIOS_MFTS_FOLDER,
@@ -346,11 +348,13 @@ struct state_info {
 	atomic_t debug_option_mask;
 	atomic_t onhand;
 	atomic_t hw_reset;
+	atomic_t operator;
 };
 
 struct touch_driver {
 	int (*probe)(struct device *dev);
 	int (*remove)(struct device *dev);
+	int (*shutdown)(struct device *dev);
 	int (*suspend)(struct device *dev);
 	int (*resume)(struct device *dev);
 	int (*init)(struct device *dev);
@@ -464,6 +468,7 @@ struct touch_core_data {
 
 	struct wake_lock lpwg_wake_lock;
 
+	int boot_mode;
 	int reset_pin;
 	int int_pin;
 	int maker_id_pin;

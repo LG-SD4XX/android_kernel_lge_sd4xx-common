@@ -35,6 +35,9 @@ struct lge_mdss_dsi_ctrl_pdata {
 	/* extra power */
 	struct dss_module_power extra_power_data;
 	int extra_power_state;
+
+	/* multi support panel */
+	int panel_id;
 };
 
 #define LGE_MDELAY(m) do { if ( m > 0) usleep_range((m)*1000,(m)*1000); } while(0)

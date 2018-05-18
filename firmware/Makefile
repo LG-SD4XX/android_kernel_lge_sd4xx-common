@@ -26,6 +26,29 @@ fw-shipped- += acenic/tg1.bin
 else
 acenic-objs := acenic/tg1.bin acenic/tg2.bin
 endif
+ifdef CONFIG_TOUCHSCREEN_UNIFIED_MELFAS_MIT300_PH2
+mit300_fw_file := $(wildcard $(srctree)/firmware/melfas/mit300/ph2/*)
+mit300_firmware := $(subst $(srctree)/firmware/,,$(mit300_fw_file))
+fw-shipped-$(CONFIG_TOUCHSCREEN_UNIFIED_MELFAS_MIT300_PH2) += $(mit300_firmware)
+endif
+
+ifdef CONFIG_LGE_TOUCH_LG4894
+lg4894_fw_file := $(wildcard $(srctree)/firmware/sic/lg4894/lv5/*)
+lg4894_firmware := $(subst $(srctree)/firmware/,,$(lg4894_fw_file))
+fw-shipped-$(CONFIG_LGE_TOUCH_LG4894) += $(lg4894_firmware)
+endif
+
+ifdef CONFIG_LGE_TOUCH_FW_PATH
+fwpath := $(subst ",,$(CONFIG_LGE_TOUCH_FW_PATH))
+ifdef CONFIG_LGE_TOUCH_DUAL
+lge_touch_image_files := $(wildcard $(srctree)/firmware/$(fwpath)/*/*)
+else
+lge_touch_image_files := $(wildcard $(srctree)/firmware/$(fwpath)/*)
+endif
+lge_touch_firmware := $(subst $(srctree)/firmware/,,$(lge_touch_image_files))
+fw-shipped-$(CONFIG_LGE_TOUCH_CORE_BASE) += $(lge_touch_firmware)
+endif
+
 fw-shipped-$(CONFIG_ACENIC) += $(acenic-objs)
 fw-shipped-$(CONFIG_ADAPTEC_STARFIRE) += adaptec/starfire_rx.bin \
 					 adaptec/starfire_tx.bin
@@ -135,29 +158,6 @@ fw-shipped-$(CONFIG_USB_SERIAL_XIRCOM) += keyspan_pda/xircom_pgs.fw
 fw-shipped-$(CONFIG_USB_VICAM) += vicam/firmware.fw
 fw-shipped-$(CONFIG_VIDEO_CPIA2) += cpia2/stv0672_vp4.bin
 fw-shipped-$(CONFIG_YAM) += yam/1200.bin yam/9600.bin
-
-ifdef CONFIG_TOUCHSCREEN_UNIFIED_MELFAS_MIT300_PH2
-mit300_fw_file := $(wildcard $(srctree)/firmware/melfas/mit300/ph2/*)
-mit300_firmware := $(subst $(srctree)/firmware/,,$(mit300_fw_file))
-fw-shipped-$(CONFIG_TOUCHSCREEN_UNIFIED_MELFAS_MIT300_PH2) += $(mit300_firmware)
-endif
-
-ifdef CONFIG_LGE_TOUCH_LG4894
-lg4894_fw_file := $(wildcard $(srctree)/firmware/sic/lg4894/lv5/*)
-lg4894_firmware := $(subst $(srctree)/firmware/,,$(lg4894_fw_file))
-fw-shipped-$(CONFIG_LGE_TOUCH_LG4894) += $(lg4894_firmware)
-endif
-
-ifdef CONFIG_LGE_TOUCH_FW_PATH
-fwpath := $(subst ",,$(CONFIG_LGE_TOUCH_FW_PATH))
-ifdef CONFIG_LGE_TOUCH_DUAL
-lge_touch_image_files := $(wildcard $(srctree)/firmware/$(fwpath)/*/*)
-else
-lge_touch_image_files := $(wildcard $(srctree)/firmware/$(fwpath)/*)
-endif
-lge_touch_firmware := $(subst $(srctree)/firmware/,,$(lge_touch_image_files))
-fw-shipped-$(CONFIG_LGE_TOUCH_CORE_BASE) += $(lge_touch_firmware)
-endif
 
 fw-shipped-all := $(fw-shipped-y) $(fw-shipped-m) $(fw-shipped-)
 

@@ -54,9 +54,6 @@ ssize_t mdss_fb_get_panel_type(struct device *dev,
 			break;
 		case LV3_LGD:
 		case LV5_LGD:
-		case CV3_LGD:
-			ret = snprintf(buf, PAGE_SIZE, "LGD-LG4894\n");
-			break;
 		case SF3_TOVIS:
 		case LV5_TOVIS:
 		case LV7_TOVIS:
@@ -82,9 +79,6 @@ ssize_t mdss_fb_get_panel_type(struct device *dev,
 			break;
 		case CV1_TIANMA_FT8006M:
 			ret = snprintf(buf, PAGE_SIZE, "TIANMA-FT8006M\n");
-			break;
-		case CV3_TOVIS:
-			ret = snprintf(buf, PAGE_SIZE, "TOVIS-LG4894\n");
 			break;
 		case CV1_LGD_LG4894A:
 			ret = snprintf(buf, PAGE_SIZE, "LGD-LG4894A\n");

@@ -211,7 +211,7 @@ __weak void lge_set_panel_recovery_flag(int flag)
 {
 }
 
-int lge_mdss_dsi_panel_power_seq_all() {
+__weak int lge_mdss_dsi_panel_power_seq_all() {
 	int ret = 0;
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_MFTS)
 	if (lge_get_display_power_ctrl())
