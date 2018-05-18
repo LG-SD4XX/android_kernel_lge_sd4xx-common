@@ -124,6 +124,12 @@ config LGE_EARJACK_DEBUGGER
 	help
 	  Support earjack type UART debugger cable
 
+config LGE_USE_DEFAULT_HARD_RESET
+	bool "On reboot, apply hard reset unless memory contents must be maintained"
+	default n
+	help
+	  Nobody can guarantee stablity upon continuous warm resets.
+
 config LGE_PM_CABLE_DETECTION
     tristate "Support LGE PM Cable Detection"
 	default n

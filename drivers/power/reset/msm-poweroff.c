@@ -290,7 +290,31 @@ static void halt_spmi_pmic_arbiter(void)
 
 static void msm_restart_prepare(const char *cmd)
 {
+	/* LGE_CHANGE : there's no reason to forcing a hard reset on reboot request */
+#if defined(CONFIG_LGE_HANDLE_PANIC) && defined(CONFIG_LGE_USE_DEFAULT_HARD_RESET)
+	bool is_warm_reset = true;
+#else
 	bool need_warm_reset = false;
+#endif
+
+#if defined(CONFIG_LGE_HANDLE_PANIC) && defined(CONFIG_LGE_USE_DEFAULT_HARD_RESET)
+	/* default & test purpose reboot should be hard reset since QTI doesn't gurantee repeated warm boot test */
+	if (cmd) {
+		if (       !strncmp(cmd, "Restarted by power key", 22)
+			|| !strncmp(cmd, "bootchart", 9)
+			|| !strncmp(cmd, "cuz resetTool", 13)
+			|| !strncmp(cmd, "PMCycleTest", 11)
+			|| !strncmp(cmd, "eMMCTest", 8)
+			|| !strncmp(cmd, "charge_reset", 12)
+		) {
+			pr_err("is_warm_reset is false with \"%s\" cmd\n", cmd);
+			is_warm_reset = false;
+		}
+	} else {
+		pr_err("is_warm_reset is true\n");
+		is_warm_reset = true;
+	}
+#endif
 
 #ifdef CONFIG_MSM_DLOAD_MODE
 
@@ -304,8 +328,12 @@ static void msm_restart_prepare(const char *cmd)
 #endif
 
 #ifdef CONFIG_LGE_HANDLE_PANIC
+#ifdef CONFIG_LGE_USE_DEFAULT_HARD_RESET
+	if (is_warm_reset || get_dload_mode() || in_panic || (restart_mode == RESTART_DLOAD)) {
+#else
        if (!hard_reset || get_dload_mode())
                need_warm_reset = true;
+#endif // CONFIG_LGE_USE_DEFAULT_HARD_RESET
 #else
 	if (qpnp_pon_check_hard_reset_stored()) {
 		/* Set warm reset as true when device is in dload mode */
@@ -317,12 +345,18 @@ static void msm_restart_prepare(const char *cmd)
 		need_warm_reset = (get_dload_mode() ||
 				(cmd != NULL && cmd[0] != '\0'));
 	}
-#endif
 
 	/* Hard reset the PMIC unless memory contents must be maintained. */
 	if (need_warm_reset) {
+#endif // CONFIG_LGE_HANDLE_PANIC
+#if defined(CONFIG_LGE_HANDLE_PANIC) && defined(CONFIG_LGE_USE_DEFAULT_HARD_RESET)
+		pr_err("The device will be warm reset\n");
+#endif
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
 	} else {
+#if defined(CONFIG_LGE_HANDLE_PANIC) && defined(CONFIG_LGE_USE_DEFAULT_HARD_RESET)
+		pr_err("The device will be hard reset\n");
+#endif
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
 	}
 
