@@ -2971,6 +2971,126 @@ static int get_prop_capacity(struct fg_chip *chip)
 			FULL_SOC_RAW - 2) + 1;
 }
 #endif
+
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+static int get_prop_time_to_full_capacity(struct fg_chip *chip)
+{
+	int msoc;
+	int msoc_raw;
+	int current_st;
+	static int pre_soc;
+#ifdef CONFIG_LGE_PM_SOC_SCALING
+    int msoc_origin, msoc_scale_raw, msoc_scale, batt_soc_temp;
+#endif
+#ifdef CONFIG_LGE_PM_SOC_UNDER_5LEVEL
+    int msoc_under_5level_raw, msoc_under_5level;
+#endif
+
+#ifdef CONFIG_LGE_PM_CABLE_DETECTION
+	if((get_sram_prop_now(chip, FG_DATA_VOLTAGE) / 1000) > 4200 && lge_is_factory_cable())
+		return FULL_CAPACITY * 10;
+#endif
+	if (chip->battery_missing) {
+		if (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO)
+			return pre_soc;
+		else
+			return MISSING_CAPACITY * 10;
+	}
+	if (!chip->profile_loaded && !chip->use_otp_profile)
+		return DEFAULT_CAPACITY * 10;
+	if (chip->charge_full)
+		return FULL_CAPACITY * 10;
+	if (chip->soc_empty) {
+		if (fg_debug_mask & FG_POWER_SUPPLY)
+			pr_info_ratelimited("capacity: %d, EMPTY\n",
+					EMPTY_CAPACITY);
+		return EMPTY_CAPACITY * 10;
+	}
+	current_st = get_sram_prop_now(chip, FG_DATA_CURRENT);
+	msoc_raw = get_monotonic_soc_raw(chip);
+
+#ifdef CONFIG_LGE_PM_SOC_SCALING
+	/*QCT SCALING*/
+	if (msoc_raw == 0)
+		msoc_origin = EMPTY_CAPACITY;
+	else if (msoc_raw == FULL_SOC_RAW)
+		msoc_origin = FULL_CAPACITY;
+	else {
+		msoc_origin = DIV_ROUND_CLOSEST((msoc_raw - 1) * (FULL_CAPACITY - 2),
+				FULL_SOC_RAW - 2) + 1;
+	}
+
+	/*LGE SCALING */
+	if (msoc_raw == 0) {
+		msoc_scale_raw = EMPTY_CAPACITY;
+	}
+	/* 0xF0 94% -> 100% */
+	msoc_scale_raw = (((msoc_raw - 1) * (FULL_CAPACITY - 2))*100/(0xF0 - 2)) + 100;
+
+	batt_soc_temp = msoc_scale_raw;
+	msoc_scale = msoc_scale_raw / 10;
+	if (msoc_scale > 1000)
+		msoc_scale = 1000;
+
+#ifndef CONFIG_LGE_PM_SOC_UNDER_5LEVEL
+	check_update_soc_lge(chip, msoc_raw, msoc_origin, msoc_scale_raw, msoc_scale);
+	if(pre_soc < msoc_scale && current_st > 0 && !is_usb_present(chip) &&
+			chip->init_done == true && pre_soc != 0) {
+		pr_err("[FG_INFO] soc  update (pre soc = %d\n, msoc = %d\n",pre_soc, msoc_scale);
+		pr_err("[FG_INFO]reverse soc when discharging!");
+		return pre_soc;
+	}
+	if(chip->init_done == true) {
+		pre_soc = msoc_scale;
+		pr_debug("[FG_INFO] pre soc update (pre soc = %d\n, msoc = %d\n",pre_soc, msoc_scale);
+	}
+	return msoc_scale;
+#endif
+#ifdef CONFIG_LGE_PM_SOC_UNDER_5LEVEL
+	/*LGE DGMS Apply Cases*/
+	msoc_under_5level_raw = soc_rescale_under_5level(batt_soc_temp);
+
+	msoc_under_5level = msoc_under_5level_raw / 10;
+	if (msoc_under_5level > 1000)
+		msoc_under_5level = 1000;
+
+	check_update_soc_lge_5level(chip, msoc_raw, msoc_origin, msoc_scale_raw,
+			msoc_scale, msoc_under_5level_raw, msoc_under_5level);
+	if(pre_soc < msoc_under_5level && current_st > 0 && !is_usb_present(chip) &&
+			chip->init_done == true && pre_soc != 0) {
+		pr_err("[FG_INFO] soc  update (pre soc = %d\n, msoc = %d\n",pre_soc, msoc_under_5level);
+		pr_err("[FG_INFO] reverse soc when discharging!");
+		return pre_soc;
+	}
+	if(chip->init_done == true) {
+		pre_soc = msoc_under_5level;
+		pr_debug("[FG_INFO] pre soc update (pre soc = %d\n, msoc = %d\n",pre_soc, msoc_under_5level);
+	}
+	return msoc_under_5level;
+#endif
+#endif
+	if (chip->battery_missing)
+		return MISSING_CAPACITY * 10;
+	if (!chip->profile_loaded && !chip->use_otp_profile)
+		return DEFAULT_CAPACITY * 10;
+	if (chip->charge_full)
+		return FULL_CAPACITY * 10;
+	if (chip->soc_empty) {
+		if (fg_debug_mask & FG_POWER_SUPPLY)
+			pr_info_ratelimited("capacity: %d, EMPTY\n",
+					EMPTY_CAPACITY);
+		return EMPTY_CAPACITY * 10;
+	}
+	msoc = get_monotonic_soc_raw(chip);
+	if (msoc == 0)
+		return EMPTY_CAPACITY * 10;
+	else if (msoc == FULL_SOC_RAW)
+		return FULL_CAPACITY * 10;
+	return (DIV_ROUND_CLOSEST((msoc - 1) * (FULL_CAPACITY - 2),
+			FULL_SOC_RAW - 2) + 1) * 10;
+}
+#endif
+
 int fg_get_remain_capacity(struct fg_chip *chip)
 {
 	int remain_cap;
@@ -5459,6 +5579,9 @@ static enum power_supply_property fg_power_props[] = {
 	POWER_SUPPLY_PROP_CYCLE_COUNT,
 	POWER_SUPPLY_PROP_CYCLE_COUNT_ID,
 	POWER_SUPPLY_PROP_HI_POWER,
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+	POWER_SUPPLY_PROP_TIME_TO_FULL_CAPACITY,
+#endif
 #ifdef CONFIG_LGE_PM_CHARGERLOGO_WAIT_FOR_FG_INIT
 	POWER_SUPPLY_PROP_FIRST_SOC_EST_DONE,
 #endif
@@ -5586,6 +5709,11 @@ static int fg_power_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_BATTERY_CONDITION:
 		val->intval = fg_age_detection(chip);
 		break;
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+	case POWER_SUPPLY_PROP_TIME_TO_FULL_CAPACITY:
+		val->intval = get_prop_time_to_full_capacity(chip);
+		break;
+#endif
 #ifdef CONFIG_LGE_PM_CHARGERLOGO_WAIT_FOR_FG_INIT
 	case POWER_SUPPLY_PROP_FIRST_SOC_EST_DONE:
 		val->intval = chip->first_soc_est_done;

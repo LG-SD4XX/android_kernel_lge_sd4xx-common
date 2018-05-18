@@ -351,6 +351,12 @@ struct smbchg_chip {
 	struct power_supply		dc_psy;
 	struct power_supply		*bms_psy;
 	struct power_supply		*typec_psy;
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+	struct power_supply		*ttf_psy;
+	bool				aicl_done;
+	struct delayed_work		charging_state_work;
+	bool				chg_delay_flag;
+#endif
 	int				dc_psy_type;
 	const char			*bms_psy_name;
 	const char			*battery_psy_name;
@@ -2520,6 +2526,28 @@ static int smbchg_get_aicl_level_ma(struct smbchg_chip *chip)
 	return chip->tables.usb_ilim_ma_table[reg];
 }
 
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+static int smbchg_get_time_to_full(struct smbchg_chip *chip)
+{
+	union power_supply_propval prop = {0,};
+	int rc;
+
+	chip->ttf_psy = power_supply_get_by_name("ttf");
+	if (!chip->ttf_psy) {
+		pr_smb(PR_STATUS, "TTF supply not found\n");
+		return -1;
+	}
+	rc = chip->ttf_psy->get_property(chip->ttf_psy,
+			POWER_SUPPLY_PROP_TIME_TO_FULL, &prop);
+	if(rc) {
+		pr_err("time to full read fail : %d\n", rc);
+		return rc;
+	}
+
+	return prop.intval;
+}
+#endif
+
 static void smbchg_parallel_usb_disable(struct smbchg_chip *chip)
 {
 	struct power_supply *parallel_psy = get_parallel_psy(chip);
@@ -3869,6 +3897,11 @@ static int smbchg_switch_buck_frequency(struct smbchg_chip *chip,
 	chip->flash_active = flash_active;
 	return 0;
 }
+
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+static void charging_state_delay(struct work_struct *work);
+static void charging_state_delay_work_queue(struct smbchg_chip *chip);
+#endif
 
 #define OTG_TRIM6		0xF6
 #define TR_ENB_SKIP_BIT		BIT(2)
@@ -5631,7 +5664,9 @@ static int smbchg_change_usb_supply_type(struct smbchg_chip *chip,
 	if (rc < 0)
 		pr_err("Couldn't set charger optimal mode rc=%d\n", rc);
 
-#if defined(CONFIG_LGE_PM_QC20_SCENARIO) || defined(CONFIG_LGE_PM_CHG_LIMIT)
+#if defined(CONFIG_LGE_PM_TIME_TO_FULL)
+	charging_state_delay_work_queue(chip);
+#elif defined(CONFIG_LGE_PM_QC20_SCENARIO) || defined(CONFIG_LGE_PM_CHG_LIMIT)
 	if(chip->qc20.is_qc20){
 		if(chip->qc20.current_status == QC20_CURRENT_LIMITED){
 			pr_smb(PR_LGE, "[QC20] Set qc20.iusb: %d, qc20.ibat: %d, "
@@ -5710,6 +5745,11 @@ static int smbchg_change_usb_supply_type(struct smbchg_chip *chip,
 
 	if (rc < 0)
 		pr_err("Couldn't update vote ret =%d\n", rc);
+#elif defined(CONFIG_LGE_PM_TIME_TO_FULL)
+	rc |= vote(chip->usb_icl_votable, THERMAL_LGE_ICL_VOTER, true,
+			chip->cfg_usb_max_current_ma);
+	rc |= vote(chip->fcc_votable, THERMAL_LGE_FCC_VOTER, true,
+			chip->cfg_fastchg_current_ma);
 #endif
 
 out:
@@ -6092,7 +6132,9 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 #endif
 
 #if defined(CONFIG_LGE_PM_QC20_SCENARIO) || defined(CONFIG_LGE_PM_CHG_LIMIT)
+#ifndef CONFIG_LGE_PM_TIME_TO_FULL
 	if(chip->qc20.is_qc20){
+#endif
 		chip->qc20.is_qc20 = false;
 
 		/* Initialize VOTER to Non-HVDCP value */
@@ -6104,12 +6146,21 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 			chip->cfg_usb_max_current_ma);
 		rc |= vote(chip->fcc_votable, BATT_TYPE_FCC_VOTER, true,
 			chip->cfg_fastchg_current_ma);
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+		rc |= vote(chip->usb_icl_votable, THERMAL_LGE_ICL_VOTER, true,
+			chip->cfg_usb_max_current_ma);
+		rc |= vote(chip->fcc_votable, THERMAL_LGE_FCC_VOTER, true,
+			chip->cfg_fastchg_current_ma);
+#else
 		rc |= vote(chip->usb_icl_votable, THERMAL_LGE_ICL_VOTER, true,
 			smbchg_iusb_limit);
 		rc |= vote(chip->fcc_votable, THERMAL_LGE_FCC_VOTER, true,
 			smbchg_ibat_limit);
+#endif
 		if (rc < 0)
 			pr_err("Couldn't update vote ret =%d\n", rc);
+	}
+#ifndef CONFIG_LGE_PM_TIME_TO_FULL
 	}
 #endif
 #ifdef CONFIG_LGE_PM_VZW_LLK_MODE
@@ -6158,6 +6209,10 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 				chip->usb_chgpth_base + ICL_STS_1_REG, 1);
 	if ((reg & AICL_STS_BIT) == 0)
 		chip->aicl_complete = false;
+#endif
+
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+	chip->aicl_done = false;
 #endif
 
 #ifdef CONFIG_LGE_PM_CHARGERLOGO_ADAPTIVE_MORE_CHG_CURRENT
@@ -7267,6 +7322,10 @@ static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+	POWER_SUPPLY_PROP_TIME_TO_FULL_NOW,
+	POWER_SUPPLY_PROP_AICL_DONE,
+#endif
 	POWER_SUPPLY_PROP_RESISTANCE_ID,
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE,
@@ -7572,6 +7631,14 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 			val->intval = get_pseudo_batt_info(PSEUDO_BATT_TEMP) * 10;
 			break;
 		}
+#endif
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+	case POWER_SUPPLY_PROP_TIME_TO_FULL_NOW:
+		val->intval = smbchg_get_time_to_full(chip);
+		break;
+	case POWER_SUPPLY_PROP_AICL_DONE:
+		val->intval = chip->aicl_done;
+		break;
 #endif
 		val->intval = get_prop_batt_temp(chip);
 		break;
@@ -8422,6 +8489,10 @@ static irqreturn_t aicl_done_handler(int irq, void *_chip)
 	if (usb_present)
 		smbchg_parallel_usb_check_ok(chip);
 
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+	chip->aicl_done = true;
+#endif
+
 	if (chip->aicl_complete)
 		power_supply_changed(&chip->batt_psy);
 
@@ -8470,9 +8541,11 @@ static int set_quick_charging_state(const char *val,
 	struct kernel_param *kp)
 {
 	int ret;
+#ifndef CONFIG_LGE_PM_TIME_TO_FULL
 #ifdef CONFIG_LGE_PM_CHG_LIMIT
 	enum power_supply_type usb_supply_type;
 	char *usb_type_name = "NULL";
+#endif
 #endif
 
         pr_smb(PR_LGE, "[QC20] quick_charging_state setting START\n");
@@ -8507,8 +8580,10 @@ static int set_quick_charging_state(const char *val,
 		default:
 			pr_smb(PR_LGE, "[QC20] qpnp_qc20_state_update state err\n");
 	}
+#ifndef CONFIG_LGE_PM_TIME_TO_FULL
 #ifdef CONFIG_LGE_PM_CHG_LIMIT
 	read_usb_type(the_chip, &usb_type_name, &usb_supply_type);
+#endif
 #endif
 	pr_smb(PR_LGE, "[QC20] quick_charging_state: %d, qc20.status: %d,"
 		" qc20.is_qc20: %d \n",
@@ -8519,6 +8594,9 @@ static int set_quick_charging_state(const char *val,
 	else
 		the_chip->qc20.current_status = QC20_CURRENT_NORMAL;
 
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+	charging_state_delay_work_queue(the_chip);
+#else
 	if(the_chip->qc20.is_qc20){
 		if(the_chip->qc20.current_status == QC20_CURRENT_LIMITED){
 			pr_smb(PR_LGE, "[QC20] Set qc20.iusb: %d, qc20.ibat: %d, "
@@ -8615,7 +8693,7 @@ static int set_quick_charging_state(const char *val,
 	}
 #endif
         pr_smb(PR_LGE, "[QC20] quick_charging_state setting END");
-
+#endif
 	return 0;
 }
 module_param_call(quick_charging_state, set_quick_charging_state,
@@ -8638,6 +8716,13 @@ static int smbchg_set_iusb_hvdcp_limit(const char *val,
 		pr_err("invalid value setting\n");
 		return 0;
 	}
+
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+	else if(!the_chip->usb_present || !the_chip->chg_delay_flag){
+		pr_err("usb is not present\n");
+		return 0;
+	}
+#endif
 
 	if(!the_chip->qc20.is_qc20){
 		pr_smb(PR_LGE, "[QC20] Skip thermal settings. (hvdcp: not present)\n");
@@ -8726,6 +8811,12 @@ static int smbchg_set_iusb_limit(const char *val,
 		pr_err("invalid value setting\n");
 		return 0;
 	}
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+	else if(!the_chip->usb_present || ! the_chip->chg_delay_flag){
+		pr_err("usb is not present\n");
+		return 0;
+	}
+#endif
 
 #if defined(CONFIG_LGE_PM_QC20_SCENARIO) || defined(CONFIG_LGE_PM_CHG_LIMIT)
 	if(the_chip->qc20.is_qc20){
@@ -11095,6 +11186,10 @@ static int smbchg_probe(struct spmi_device *spmi)
 			WAKE_LOCK_SUSPEND, "lge_charging_scenario_alarm");
 #endif
 #endif
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+	INIT_DELAYED_WORK(&chip->charging_state_work,
+			charging_state_delay);
+#endif
 #ifdef CONFIG_LGE_PM_PARALLEL_BATTERY_PROTECT
 	INIT_DELAYED_WORK(&chip->battchg_protect_work,
 			smbchg_battchg_protect_work);
@@ -11205,7 +11300,10 @@ static int smbchg_probe(struct spmi_device *spmi)
 #ifdef CONFIG_LGE_PM_CHG_LIMIT
 	chip->qc20_first_check_flag = true;
 #endif
-
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+	chip->aicl_done = false;
+	chip->chg_delay_flag =0;
+#endif
 #ifdef CONFIG_LGE_PM
 	smbchg_iusb_limit = chip->cfg_usb_max_current_ma;
 	smbchg_ibat_limit	 = chip->cfg_fastchg_current_ma;
@@ -11408,6 +11506,9 @@ static int smbchg_remove(struct spmi_device *spmi)
 #endif
 #ifdef CONFIG_LGE_PM_CHARGERLOGO_ADAPTIVE_MORE_CHG_CURRENT
 	cancel_delayed_work(&chip->current_monitor_work);
+#endif
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+	cancel_delayed_work(&chip->charging_state_work);
 #endif
 #ifdef CONFIG_LGE_PM_CHARGING_TEMP_SCENARIO
 	wake_lock_destroy(&chip->lcs_wake_lock);

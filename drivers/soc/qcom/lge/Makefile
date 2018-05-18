@@ -8,6 +8,7 @@ obj-$(CONFIG_LGE_PM_CHARGING_TEMP_SCENARIO) += lge_charging_scenario_v2.o
 else
 obj-$(CONFIG_LGE_PM_CHARGING_TEMP_SCENARIO) += lge_charging_scenario.o
 endif
+obj-$(CONFIG_LGE_PM_TIME_TO_FULL) += lge_time_to_full.o
 obj-$(CONFIG_LGE_UART_CONTROL) += lge_uart_control.o
 obj-$(CONFIG_LGE_EARJACK_DEBUGGER) += lge_earjack_debugger.o
 obj-$(CONFIG_LGE_PM_CABLE_DETECTION) += lge_cable_detection.o

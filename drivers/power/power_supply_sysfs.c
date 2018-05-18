@@ -404,6 +404,11 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(batt_id),
 	POWER_SUPPLY_ATTR(valid_batt_id),
 #endif
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+	POWER_SUPPLY_ATTR(time_to_full),
+	POWER_SUPPLY_ATTR(time_to_full_capacity),
+	POWER_SUPPLY_ATTR(aicl_done),
+#endif
 #if defined(CONFIG_LGE_PM_QC20_SCENARIO) || defined(CONFIG_LGE_PM_CHG_LIMIT)
 	POWER_SUPPLY_ATTR(is_qc20_ta),
 	POWER_SUPPLY_ATTR(is_evp_ta),

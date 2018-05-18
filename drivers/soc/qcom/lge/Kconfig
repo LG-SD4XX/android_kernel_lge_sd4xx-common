@@ -137,6 +137,20 @@ config LGE_PM_CABLE_DETECTION
 	help
 	  LGE PM Cable Detection
 
+config LGE_PM_TIME_TO_FULL
+    tristate "Support LGE PM Time To Full"
+	default n
+	depends on LGE_PM
+	help
+	  LGE PM Time To Full
+
+config LGE_PM_TIME_TO_FULL_AVG_CURRENT
+    tristate "Support LGE PM Time To Full Average Current"
+	default n
+	depends on LGE_PM
+	help
+	  LGE PM Time To Full Average Current
+
 config LGE_PM_UNIFIED_NODE
 	bool "enable LGE PM Unified sysfs node"
 	default n
