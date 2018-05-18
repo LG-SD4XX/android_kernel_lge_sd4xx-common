@@ -11,6 +11,10 @@ ifeq ($(CONFIG_MACH_MSM8940_SF3_TMO_US),y)
 DTS_TARGET := msm8940-sf3_tmo_us
 endif
 
+ifeq ($(CONFIG_MACH_MSM8917_CV1_LAO_COM),y)
+DTS_TARGET := msm8917-cv1_lao_com
+endif
+
 ALL_DTS := $(notdir $(wildcard echo $(srctree)/$(src)/$(DTS_TARGET)/*.dts))
 dtb-y += $(patsubst %.dts,%.dtb,$(ALL_DTS))
 

@@ -26,6 +26,13 @@ config MACH_MSM8940_SF3_TMO_US
 	help
 	  Support for the Qualcomm MSM8940 SF3_TMO_US device.
 
+config MACH_MSM8917_CV1_LAO_COM
+        bool "MSM8917 CV1_LAO_COM"
+        depends on ARCH_MSM8916
+        select MACH_LGE
+        help
+          Support for the Qualcomm MSM8917 CV1_LAO_COM device.
+
 endmenu
 
 menu "LGE Specific Patches"
