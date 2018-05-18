@@ -30,6 +30,10 @@
 #include <soc/qcom/lge/lge_handle_panic.h>
 #include <soc/qcom/scm.h>
 #include <linux/input.h>
+#ifdef CONFIG_LGE_BOOT_LOCKUP_DETECT
+#include <linux/reboot.h>
+#include <soc/qcom/lge/board_lge.h>
+#endif
 
 #if defined(CONFIG_ARCH_MSM8909)
 #define NO_ADSP
@@ -380,12 +384,54 @@ void lge_panic_handler_fb_cleanup(void)
 	}
 }
 
+#ifdef CONFIG_LGE_BOOT_LOCKUP_DETECT
+#define LOCKUP_WQ_NOT_START_YET (-1)
+#define LOCKUP_WQ_PAUSED        (0)
+#define LOCKUP_WQ_STARTED       (1)
+#define LOCKUP_WQ_CANCELED      (2)
+
+#define REBOOT_DEADLINE msecs_to_jiffies(30 * 1000)
+
+static struct delayed_work lge_panic_reboot_work;
+
+static void lge_panic_reboot_work_func(struct work_struct *work)
+{
+    pr_emerg("==========================================================\n");
+	pr_emerg("WARNING: detecting lockup during reboot! forcing panic....\n");
+	pr_emerg("==========================================================\n");
+
+	BUG();
+}
+
+static int lge_panic_reboot_handler(struct notifier_block *this,
+		unsigned long event, void *ptr)
+{
+	if (lge_get_download_mode() != 1)
+		return NOTIFY_DONE;
+
+	INIT_DELAYED_WORK(&lge_panic_reboot_work, lge_panic_reboot_work_func);
+	queue_delayed_work(system_highpri_wq, &lge_panic_reboot_work,
+		   REBOOT_DEADLINE);
+
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block lge_panic_reboot_notifier = {
+	lge_panic_reboot_handler,
+	NULL,
+	0
+};
+#endif
+
 static int __init lge_panic_handler_early_init(void)
 {
 	struct device_node *np;
 	uint32_t crash_handler_magic = 0;
 	uint32_t mem_addr = 0;
 	uint32_t mem_size = 0;
+#ifdef CONFIG_LGE_BOOT_LOCKUP_DETECT
+	int ret = 0;
+#endif
 
 	panic_handler = kzalloc(sizeof(*panic_handler), GFP_KERNEL);
 	if (!panic_handler) {
@@ -422,6 +468,10 @@ static int __init lge_panic_handler_early_init(void)
 	lge_set_fb_addr(panic_handler->fb_addr);
 
 	np = of_find_compatible_node(NULL, NULL, "ramoops");
+#ifdef CONFIG_LGE_BOOT_LOCKUP_DETECT
+	/* register reboot notifier for detecting reboot lockup */
+	ret = register_reboot_notifier(&lge_panic_reboot_notifier);
+#endif
 	if (!np) {
 		pr_err("unable to find DT ramoops node\n");
 		return -ENODEV;
