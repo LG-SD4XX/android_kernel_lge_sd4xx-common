@@ -44,7 +44,7 @@ char *rev_str[] = {"rev_0", "rev_a_1", "rev_a_2", "rev_a_3", "rev_b", "rev_c",
 	|| defined(CONFIG_MACH_MSM8917_SF317_CRK_US)
 char *rev_str[] = {"rev_a", "rev_a_2", "rev_a_3", "rev_b", "rev_c",
 	"rev_10", "rev_11", "reserved"};
-#elif defined(CONFIG_MACH_MSM8940_SF3_MPCS_US) || defined(CONFIG_MACH_MSM8940_SF3_TMO_US) || defined(CONFIG_MACH_MSM8940_SF3_CLR_PR) || defined(CONFIG_MACH_MSM8940_TF8_TMO_US) || defined(CONFIG_MACH_MSM8940_TF8_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_GLOBAL_CA) || defined(CONFIG_MACH_MSM8940_SF3_GLOBAL_CA)
+#elif defined(CONFIG_MACH_MSM8940_SF3_MPCS_US) || defined(CONFIG_MACH_MSM8940_SF3_TMO_US) || defined(CONFIG_MACH_MSM8940_SF3_CLR_PR) || defined(CONFIG_MACH_MSM8940_TF8_TMO_US) || defined(CONFIG_MACH_MSM8940_TF8_LGU_KR) || defined(CONFIG_MACH_MSM8940_TF8_GLOBAL_CA) || defined(CONFIG_MACH_MSM8940_SF3_GLOBAL_CA) || defined(CONFIG_MACH_MSM8917_CV1_LAO_COM)
 char *rev_str[] = {"rev_0", "rev_a", "rev_a_2", "rev_b", "rev_c", "rev_d",
         "rev_10", "rev_11", "reserved"};
 #elif defined(CONFIG_MACH_MSM8917_B6_JCM_JP) || defined(CONFIG_MACH_MSM8917_B6_LGU_KR)

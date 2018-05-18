@@ -29,6 +29,9 @@
  */
 #include <touch_core.h>
 #include <touch_common.h>
+#if defined(CONFIG_MACH_MSM8917_CV1_LAO_COM)
+#include <soc/qcom/lge/board_lge.h>
+#endif
 
 u32 touch_debug_mask = BASE_INFO;
 /* Debug mask value
@@ -124,7 +127,11 @@ static void touch_report_event(struct touch_core_data *ts)
 				TOUCH_I("%d finger pressed:<%d>(xxxx,xxxx,xxxx)\n",
 						ts->tcount,
 						i);
+#if defined(CONFIG_MACH_MSM8917_CV1_LAO_COM)
+				} else if ( !(atomic_read(&ts->state.ime) && atomic_read(&ts->state.operator)) ){
+#else
 				} else {
+#endif
 				TOUCH_I("%d finger pressed:<%d>(%4d,%4d,%4d)\n",
 						ts->tcount,
 						i,
@@ -139,7 +146,11 @@ static void touch_report_event(struct touch_core_data *ts)
 				if (hide_coordinate && (lockscreen == LOCKSCREEN_LOCK)) {
 					TOUCH_I("finger released:<%d>(xxxx,xxxx,xxxx)\n",
 					i);
+#if defined(CONFIG_MACH_MSM8917_CV1_LAO_COM)
+				} else if ( !(atomic_read(&ts->state.ime) && atomic_read(&ts->state.operator)) ){
+#else
 				} else {
+#endif
 					TOUCH_I("finger released:<%d>(%4d,%4d,%4d)\n",
 					i,
 					ts->tdata[i].x,
@@ -793,6 +804,11 @@ static int touch_core_probe_normal(struct platform_device *pdev)
 		TOUCH_E("failed to initialize platform_data\n");
 		return -EINVAL;
 	}
+
+#if defined(CONFIG_MACH_MSM8917_CV1_LAO_COM)
+	if(lge_get_sku_carrier() == 1)
+		atomic_set(&ts->state.operator, 1);
+#endif
 
 	ts->driver->probe(ts->dev);
 

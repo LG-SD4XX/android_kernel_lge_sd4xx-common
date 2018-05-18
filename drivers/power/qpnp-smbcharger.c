@@ -6084,6 +6084,13 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 			msecs_to_jiffies(1000));
 #endif
 
+#if defined(CONFIG_MACH_MSM8917_CV1_LAO_COM) || defined(CONFIG_MACH_MSM8917_CV1_ATT_US) \
+    || defined(CONFIG_MACH_MSM8917_CV1_CRK_US) || defined(CONFIG_MACH_MSM8917_CV1_VZW)
+#ifdef CONFIG_LGE_PM_SMBCHG_STEP_CHG
+	decrease_iusb = false;
+#endif
+#endif
+
 #if defined(CONFIG_LGE_PM_QC20_SCENARIO) || defined(CONFIG_LGE_PM_CHG_LIMIT)
 	if(chip->qc20.is_qc20){
 		chip->qc20.is_qc20 = false;
@@ -6195,6 +6202,14 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 #ifdef CONFIG_LGE_PM
         smbchg_bpd_change(chip, chip->bmd_pin_src);
 #endif
+
+#if defined(CONFIG_MACH_MSM8917_CV1_LAO_COM) || defined(CONFIG_MACH_MSM8917_CV1_ATT_US) \
+    || defined(CONFIG_MACH_MSM8917_CV1_CRK_US) || defined(CONFIG_MACH_MSM8917_CV1_VZW)
+#ifdef CONFIG_LGE_PM_SMBCHG_STEP_CHG
+	decrease_iusb = false;
+#endif
+#endif
+
 	read_usb_type(chip, &usb_type_name, &usb_supply_type);
 	pr_smb(PR_STATUS,
 		"inserted type = %d (%s)", usb_supply_type, usb_type_name);
@@ -8827,6 +8842,18 @@ static void smbchg_monitor_batt_volt_for_iusb(struct smbchg_chip *chip)
 {
 	int chg_ma;
 	int rc, uv;
+
+#ifdef CONFIG_LGE_ONE_BINARY_SKU
+	enum lge_sku_carrier_type lge_sku_carrier;
+
+        lge_sku_carrier = lge_get_sku_carrier();
+
+	if (lge_sku_carrier == TMUS)
+        {
+            pr_info("carrier = %d : TMUS skip step charging \n", lge_sku_carrier);
+            return;
+        }
+#endif
 
 	rc = get_property_from_fg(chip, POWER_SUPPLY_PROP_VOLTAGE_NOW, &uv);
 	if (rc) {
