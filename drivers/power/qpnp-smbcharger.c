@@ -11167,10 +11167,10 @@ static int smbchg_probe(struct spmi_device *spmi)
 		chip->qc20.current_status = QC20_CURRENT_LIMITED;
 		chip->qc20.status = QC20_LCD_STATE;
 	}
-	if (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO) {
+	/*if (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO) {
 		chip->qc20.current_status = QC20_CURRENT_NORMAL;
 		chip->qc20.status = ~(QC20_LCD_STATE | QC20_CALL_STATE);
-	}
+	}*/
 
 	smbchg_iusb_hvdcp_limit = chip->qc20.iusb[QC20_CURRENT_NORMAL];
 	smbchg_ibat_hvdcp_limit = chip->qc20.ibat[QC20_CURRENT_NORMAL];
