@@ -11,11 +11,11 @@
  * GNU General Public License for more details.
  */
 
-#include "msm8917-lv517_tmo_us-pinctrl.dtsi"
-#include "msm8917-lv517_tmo_us-camera.dtsi"
-#include "msm8917-lv517_tmo_us-panel.dtsi"
-#include "msm8917-lv517_tmo_us-sound.dtsi"
-#include "msm8917-lv517_tmo_us-misc.dtsi"
-#include "msm8917-lv517_tmo_us-pm.dtsi"
-#include "msm8917-lv517_tmo_us-touch.dtsi"
-#include "msm8917-pmi8950-lv517_tmo_us-fingerprint.dtsi"
+#include "msm8917-lv517_gsm_us-pinctrl.dtsi"
+#include "msm8917-lv517_gsm_us-camera.dtsi"
+#include "msm8917-lv517_gsm_us-panel.dtsi"
+#include "msm8917-lv517_gsm_us-sound.dtsi"
+#include "msm8917-lv517_gsm_us-misc.dtsi"
+#include "msm8917-lv517_gsm_us-pm.dtsi"
+#include "msm8917-lv517_gsm_us-touch.dtsi"
+#include "msm8917-pmi8950-lv517_gsm_us-fingerprint.dtsi"

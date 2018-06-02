@@ -15,7 +15,7 @@
 
 #include "../../qcom/msm8917.dtsi"
 #include "../../qcom/msm-pmi8950.dtsi"
-#include "msm8917-pmi8950-lv517_tmo_us.dtsi"
+#include "msm8917-pmi8950-lv517_gsm_us.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM8917-PMI8950 MTP";
