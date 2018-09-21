@@ -1,0 +1,48 @@
+/*
+ * Copyright (c) 2015-2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "sdm450-cv5a_dcm_jp-pinctrl.dtsi"
+#include "sdm450-cv5a_dcm_jp-camera.dtsi"
+#include "sdm450-cv5a_dcm_jp-panel.dtsi"
+#include "sdm450-cv5a_dcm_jp-sound.dtsi"
+#include "sdm450-cv5a_dcm_jp-misc.dtsi"
+#include "sdm450-cv5a_dcm_jp-sdhc.dtsi"
+#include "sdm450-cv5a_dcm_jp-pm.dtsi"
+#include "sdm450-cv5a_dcm_jp-touch.dtsi"
+#include "sdm450-cv5a_dcm_jp-sensor.dtsi"
+#include "sdm450-cv5a_dcm_jp-nfc.dtsi"
+#include "sdm450-cv5a_dcm_jp-usb.dtsi"
+#include "../sdm450-lge-common/sdm450-lge-fpc1028-fingerprint.dtsi"
+
+/{
+	reserved-memory {
+		secure_mem: secure_region@0 {
+			status = "okay";
+		};
+		qseecom_mem: qseecom_region@0 {
+			size = <0 0x1800000>;
+		};
+	};
+};
+
+&soc {
+	qcom,ion {
+		qcom,ion-heap@8 { /* CP_MM HEAP  */
+			status = "okay";
+		};
+	};
+};
+
+&mem_client_3_size {
+        qcom,peripheral-size = <0x500000>;
+};

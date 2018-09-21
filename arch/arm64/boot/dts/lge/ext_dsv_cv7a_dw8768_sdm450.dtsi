@@ -1,0 +1,21 @@
+&i2c_2 {
+	ext_dsv@3e {
+		status = "ok";
+		compatible = "ext_dsv";
+		reg = <0x3e>;
+		lge,ext_dsv_primary = <&dsv_dw8768>;
+		lge,gpio-dsv_ena = <&tlmm 63 0>;
+		dsv_dw8768: ext_dsv_dw8768 {
+			mode-names =
+				"power_on_mode_reg",
+				"power_off_mode_reg",
+				"enm_enter_mode_reg",
+				"enm_exit_mode_reg";
+
+			power_on_mode_reg = <0x05 0x0F 1>, <0x00 0x0C 1>, <0x01 0x0C 1>; //power up with +/- 5.2V
+			power_off_mode_reg = <0x05 0x07 5>, <0x03 0x80 1>; //power down with floating mode
+			enm_enter_mode_reg = <0x03 0x80 1>, <0x05 0x07 1>, <0x07 0x08 1>;
+			enm_exit_mode_reg = <0x05 0x0F 1>, <0x03 0x83 1>, <0x07 0x00 1>;
+		};
+	};
+};

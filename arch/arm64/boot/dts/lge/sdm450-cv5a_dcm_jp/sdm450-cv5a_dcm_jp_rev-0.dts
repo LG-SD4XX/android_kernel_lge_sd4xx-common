@@ -1,0 +1,42 @@
+/*
+ * Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+#include "../../qcom/sdm450.dtsi"
+#include "../../qcom/msm-pmi8950.dtsi"
+#include "../sdm450-lge-common/sdm450-lge-pmi8950.dtsi"
+#include "../../qcom/msm8953-pmi8950.dtsi"
+#include "sdm450-cv5a_dcm_jp.dtsi"
+#include "sdm450-cv5a_dcm_jp-dtv_rev-0.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. SDM450 + PMI8950 MTP";
+	compatible = "qcom,sdm450-mtp", "qcom,sdm450", "qcom,mtp";
+	qcom,board-id= <0x61 0>;
+	qcom,pmic-id = <0x010016 0x010011 0x0 0x0>;
+};
+
+&i2c_2 {
+    es9218-codec@48 {
+        status = "okay";
+        compatible = "dac,es9218-codec";
+        reg = <0x48>;
+        dac,power-gpio = <&pm8953_gpios 5 0x0>;
+        dac,hph-sw = <&pm8953_gpios 1 0x0>;
+        dac,hifi-ldo-comp = <&pm8953_gpios 6 0x0>;
+        dac,reset-gpio = <&tlmm 60 0x0>;
+        dac,pm-dac-sw-sel = <&tlmm 89 0x0>;
+        dac,gnd-sel = <&tlmm 90 0x0>;
+    };
+};

@@ -1,0 +1,28 @@
+/*
+ * Copyright (c) 2015-2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "sdm450-cv5a_lgu_ldu-pinctrl.dtsi"
+#include "sdm450-cv5a_lgu_ldu-camera.dtsi"
+#include "sdm450-cv5a_lgu_ldu-panel.dtsi"
+#include "sdm450-cv5a_lgu_ldu-sound.dtsi"
+#include "sdm450-cv5a_lgu_ldu-misc.dtsi"
+#include "sdm450-cv5a_lgu_ldu-sdhc.dtsi"
+#include "sdm450-cv5a_lgu_ldu-pm.dtsi"
+#include "sdm450-cv5a_lgu_ldu-touch.dtsi"
+#include "sdm450-cv5a_lgu_ldu-sensor.dtsi"
+#include "sdm450-cv5a_lgu_ldu-usb.dtsi"
+#include "../sdm450-lge-common/sdm450-lge-fpc1028-fingerprint.dtsi"
+
+&mem_client_3_size {
+        qcom,peripheral-size = <0x500000>;
+};

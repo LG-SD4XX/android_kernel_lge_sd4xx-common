@@ -1,0 +1,280 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/ {
+	aliases {
+		spi5 = &spi_5;
+	};
+
+	soc {
+		i2c_5:  i2c@7af5000 { /* BLSP-2 QUP1 */
+			status = "disabled";
+		};
+
+		spi_5:  spi@7af5000 {  // [Modified] QUP_BASE address for BLSP# QUP# (ref. AP datasheet, This model use BLSP-2 QUP1)
+         /* [1. SPI Information]
+          *  1) BLSP #2 QUP#1
+          *  2) GPIO #16~19
+          */
+			status = "ok";
+			compatible = "qcom,spi-qup-v2"; // [Fixed] Should be "qcom,spi-qup-v2".
+
+			// [Fixed] Address, size for slave chips.
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* [Fixed] Resister region names referenced in reg.
+				"spi_physical"     : Physical address of controller register blocks.
+				when use BAM mode, add "spi_bam_physical"
+				"spi_bam_physical" : Physical address of BAM controller.
+				Keep the same names. */
+			reg-names = "spi_physical", "spi_bam_physical";
+
+			/* [Modified] Modify the reg field as below to add BLSP BAM base address (ref. AP datasheet)
+				First Row is BLSP_QUP base address, size,
+				Second Row is BAM address, size. */
+			reg = <0x7af5000 0x600>, <0x7ac4000 0x1f000>;
+
+			/* [Fixed] Interrupt resource names referenced in interrupts.
+				"spi_irq"     : QUP-core interrupt
+				when use BAM mode, add "spi_bam_irq"
+				"spi_bam_irq" : BAM interrupt
+				Keep the same names. */
+			interrupt-names = "spi_irq", "spi_bam_irq";
+
+			/* [Modified] Replace the interrupt filed. (ref. AP datasheet)
+				First Field  : SPI interrupt, keep 0
+				Second Field : Interrupt #
+				Third Field  : Trigger type, keep 0
+				First Row is BLSP_QUP base, Second Row is BAM. */
+			interrupts = <0 299 0>, <0 239 0>;
+
+			// [Fixed] Specifies maximum SPI clock frequency of AP(50 MHz). (ref. QCT SPI datasheet)
+			spi-max-frequency = <50000000>;
+
+			// [Modified] BLSP bus master ID. (ref. AP datasheet)
+			qcom,master-id = <84>;
+
+			// [Fixed] Set up the clocks, Keep the same names.
+			clock-names = "iface_clk", "core_clk";
+			/* [Modified]
+				Add node to BLSP# AHB clock,
+				Add node to QUP Core clock (BLSP# QUP#)
+				Note : In clock QUP Core is label #1 to X. So QUP0 would be label as QUP1. */
+			clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>, <&clock_gcc clk_gcc_blsp2_qup1_spi_apps_clk>;
+
+			// [Fixed] When use pinctrl, enable.
+			qcom,use-pinctrl;
+			// [Fixed] Must contain "spi_default" and "spi_sleep" if pinctrl is to be used. Keep the same names.
+			pinctrl-names = "spi_default","spi_sleep";
+			/* [Fixed] List of phandles, each pointing at a pin configuration node within a pin controller.
+				The list of names to assign states, List entry 0 defines the name for integer state ID 0... */
+			pinctrl-0 = <&spi_tdmb_active>;
+			pinctrl-1 = <&spi_tdmb_suspend>;
+
+			/* [Modified] Set SPI GPIO (mosi, miso, cs, clk)
+				tlmm is the parent, second # is gpio #, third flag keep it 0. */
+			qcom,gpio-mosi = <&tlmm 16 0x00>;
+			qcom,gpio-miso = <&tlmm 17 0x00>;
+			qcom,gpio-cs0 = <&tlmm 18 0x00>;
+			qcom,gpio-clk = <&tlmm 19 0x00>;
+
+			// [Fixed] QUP uses infinite-mode. set zero
+			qcom,infinite-mode = <0>;
+			// [Fixed] When use BAM mode, enable.
+			qcom,use-bam;
+			// [Fixed] Version register exists.
+			qcom,ver-reg-exists;
+			// [Modified] Add consumer and producer pipes (ref. AP datasheet)
+			qcom,bam-consumer-pipe-index = <4>;
+			qcom,bam-producer-pipe-index = <5>;
+		};
+	};
+};
+
+&spi_5 {
+	tdmb@0 {
+		compatible = "lge,tdmb"; // [Fixed] Should be "lge,tdmb".
+		reg = <0>;
+		interrupt-parent = <&tlmm>;    // [Fixed] tlmm is the parent (msm8917)
+		interrupts = <60 0x0>; // [Modified] Set INT GPIO, first # is gpio #, second flag keep it 0.
+
+		// [Fixed] Specifies maximum SPI clock frequency of DMB chipset(38.4 MHz). (ref. FC8080 datasheet)
+		spi-max-frequency = <38400000>;
+
+		/* [Modified] List of phandles, each pointing at a pin configuration node within a pin controller.
+			The list of names to assign states, List entry 0,1,2... define the name for integer state ID 0,1,2...
+			Ex. control cases are INT(tdmb_int), EN(tdmb_ctrl), ANT SW(tdmb_ant) LNA Gain Ctrl(tdmb_lna_ctrtl) LNA EN(tdmb_lna_en)*/
+        /* [2. GPIO Information]
+         *  1) tdmb_int      (DMB_INT)                     : GPIO #60
+         *  2) tdmb_ctrl     (DMB_EN)                      : GPIO #48
+         *  3) tdmb_ant      (DMB_FM_SW)                   : GPIO #45
+         *  4) tdmb_lna_ctrl (DMB_GAIN_CTRL)               : N/A
+         *  5) tdmb_lna_en   (DMB_LNA_EN)                  : GPIO #129
+         *
+         * [3. PIN Control Information]
+         *  1) Interrupt Pin , DMB Enable pin and LNA Ctrl pin basically should be control
+         *  2) PON Pin assigned to DMB_LNA_EN gpio and GS Pin assigned to GND
+         *  3) LNA EN pin assigned for only DMB, so this pin do not need control
+         */
+		pinctrl-names = "tdmb_int", "tdmb_ctrl", "tdmb_ant", "tdmb_lna_en";
+
+		pinctrl-0 = <&tdmb_int>;
+		pinctrl-1 = <&tdmb_ctrl>;
+		pinctrl-2 = <&tdmb_ant>;
+		pinctrl-3 = <&tdmb_lna_en>;
+
+		/* [Modified] when using clock buffer,
+			 you should check which clock buffer used for dmb device */
+		clock-names = "tdmb_xo";
+		clocks = <&clock_gcc clk_rf_clk2>;
+
+		/* [Modified] set hw configure here
+			when use pmic clk buffer, change use-xtal to 0
+			and set xtal-freq(DMB Chipset Core clk), interface-freq(SPI interface clk) inter value. */
+		use-xtal = <0>;
+	        xtal-freq = <19200>;
+		interface-freq = <19200>;
+
+		/* [Modified] Set DMB-EN, DMB-INT GPIO
+			tlmm is the parent, second # is gpio #, third flag keep it 0.
+			irq-gpio set the DMB INT and en-gpio set the tdmb_ctrl */
+		tdmb-fc8080,irq-gpio = <&tlmm 60 0x00>;
+		tdmb-fc8080,en-gpio = <&tlmm 48 0x00>;
+
+		/* [Modified] when use ant switching, change use-ant-sw to 1,
+	                 and set ant active mode (high(1) or low(0)), ant-gpio.
+                         ant-apio should be tdmb_ant's Gpio number			 */
+        /* [4. RF Switch Information]
+         *  1) FM/DMB Switch                               : Exist, It need to control
+         *  2) TDMB ANT connected to port1 (High) and FM_ANT connected to port2 (Low), so active mode is high
+         */
+		use-ant-sw = <1>;
+		ant-active-mode = <1>;
+		tdmb-fc8080,ant-gpio = <&tlmm 45 0x00>;
+
+		/* [Modified] When use ldo for RFSW, change ctrl-rfsw-ldo to 1, and dmb_rfsw-supply set the appropriate chipset & power function such as <&pm8953_l10>
+		   If no use case, change ctrl-rfsw-ldo to 0, and dmb_rfsw-supply set such as <&chipset#_l??>*/
+
+
+        /* [5. Power Supply Description Information]
+         *  1) RFSW LDO     (pm8937_L10)                   : V2.85, always power, power on/off control do not need
+         *  2) DMB LDO      (pm8937_L5)                    : V1.8, always power, power on/off control do not need
+         *  3) LNA LDO      (pm8937_L5)                    : V1.8, always power, power on/off control do not need
+         */
+
+		/* [Modified] when use ldo for RFSW, change ctrl-rfsw-ldo to 1, and rfsw_ldo-supply set the appropriate chipset & power function such as <&pm8937_l5>
+		   If no use case, change ctrl-rfsw-ldo to 0, and dmb_ldo-supply set such as <&chipset#_l??>*/
+		ctrl-rfsw-ldo = <0>;
+		// rfsw_ldo-supply = <&chipset#_l??>;
+
+		/* [Modified] when use ldo for LDO_IN, change ctrl-dmb-ldo to 1, and dmb_ldo-supply set the appropriate chipset & power function such as <&pm8953_l10>
+		   If no use case, change ctrl-dmb-ldo to 0, and dmb_ldo-supply set such as <&chipset#_l??>*/
+		ctrl-dmb-ldo = <0>;
+		// dmb_ldo-supply = <&chipset#_l??>;
+
+		/* [Modified] when use ldo for LNA(U1800), change ctrl-lna-ldo to 1, and lna_ldo-supply set the appropriate chipset & power function such as <&pm8953_l10>
+		   If no use case, change ctrl-lna-ldo to 0, and lna_ldo-supply set such as <&chipset#_l??>*/
+		ctrl-lna-ldo = <0>;
+		//lna_ldo-supply = <&chipset#_l??>;
+
+		/* [Modified] when use LNA, chage use-lna-ctrl to 1, and lna-ctrl-gpio set the DMB_GAIN_CTRL's gpio number
+		   If no use case, change use-lna-ctrl to 0, and lna-ctrl-gpio set such as <&tlmm ?? 0x00>*/
+		use-lna-ctrl = <0>;
+		// tdmb-fc8080,lna-ctrl-gpio = <&tlmm ?? 0x00>;
+
+		/* [Modified] when use LNA EN, chage use-lna-en to 1, and lna-ctrl-gpio set the DMB_LNA_EN's gpio number
+		   If no use case, change use-lna-ctrl to 0, and lna-gpio set such as <&tlmm ?? 0x00>*/
+		use-lna-en = <1>;
+		tdmb-fc8080,lna-en-gpio = <&tlmm 129 0x00>;
+
+	};
+};
+
+&soc {
+	tlmm: pinctrl@1000000 {
+		pmx_spi_tdmb {
+				spi_tdmb_active: spi_tdmb_active {
+					mux {
+						pins =  "gpio16", "gpio17", "gpio18", "gpio19";
+						function = "blsp_spi5";
+					};
+
+					config {
+						pins =  "gpio16", "gpio17", "gpio18", "gpio19";
+						drive-strength = <8>; /* 8MA */
+						bias-disable;
+					};
+				};
+
+				spi_tdmb_suspend: spi_tdmb_suspend {
+					mux {
+						pins =  "gpio16", "gpio17", "gpio18", "gpio19";
+						function = "gpio";
+					};
+
+					config {
+						pins =  "gpio16", "gpio17", "gpio18", "gpio19";
+						drive-strength = <2>; /* 8MA */
+						bias-pull-down;
+					};
+				};
+			};
+				tdmb_ctrl: tdmb_ctrl {
+					mux {
+						pins = "gpio48";
+						function = "gpio";
+					};
+					config {
+						pins = "gpio48";
+						drive-strength = <8>; /* 8MA */
+						bias-disable;
+					};
+				};
+
+				tdmb_int: tdmb_int {
+					mux {
+						pins = "gpio60";
+						function = "gpio";
+					};
+					config {
+						pins = "gpio60";
+						drive-strength = <8>; /* 8MA */
+						bias-pull-up;
+					};
+				};
+
+				tdmb_ant: tdmb_ant {
+					mux {
+						pins = "gpio45";
+						function = "gpio";
+					};
+					config {
+						pins = "gpio45";
+						drive-strength = <8>; /* 8MA */
+						bias-pull-up;
+					};
+				};
+
+				tdmb_lna_en: tdmb_lna_en {
+					mux {
+						pins = "gpio129";
+						function = "gpio";
+					};
+					config {
+						pins = "gpio129";
+						drive-strength = <8>; /* 8MA */
+						bias-pull-up;
+					};
+				};
+	};
+};

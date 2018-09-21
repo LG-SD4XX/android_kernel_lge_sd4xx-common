@@ -1,0 +1,48 @@
+qcom,LGE_BLT36_Tocad_2800mAh {
+	/* #3083395_LGE_CV5A_DCM_2800mAh_averaged_MasterSlave_Aug29th2017*/
+	qcom,max-voltage-uv = <4300000>;
+	qcom,nom-batt-capacity-mah = <2800>;
+	qcom,batt-id-kohm = <4600>;
+	qcom,battery-beta = <4150>;
+	qcom,battery-type = "LGE_BLT36_Tocad_2800mAh";
+	qcom,chg-rslow-comp-c1 = <2723321>;
+	qcom,chg-rslow-comp-c2 = <3450156>;
+	qcom,chg-rs-to-rslow = <851640>;
+	qcom,chg-rslow-comp-thr = <0x9A>;
+	qcom,checksum = <0x11D2>;
+	qcom,gui-version = "PMI8950GUI - 2.0.0.16";
+	qcom,fg-profile-data = [
+		 F6 83 46 7D
+		 FD 80 15 77
+		 53 83 5F 51
+		 0C 80 8B 86
+		 1F 82 B1 99
+		 87 BC 01 C9
+		 62 0E 9F 82
+		 07 7A 2B 7D
+		 20 72 3F 83
+		 24 78 E2 7F
+		 40 7A 76 82
+		 57 93 A4 B4
+		 5A BB 82 0F
+		 DF 0A 63 5B
+		 88 6D 71 FD
+		 40 3C 7E 45
+		 CA 41 00 00
+		 61 4C 38 40
+		 EB 40 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 97 70 1C 6B
+		 33 6D A0 89
+		 A8 77 6C 70
+		 47 65 79 7B
+		 BC 74 2D 68
+		 96 5E 85 A1
+		 2F CD 62 A5
+		 5F A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};
