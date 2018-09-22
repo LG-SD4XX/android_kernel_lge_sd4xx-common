@@ -171,3 +171,25 @@ obj-$(CONFIG_BIF)		+= bif/
 
 obj-$(CONFIG_SENSORS)		+= sensors/
 obj-$(CONFIG_SENSORS_SSC)	+= sensors/
+
+# LGE_BROADCAST_TDMB
+obj-$(CONFIG_LGE_BROADCAST_TDMB) += broadcast/
+
+# LGE_BROADCAST_SBTVD_LATIN
+obj-$(CONFIG_LGE_BROADCAST_SBTVD_LATIN) += broadcast/
+
+# LGE_BROADCAST_ISDBT_JAPAN
+obj-$(CONFIG_LGE_BROADCAST_ISDBT_JAPAN) += broadcast/
+
+# <t-base drivers
+ifneq ($(LAOP_BUILD), )
+ifeq ($(LAOP_BUILD), $(filter $(LAOP_BUILD), TMUS MPCS))
+obj-$(CONFIG_TRUSTONIC_TEE)	+= gud/
+endif
+endif
+
+#FeliCa
+obj-$(CONFIG_CXD224X_FELICA_F3)	+= felica/
+
+#add Gator
+obj-$(CONFIG_GATOR) += gator/

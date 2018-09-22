@@ -1416,5 +1416,32 @@ config MFD_VEXPRESS_SYSREG
 	  System Registers are the platform configuration block
 	  on the ARM Ltd. Versatile Express board.
 
+config LGE_DISPLAY_DW8768_DSV
+	bool "DSV Power Management chip"
+	depends on I2C
+	select MFD_CORE
+	select REGMAP_I2C
+	help
+	  if you say yes here you get support for the DW8768 series of
+	  Power Management chips.
+
+config LGE_DISPLAY_SM5107_DSV
+	bool "DSV Power Management chip"
+	depends on I2C
+	select MFD_CORE
+	select REGMAP_I2C
+	help
+	if you say yes here you get support for SM5107 series of
+	Power Management chips.
+
+config LGE_DISPLAY_EXTERNAL_DSV
+	bool "DSV Power Management chip"
+	depends on I2C
+	select MFD_CORE
+	select REGMAP_I2C
+	help
+	  if you say yes here you get support for the DW8768 or SM5107 series of
+	  Power Management chips.
+
 endmenu
 endif

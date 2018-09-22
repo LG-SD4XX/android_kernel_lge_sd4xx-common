@@ -47,6 +47,8 @@
 
 #define MSM_EEPROM_MEMORY_MAP_MAX_SIZE  80
 #define MSM_EEPROM_MAX_MEM_MAP_CNT      8
+#define MSM_OTP_MEMORY_MAP_MAX_SIZE  80
+#define MSM_OTP_MAX_MEM_MAP_CNT      8
 
 #define MSM_SENSOR_BYPASS_VIDEO_NODE    1
 
@@ -272,6 +274,18 @@ struct msm_eeprom_memory_map_array {
 	uint32_t msm_size_of_max_mappings;
 };
 
+struct msm_otp_mem_map_t {
+	int slave_addr;
+	struct msm_camera_reg_settings_t
+		mem_settings[MSM_OTP_MEMORY_MAP_MAX_SIZE];
+	int memory_map_size;
+};
+
+struct msm_otp_memory_map_array {
+	struct msm_otp_mem_map_t memory_map[MSM_OTP_MAX_MEM_MAP_CNT];
+	uint32_t msm_size_of_max_mappings;
+};
+
 struct msm_sensor_init_params {
 	/* mask of modes supported: 2D, 3D */
 	int                 modes_supported;
@@ -293,6 +307,7 @@ struct msm_camera_sensor_slave_info {
 	char actuator_name[32];
 	char ois_name[32];
 	char flash_name[32];
+	char otp_name[32];
 	enum msm_sensor_camera_id_t camera_id;
 	unsigned short slave_addr;
 	enum i2c_freq_mode_t i2c_freq_mode;
@@ -398,6 +413,13 @@ struct region_params_t {
 	unsigned short code_per_step;
 	/* qvalue for converting float type numbers to integer format */
 	unsigned int qvalue;
+#if 1 // #ifdef CONFIG_LG_OIS
+	int infinity_dac;
+	int macro_dac;
+	int dac_20;
+	int dac_40;
+	int macro_mecha_end;
+#endif
 };
 
 struct reg_settings_t {

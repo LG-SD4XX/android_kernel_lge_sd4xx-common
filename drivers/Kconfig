@@ -196,4 +196,12 @@ source "drivers/firmware/Kconfig"
 
 source "drivers/bif/Kconfig"
 
+source "drivers/gud/Kconfig"
+
+source "drivers/broadcast/Kconfig"
+
+source "drivers/felica/Kconfig"
+
+source "drivers/gator/Kconfig"
+
 endmenu

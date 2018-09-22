@@ -30,6 +30,15 @@
 #include <linux/regulator/of_regulator.h>
 #include <linux/qpnp/power-on.h>
 
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+#include <soc/qcom/lge/lge_handle_panic.h>
+#endif
+
+#ifdef CONFIG_LGE_PM_WAKE_LOCK_FOR_CHG_LOGO
+#include <linux/wakelock.h>
+#include <soc/qcom/lge/board_lge.h>
+#endif
+
 #define CREATE_MASK(NUM_BITS, POS) \
 	((unsigned char) (((1 << (NUM_BITS)) - 1) << (POS)))
 #define PON_MASK(MSB_BIT, LSB_BIT) \
@@ -224,6 +233,9 @@ struct qpnp_pon {
 	u8			warm_reset_reason2;
 	bool			is_spon;
 	bool			store_hard_reset_reason;
+#ifdef CONFIG_LGE_PM_WAKE_LOCK_FOR_CHG_LOGO
+	struct wake_lock chg_logo_wake_lock;
+#endif
 	bool			kpdpwr_dbc_enable;
 	ktime_t			kpdpwr_last_release_time;
 };
@@ -534,6 +546,16 @@ static int qpnp_pon_reset_config(struct qpnp_pon *pon,
 	 * conservative.
 	 */
 	udelay(500);
+
+	/*
+	 * In case of HARD RESET configure PMIC's
+	 * PS_HOLD_RESET_CTL based on the dt property.
+	 */
+	if ((type == PON_POWER_OFF_HARD_RESET) &&
+			of_find_property(pon->spmi->dev.of_node,
+				"qcom,cfg-shutdown-for-hard-reset", NULL))
+		type = PON_POWER_OFF_SHUTDOWN;
+
 
 	rc = qpnp_pon_masked_write(pon, QPNP_PON_PS_HOLD_RST_CTL(pon),
 				   QPNP_PON_POWER_OFF_MASK, type);
@@ -846,6 +868,23 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 	pr_debug("PMIC input: code=%d, sts=0x%hhx\n",
 					cfg->key_code, pon_rt_sts);
 	key_status = pon_rt_sts & pon_rt_bit;
+#ifdef CONFIG_LGE_PM_DEBUG
+	pr_err("%s: code(%d), value(%d)\n",
+			__func__, cfg->key_code, key_status);
+#endif
+
+#ifdef CONFIG_LGE_PM_WAKE_LOCK_FOR_CHG_LOGO
+	if (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO) {
+		if (wake_lock_active(&pon->chg_logo_wake_lock))
+			wake_unlock(&pon->chg_logo_wake_lock);
+		pr_info("[CHARGERLOGO MODE] active chg_logo wakelock during 500ms\n");
+		wake_lock_timeout(&pon->chg_logo_wake_lock, msecs_to_jiffies(500));
+	}
+#endif
+
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+	lge_gen_key_panic(cfg->key_code, key_status);
+#endif
 
 	if (pon->kpdpwr_dbc_enable && cfg->pon_type == PON_KPDPWR) {
 		if (!key_status)
@@ -2232,12 +2271,18 @@ static int qpnp_pon_probe(struct spmi_device *spmi)
 	dev_set_drvdata(&spmi->dev, pon);
 
 	INIT_DELAYED_WORK(&pon->bark_work, bark_work_func);
+#ifdef CONFIG_LGE_PM_WAKE_LOCK_FOR_CHG_LOGO
+	wake_lock_init(&pon->chg_logo_wake_lock, WAKE_LOCK_SUSPEND, "chg_logo-pon");
+#endif
 
 	/* register the PON configurations */
 	rc = qpnp_pon_config_init(pon);
 	if (rc) {
 		dev_err(&spmi->dev,
 			"Unable to initialize PON configurations rc: %d\n", rc);
+#ifdef CONFIG_LGE_PM_WAKE_LOCK_FOR_CHG_LOGO
+		wake_lock_destroy(&pon->chg_logo_wake_lock);
+#endif
 		return rc;
 	}
 
@@ -2362,6 +2407,10 @@ static int qpnp_pon_remove(struct spmi_device *spmi)
 	device_remove_file(&spmi->dev, &dev_attr_debounce_us);
 
 	cancel_delayed_work_sync(&pon->bark_work);
+
+#ifdef CONFIG_LGE_PM_WAKE_LOCK_FOR_CHG_LOGO
+	wake_lock_destroy(&pon->chg_logo_wake_lock);
+#endif
 
 	if (pon->pon_input)
 		input_unregister_device(pon->pon_input);

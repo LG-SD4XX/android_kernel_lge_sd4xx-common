@@ -2060,8 +2060,9 @@ static int qpnp_parse_dt_config(struct spmi_device *spmi,
 	}
 
 	_pwm_change_mode(chip, enable);
+#ifndef CONFIG_LGE_LEDS_PM8937
 	_pwm_enable(chip);
-
+#endif
 read_opt_props:
 	/* Initialize optional config parameters from DT if provided */
 	of_property_read_string(node, "qcom,channel-owner",

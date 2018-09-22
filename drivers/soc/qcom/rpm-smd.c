@@ -572,6 +572,10 @@ static int msm_rpm_flush_requests(bool print)
 		if (!s->valid)
 			continue;
 
+/* [LGE_UPDATE_S] : Disable Log Print Function */
+        print = 0;
+/* [LGE_UPDATE_E] : Disable Log Print Function */
+
 		if (print)
 			msm_rpm_print_sleep_buffer(s);
 

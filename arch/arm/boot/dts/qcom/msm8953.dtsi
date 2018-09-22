@@ -36,7 +36,7 @@
 					dev = "/dev/block/platform/soc/7824900.sdhci/by-name/vendor";
 					type = "ext4";
 					mnt_flags = "ro,barrier=1,discard";
-					fsmgr_flags = "wait";
+					fsmgr_flags = "wait,verify";
 					status = "ok";
 				};
 				system {
@@ -44,7 +44,7 @@
 					dev = "/dev/block/platform/soc/7824900.sdhci/by-name/system";
 					type = "ext4";
 					mnt_flags = "ro,barrier=1,discard";
-					fsmgr_flags = "wait";
+					fsmgr_flags = "wait,verify";
 					status = "ok";
 				};
 
@@ -66,27 +66,25 @@
 		modem_mem: modem_region@0 {
 			compatible = "removed-dma-pool";
 			no-map;
-			reg = <0x0 0x86c00000 0x0 0x6a00000>;
+			reg = <0x0 0x86c00000 0x0 0x5A00000>;
 		};
 
 		adsp_fw_mem: adsp_fw_region@0 {
 			compatible = "removed-dma-pool";
 			no-map;
-			reg = <0x0 0x8d600000 0x0 0x1100000>;
+			reg = <0x0 0x8C600000 0x0 0x1100000>;
 		};
 
 		wcnss_fw_mem: wcnss_fw_region@0 {
 			compatible = "removed-dma-pool";
 			no-map;
-			reg = <0x0 0x8e700000 0x0 0x700000>;
+			reg = <0x0 0x8D700000 0x0 0x700000>;
 		};
 
 		venus_mem: venus_region@0 {
-			compatible = "shared-dma-pool";
-			reusable;
-			alloc-ranges = <0x0 0x80000000 0x0 0x10000000>;
-			alignment = <0 0x400000>;
-			size = <0 0x0800000>;
+			compatible = "removed-dma-pool";
+			no-map;
+			reg = <0x0 0x8DE00000 0x0 0x500000>;
 		};
 
 		secure_mem: secure_region@0 {
@@ -94,6 +92,7 @@
 			reusable;
 			alignment = <0 0x400000>;
 			size = <0 0x09800000>;
+			status = "disabled";
 		};
 
 		qseecom_mem: qseecom_region@0 {
@@ -130,6 +129,7 @@
 
 	aliases {
 		/* smdtty devices */
+                smd0 = &smdtty_ds;
 		smd1 = &smdtty_apps_fm;
 		smd2 = &smdtty_apps_riva_bt_acl;
 		smd3 = &smdtty_apps_riva_bt_cmd;
@@ -525,7 +525,6 @@
 		qcom,freq-mitigation-temp = <105>;
 		qcom,freq-mitigation-temp-hysteresis = <15>;
 		qcom,freq-mitigation-value = <1036800>;
-		qcom,therm-reset-temp = <115>;
 		qcom,online-hotplug-core;
 		qcom,synchronous-cluster-id = <0 1>;
 		qcom,synchronous-cluster-map = <0 4 &CPU0 &CPU1 &CPU2 &CPU3>,
@@ -556,8 +555,9 @@
 
 		msm_thermal_freq: qcom,vdd-apps-rstr {
 			qcom,vdd-rstr-reg = "vdd-apps";
-			qcom,levels = <1689600>;
+			qcom,levels = <1401600>;
 			qcom,freq-req;
+			qcom,max-freq-level = <1401600>;
 		};
 	};
 
@@ -1417,6 +1417,11 @@
 	qcom,smdtty {
 		compatible = "qcom,smdtty";
 
+                smdtty_ds: qcom,smdtty-ds {
+                        qcom,smdtty-remote = "modem";
+                        qcom,smdtty-port-name = "DS";
+                };
+
 		smdtty_apps_fm: qcom,smdtty-apps-fm {
 			qcom,smdtty-remote = "wcnss";
 			qcom,smdtty-port-name = "APPS_FM";
@@ -1680,10 +1685,12 @@
 		qcom,qsee-ce-hw-instance = <0>;
 		qcom,disk-encrypt-pipe-pair = <2>;
 		qcom,support-fde;
+		qcom,fde-key-size;
 		qcom,msm-bus,name = "qseecom-noc";
 		qcom,msm-bus,num-cases = <4>;
 		qcom,msm-bus,num-paths = <1>;
 		qcom,support-bus-scaling;
+		qcom,appsbl-qseecom-support;
 		qcom,msm-bus,vectors-KBps =
 			<55 512 0 0>,
 			<55 512 0 0>,
@@ -2030,6 +2037,21 @@
 
 	qcom,msm-ssc-sensors {
 		compatible = "qcom,msm-ssc-sensors";
+	};
+
+	mcd {
+		compatible = "qcom,mcd";
+		qcom,ce-hw-instance = <0>;
+		qcom,ce-device = <0>;
+		interrupts = <0 248 0>;
+		interrupt-names = "mcd_irq";
+		clocks = <&clock_gcc clk_crypto_clk_src>,
+			 <&clock_gcc clk_gcc_crypto_clk>,
+			 <&clock_gcc clk_gcc_crypto_ahb_clk>,
+			 <&clock_gcc clk_gcc_crypto_axi_clk>;
+		clock-names = "core_clk_src", "core_clk",
+				"iface_clk", "bus_clk";
+		qcom,ce-opp-freq = <100000000>;
 	};
 
 	qcom,pronto@a21b000 {

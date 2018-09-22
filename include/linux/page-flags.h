@@ -79,6 +79,7 @@ enum pageflags {
 	PG_dirty,
 	PG_lru,
 	PG_active,
+	PG_workingset,
 	PG_slab,
 	PG_owner_priv_1,	/* Owner use. If pagecache, fs may use*/
 	PG_arch_1,
@@ -112,6 +113,12 @@ enum pageflags {
 #ifdef CONFIG_ZCACHE
 	PG_was_active,
 #endif
+#ifdef CONFIG_MARK_MMAP_HOT_PAGE_ENABLE
+	PG_hotpage,				/* Added by dongwook.seo - HOTPAGE */
+#endif
+#ifdef CONFIG_ZRAM_ASYNC_IO
+	PG_async_wb,
+#endif
 	__NR_PAGEFLAGS,
 
 	/* Filesystems */
@@ -129,6 +136,9 @@ enum pageflags {
 
 	/* SLOB */
 	PG_slob_free = PG_private,
+
+	/* non-lru isolated movable page */
+	PG_isolated = PG_reclaim,
 };
 
 #ifndef __GENERATING_BOUNDS_H
@@ -214,6 +224,7 @@ PAGEFLAG(Dirty, dirty) TESTSCFLAG(Dirty, dirty) __CLEARPAGEFLAG(Dirty, dirty)
 PAGEFLAG(LRU, lru) __CLEARPAGEFLAG(LRU, lru)
 PAGEFLAG(Active, active) __CLEARPAGEFLAG(Active, active)
 	TESTCLEARFLAG(Active, active)
+PAGEFLAG(Workingset, workingset)
 __PAGEFLAG(Slab, slab)
 PAGEFLAG(Checked, checked)		/* Used by some filesystems */
 PAGEFLAG(Pinned, pinned) TESTSCFLAG(Pinned, pinned)	/* Xen */
@@ -223,6 +234,7 @@ PAGEFLAG(SwapBacked, swapbacked) __CLEARPAGEFLAG(SwapBacked, swapbacked)
 	__SETPAGEFLAG(SwapBacked, swapbacked)
 
 __PAGEFLAG(SlobFree, slob_free)
+__PAGEFLAG(Isolated, isolated)
 #ifdef CONFIG_ZCACHE
 PAGEFLAG(WasActive, was_active)
 #else
@@ -249,6 +261,12 @@ PAGEFLAG(MappedToDisk, mappedtodisk)
 /* PG_readahead is only used for reads; PG_reclaim is only for writes */
 PAGEFLAG(Reclaim, reclaim) TESTCLEARFLAG(Reclaim, reclaim)
 PAGEFLAG(Readahead, reclaim) TESTCLEARFLAG(Readahead, reclaim)
+#ifdef CONFIG_MARK_MMAP_HOT_PAGE_ENABLE
+PAGEFLAG(Hotpage, hotpage)
+#endif
+#ifdef CONFIG_ZRAM_ASYNC_IO
+PAGEFLAG(AsyncWriteback, async_wb) TESTCLEARFLAG(AsyncWriteback, async_wb)
+#endif
 
 #ifdef CONFIG_HIGHMEM
 /*

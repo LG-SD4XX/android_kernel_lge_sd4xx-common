@@ -680,6 +680,9 @@ void do_exit(long code)
 	struct task_struct *tsk = current;
 	int group_dead;
 	TASKS_RCU(int tasks_rcu_i);
+        if(task_pid_nr(current)==1){
+            panic("current pid is init!!! init process will be killed by itself!!!!");
+        }
 
 	profile_task_exit(tsk);
 	kcov_task_exit(tsk);

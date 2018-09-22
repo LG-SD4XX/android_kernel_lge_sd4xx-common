@@ -61,6 +61,11 @@ static long madvise_behavior(struct vm_area_struct *vma,
 	case MADV_RANDOM:
 		new_flags = (new_flags & ~VM_SEQ_READ) | VM_RAND_READ;
 		break;
+#ifdef CONFIG_MARK_MMAP_HOT_PAGE_ENABLE
+		/* Added by dongwook.seo - HOTPAGE */
+	case MADV_HOTPAGE:
+		new_flags = (new_flags & ~VM_RAND_READ & ~VM_SEQ_READ) | VM_HOTPAGE;
+#endif
 	case MADV_DONTFORK:
 		new_flags |= VM_DONTCOPY;
 		break;
@@ -411,6 +416,9 @@ madvise_behavior_valid(int behavior)
 #endif
 	case MADV_DONTDUMP:
 	case MADV_DODUMP:
+#ifdef CONFIG_MARK_MMAP_HOT_PAGE_ENABLE
+	case MADV_HOTPAGE:
+#endif
 		return 1;
 
 	default:

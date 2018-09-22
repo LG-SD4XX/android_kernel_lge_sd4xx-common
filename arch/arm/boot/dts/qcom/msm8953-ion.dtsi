@@ -25,6 +25,7 @@
 			reg = <8>;
 			memory-region = <&secure_mem>;
 			qcom,ion-heap-type = "SECURE_DMA";
+			status = "disabled";
 		};
 
 		qcom,ion-heap@27 { /* QSEECOM HEAP */

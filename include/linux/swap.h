@@ -13,6 +13,11 @@
 #include <linux/page-flags.h>
 #include <asm/page.h>
 
+#ifdef CONFIG_HSWAP
+extern int zram0_free_size(void);
+extern int zram1_free_size(void);
+#endif
+
 struct notifier_block;
 
 struct bio;
@@ -262,7 +267,7 @@ struct swap_info_struct {
 
 /* linux/mm/workingset.c */
 void *workingset_eviction(struct address_space *mapping, struct page *page);
-bool workingset_refault(void *shadow);
+void workingset_refault(struct page *page, void *shadow);
 void workingset_activation(struct page *page);
 extern struct list_lru workingset_shadow_nodes;
 
@@ -308,13 +313,21 @@ extern unsigned long nr_free_pagecache_pages(void);
 
 
 /* linux/mm/swap.c */
+enum lru_cost_type {
+	COST_CPU,
+	COST_IO,
+};
+extern void lru_note_cost(struct lruvec *lruvec, enum lru_cost_type cost,
+			  bool file, unsigned int nr_pages);
 extern void lru_cache_add(struct page *);
+extern void lru_cache_putback(struct page *page);
 extern void lru_cache_add_anon(struct page *page);
 extern void lru_cache_add_file(struct page *page);
 extern void lru_add_page_tail(struct page *page, struct page *page_tail,
 			 struct lruvec *lruvec, struct list_head *head);
 extern void activate_page(struct page *);
 extern void mark_page_accessed(struct page *);
+extern void hotpage_accessed(struct page *);
 extern void lru_add_drain(void);
 extern void lru_add_drain_cpu(int cpu);
 extern void lru_add_drain_all(void);
@@ -436,11 +449,23 @@ static inline bool vm_swap_full(struct swap_info_struct *si)
 
 static inline long get_nr_swap_pages(void)
 {
+#ifdef CONFIG_HSWAP
+	if (current_is_kswapd())
+		return zram1_free_size();
+	else
+		return zram0_free_size();
+#else
 	return atomic_long_read(&nr_swap_pages);
+#endif
 }
 
 extern void si_swapinfo(struct sysinfo *);
 extern swp_entry_t get_swap_page(void);
+#ifdef CONFIG_HSWAP
+extern unsigned long get_lowest_prio_swapper_space_nrpages(void);
+extern swp_entry_t get_lowest_prio_swap_page(void);
+extern swp_entry_t get_highest_prio_swap_page(void);
+#endif
 extern swp_entry_t get_swap_page_of_type(int);
 extern int add_swap_count_continuation(swp_entry_t, gfp_t);
 extern void swap_shmem_alloc(swp_entry_t);

@@ -1559,6 +1559,10 @@ static struct rcg_clk byte1_clk_src = {
 
 static struct clk_freq_tbl ftbl_gcc_mdss_esc0_clk[] = {
 	F( 19200000,	xo,	1,	0,	0),
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	F( 16000000,	xo,	1,	5,	6),
+	F( 12800000,    xo,	1.5,	0,	0),
+#endif
 	F_END
 };
 

@@ -26,6 +26,9 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/of_regulator.h>
 #include <linux/qpnp/qpnp-revid.h>
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+#include <soc/qcom/lge/board_lge.h>
+#endif
 
 #define QPNP_LABIBB_REGULATOR_DRIVER_NAME	"qcom,qpnp-labibb-regulator"
 
@@ -1076,8 +1079,26 @@ static int qpnp_labibb_ttw_enter_ibb_pmi8996(struct qpnp_labibb *labibb)
 	int rc;
 	u8 val;
 
-	val = IBB_BYPASS_PWRDN_DLY2_BIT | IBB_FAST_STARTUP;
-	rc = qpnp_labibb_write(labibb, labibb->ibb_base + REG_IBB_SPARE_CTL,
+	val = 0x03;
+	rc = qpnp_labibb_write(labibb, labibb->ibb_base +
+				REG_IBB_SOFT_START_CTL, &val, 1);
+	if (rc) {
+		pr_err("qpnp_labibb_write register %x failed rc = %d\n",
+			REG_IBB_SOFT_START_CTL, rc);
+		return rc;
+	}
+
+	val = IBB_MODULE_RDY_EN;
+	rc = qpnp_labibb_write(labibb, labibb->ibb_base + REG_IBB_MODULE_RDY,
+		&val, 1);
+	if (rc) {
+		pr_err("qpnp_labibb_write register %x failed rc = %d\n",
+				REG_IBB_MODULE_RDY, rc);
+		return rc;
+	}
+
+	val = 0;
+	rc = qpnp_labibb_write(labibb, labibb->ibb_base + REG_IBB_PD_CTL,
 				&val, 1);
 	if (rc)
 		pr_err("qpnp_labibb_write register %x failed rc = %d\n",
@@ -1226,6 +1247,7 @@ static int qpnp_labibb_regulator_ttw_mode_enter(struct qpnp_labibb *labibb)
 		return rc;
 	}
 	labibb->in_ttw_mode = true;
+	pr_info("%s: Done \n", __func__);
 	return 0;
 }
 
@@ -1303,6 +1325,7 @@ static int qpnp_labibb_regulator_ttw_mode_exit(struct qpnp_labibb *labibb)
 	}
 
 	labibb->in_ttw_mode = false;
+	pr_info("%s: Done \n", __func__);
 	return rc;
 }
 

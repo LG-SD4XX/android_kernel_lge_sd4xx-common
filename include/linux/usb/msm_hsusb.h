@@ -28,6 +28,10 @@
 #include <linux/hrtimer.h>
 #include <linux/power_supply.h>
 #include <linux/cdev.h>
+#ifdef CONFIG_LGE_USB_G_ANDROID
+#include <linux/qpnp/qpnp-adc.h>
+#endif
+
 /*
  * The following are bit fields describing the usb_request.udc_priv word.
  * These bit fields are set by function drivers that wish to queue
@@ -289,6 +293,9 @@ enum usb_id_state {
  */
 struct msm_otg_platform_data {
 	int *phy_init_seq;
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	int *phy_init_host_seq;
+#endif
 	int phy_init_sz;
 	int (*vbus_power)(bool on);
 	unsigned power_budget;
@@ -324,6 +331,19 @@ struct msm_otg_platform_data {
 	int hub_reset_gpio;
 	int usbeth_reset_gpio;
 	int switch_sel_gpio;
+#ifdef CONFIG_LGE_USB_TYPE_A
+	int hub_en_gpio;
+	int hub_res_gpio;
+#endif
+#ifdef CONFIG_INPUT_EPACK
+	int dpdm_sw_gpio;
+	bool dpdm_sw_reverse;
+#endif
+#ifdef CONFIG_VBUS_SW_MAX14727
+	int ovlo_inb_gpio;
+	int otg_ena_gpio;
+	int otg_enb_gpio;
+#endif
 	bool phy_dvdd_always_on;
 	bool emulation;
 	bool enable_streaming;
@@ -343,6 +363,9 @@ struct msm_otg_platform_data {
 #define PHY_LANE_B			BIT(7)
 #define PHY_HSFS_MODE			BIT(8)
 #define PHY_LS_MODE			BIT(9)
+#ifdef CONFIG_LGE_USB_G_ANDROID
+#define PHY_OTG_MODE			BIT(10)
+#endif
 
 #define USB_NUM_BUS_CLOCKS      3
 
@@ -447,6 +470,9 @@ struct msm_otg {
 	bool resume_pending;
 	atomic_t pm_suspended;
 	struct notifier_block pm_notify;
+#if defined(CONFIG_LGE_USB_TYPE_A) || defined(CONFIG_INPUT_EPACK)
+	struct notifier_block usbdev_nb;
+#endif
 	atomic_t in_lpm;
 	bool err_event_seen;
 	int async_int;
@@ -455,6 +481,16 @@ struct msm_otg {
 	struct workqueue_struct *otg_wq;
 	struct delayed_work chg_work;
 	struct delayed_work id_status_work;
+#ifdef CONFIG_MACH_MSM8917_B6_LGU_KR
+	struct delayed_work check_dock_work;
+#endif
+#ifdef CONFIG_INPUT_EPACK
+	struct delayed_work dpdm_sw_work;
+	bool epack_w_ta;
+	char epack_otg_state[30];
+	bool in_chg_logo;
+	bool is_epack;
+#endif
 	enum usb_chg_state chg_state;
 	enum usb_chg_type chg_type;
 	u8 dcd_retries;
@@ -523,7 +559,6 @@ struct msm_otg {
 #define PHY_REGULATORS_LPM	BIT(4)
 	int reset_counter;
 	struct power_supply usb_psy;
-	enum power_supply_type usb_supply_type;
 	unsigned int online;
 	unsigned int host_mode;
 	unsigned int voltage_max;
@@ -555,6 +590,12 @@ struct msm_otg {
 
 	char (buf[DEBUG_MAX_MSG])[DEBUG_MSG_LEN];   /* buffer */
 	unsigned int vbus_state;
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	struct qpnp_vadc_chip	*vadc_otg_dev;
+	struct qpnp_adc_tm_btm_param adc_param;
+	struct delayed_work init_adc_work;
+	bool id_adc_detect;
+#endif
 	unsigned int usb_irq_count;
 	int pm_qos_latency;
 	struct pm_qos_request pm_qos_req_dma;

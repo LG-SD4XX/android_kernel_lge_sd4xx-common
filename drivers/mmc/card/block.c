@@ -46,8 +46,18 @@
 #include <linux/mmc/host.h>
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/sd.h>
+#ifdef CONFIG_MACH_LGE
+#include <linux/mmc/slot-gpio.h>
+#endif
+#ifdef CONFIG_MMC_FFU
+#include <linux/mmc/ffu.h>
+#endif
 
 #include <asm/uaccess.h>
+
+#if defined(CONFIG_LGE_MMC_DYNAMIC_LOG)
+#include <linux/mmc/debug_log.h>
+#endif
 
 #include "queue.h"
 
@@ -703,6 +713,40 @@ static int mmc_blk_ioctl_cmd(struct block_device *bdev,
 		}
 	}
 
+#ifdef CONFIG_MMC_FFU
+
+	if(cmd.opcode == MMC_FFU_DOWNLOAD_OP) {
+		err = mmc_ffu_download(card, &cmd, idata->buf,
+				idata->buf_bytes);
+		goto cmd_rel_host;
+	}
+	if(cmd.opcode == MMC_FFU_INSTALL_OP) {
+		err = mmc_ffu_install(card);
+		goto cmd_rel_host;
+	}
+	if(cmd.opcode == MMC_FFU_MID_OP) {
+		printk(KERN_INFO "[LGE][FFU][cid : %u]\n", card->cid.manfid);
+		if (copy_to_user((void __user *)(unsigned long) idata->ic.data_ptr,
+						&card->cid.manfid, sizeof(unsigned int))) {
+			err = -EFAULT;
+		}
+		else{
+			err = 0;
+		}
+		goto cmd_rel_host;
+	}
+	if(cmd.opcode == MMC_FFU_PNM_OP) {
+		printk(KERN_INFO "[LGE][FFU][pnm : %s]\n", card->cid.prod_name);
+		if (copy_to_user((void __user *)(unsigned long) idata->ic.data_ptr,
+						&card->cid.prod_name, idata->ic.blksz)) {
+			err = -EFAULT;
+		}
+		else {
+			err = 0;
+		}
+		goto cmd_rel_host;
+	}
+#endif
 	err = mmc_blk_part_switch(card, md);
 	if (err)
 		goto cmd_rel_host;
@@ -1087,9 +1131,15 @@ static inline int mmc_blk_part_switch(struct mmc_card *card,
 				 card->ext_csd.part_time);
 
 		if (ret) {
+		#ifdef CONFIG_MACH_LGE
+			pr_err("%s: mmc_blk_part_switch failure, %d -> %d (%d)\n",
+				mmc_hostname(card->host), main_md->part_curr,
+					md->part_type, ret);
+		#else
 			pr_err("%s: mmc_blk_part_switch failure, %d -> %d\n",
 				mmc_hostname(card->host), main_md->part_curr,
 					md->part_type);
+		#endif
 			return ret;
 		}
 
@@ -1358,8 +1408,13 @@ static int mmc_blk_cmd_recovery(struct mmc_card *card, struct request *req,
 			break;
 
 		prev_cmd_status_valid = false;
+		#ifdef CONFIG_MACH_LGE
+		pr_err("[LGE][MMC]%s: error %d sending status command, %sing, cd-gpio:%d\n",
+		       req->rq_disk->disk_name, err, retry ? "retry" : "abort", mmc_gpio_get_cd(card->host));
+		#else
 		pr_err("%s: error %d sending status command, %sing\n",
 		       req->rq_disk->disk_name, err, retry ? "retry" : "abort");
+		#endif
 	}
 
 	/* We couldn't get a response from the card.  Give up. */
@@ -1449,6 +1504,20 @@ static int mmc_blk_reset(struct mmc_blk_data *md, struct mmc_host *host,
 
 	md->reset_done |= type;
 	err = mmc_hw_reset(host);
+/* LGE_CHANGE_S
+ * Author : D3-5T-FS@lge.com
+ * Change : eMMC can recover itself, but if it fails during re-init, recover routine does not activated. (eMMC is not accessible)
+ */
+#if defined (CONFIG_LGE_MMC_RESET_IF_HANG)
+    /* in case that eMMC failed to re-initialize, retry five times and crash if it is eMMC. */
+    if (err == -ETIMEDOUT && host->caps & MMC_CAP_NONREMOVABLE) /* Only for eMMC (NONREMOVABLE) */
+    {
+        err = mmc_hw_reset(host);
+        pr_info("%s:%s: retry mmc_blk_reset() %d\n",
+                    mmc_hostname(host), __func__, err);
+    }
+#endif
+
 	if (err && err != -EOPNOTSUPP) {
 		/* We failed to reset so we need to abort the request */
 		pr_err("%s: %s: failed to reset %d\n", mmc_hostname(host),
@@ -1825,6 +1894,15 @@ static int mmc_blk_err_check(struct mmc_card *card,
 	struct mmc_blk_request *brq = &mq_mrq->brq;
 	struct request *req = mq_mrq->req;
 	int ecc_err = 0, gen_err = 0;
+
+#ifdef CONFIG_MACH_LGE
+	/* LGE_CHANGE, 2015-12-14, LGE-MSM8937-BSP-memory@lge.com
+	 * When uSD is not inserted, return proper error-value.
+	 */
+	if(mmc_card_sd(card) && !mmc_gpio_get_cd(card->host)) {
+		return MMC_BLK_NOMEDIUM;
+	}
+#endif
 
 	/*
 	 * sbc.error indicates a problem with the set block count
@@ -4379,6 +4457,9 @@ static int mmc_blk_probe(struct mmc_card *card)
 	mmc_set_drvdata(card, md);
 
 #ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+#ifdef CONFIG_MACH_LGE
+	if (!(card->host->caps & MMC_CAP_NONREMOVABLE))
+#endif
 	mmc_set_bus_resume_policy(card->host, 1);
 #endif
 	if (mmc_add_disk(md))

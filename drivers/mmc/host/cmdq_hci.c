@@ -411,6 +411,10 @@ static int cmdq_enable(struct mmc_host *mmc)
 		cmdq_writel(cq_host, cmdq_readl(cq_host, CQRMEM) | CQ_EXCEPTION,
 				CQRMEM);
 
+	/* disable write protection violation indication */
+	cmdq_writel(cq_host, cmdq_readl(cq_host, CQRMEM) & ~WP_EXCEPTION,
+			CQRMEM);
+
 	/* ensure the writes are done before enabling CQE */
 	mb();
 

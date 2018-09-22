@@ -132,6 +132,7 @@ load_adsp:
 			if (IS_ERR(priv->pil_h)) {
 				dev_err(&pdev->dev, "%s: pil get failed,\n",
 					__func__);
+				panic("%s: pil get failed,\n", __func__);
 				goto fail;
 			}
 

@@ -60,6 +60,15 @@
 #define QPNP_VADC_STATUS2_CONV_SEQ_STATE_SHIFT			4
 #define QPNP_VADC_CONV_TIMEOUT_ERR				2
 
+#ifdef CONFIG_LGE_USB_G_ANDROID
+#define QPNP_VADC_THR_INT_EN_SET				0x15
+#define QPNP_VADC_LOW_THR_INT_EN_SET				BIT(4)
+#define QPNP_VADC_HIGH_THR_INT_EN_SET				BIT(3)
+#define QPNP_VADC_THR_INT_EN_CLR				0x16
+#define QPNP_VADC_LOW_THR_INT_EN_CLR				BIT(4)
+#define QPNP_VADC_HIGH_THR_INT_EN_CLR				BIT(3)
+#endif
+
 #define QPNP_VADC_MODE_CTL					0x40
 #define QPNP_VADC_OP_MODE_SHIFT					3
 #define QPNP_VADC_VREF_XO_THM_FORCE				BIT(2)
@@ -229,6 +238,10 @@ static struct qpnp_vadc_rscale_fn adc_vadc_rscale_fn[] = {
 };
 
 static int32_t qpnp_vadc_calib_device(struct qpnp_vadc_chip *vadc);
+
+#if defined(CONFIG_LGE_USB_DEBUGGER) || defined(CONFIG_LGE_USB_MOISTURE_DETECT)
+extern void handle_sbu_switch(bool enable);
+#endif
 
 static int32_t qpnp_vadc_read_reg(struct qpnp_vadc_chip *vadc, int16_t reg,
 						u8 *data, int len)
@@ -1900,6 +1913,12 @@ int32_t qpnp_vadc_conv_seq_request(struct qpnp_vadc_chip *vadc,
 
 	mutex_lock(&vadc->adc->adc_lock);
 
+#if defined(CONFIG_LGE_USB_DEBUGGER) || defined(CONFIG_LGE_USB_MOISTURE_DETECT)
+	if(channel == P_MUX1_1_1){
+		handle_sbu_switch(true);
+	}
+#endif
+
 	if (vadc->state_copy->vadc_meas_int_enable)
 		qpnp_vadc_manage_meas_int_requests(vadc);
 
@@ -2123,6 +2142,12 @@ recalibrate:
 fail_unlock:
 	if (vadc->state_copy->vadc_meas_int_enable)
 		qpnp_vadc_manage_meas_int_requests(vadc);
+
+#if defined(CONFIG_LGE_USB_DEBUGGER) || defined(CONFIG_LGE_USB_MOISTURE_DETECT)
+	if(channel == P_MUX1_1_1){
+		handle_sbu_switch(false);
+	}
+#endif
 
 	mutex_unlock(&vadc->adc->adc_lock);
 
@@ -2371,6 +2396,71 @@ static int32_t qpnp_vadc_thr_update(struct qpnp_vadc_chip *vadc,
 	return rc;
 }
 
+#ifdef CONFIG_LGE_USB_G_ANDROID
+static int32_t qpnp_vadc_high_thr_int_en(struct qpnp_vadc_chip *chip,
+		bool state)
+{
+	int rc = 0;
+	struct qpnp_vadc_chip *vadc = dev_get_drvdata(chip->dev);
+	u8 data = QPNP_VADC_HIGH_THR_INT_EN_SET;
+
+	pr_debug("%s\n", __func__);
+
+	if(state == true) {
+		rc = qpnp_vadc_write_reg(vadc,
+				QPNP_VADC_THR_INT_EN_SET,
+				&data, 1);
+
+		if(rc < 0) {
+			pr_err("enabling high thr interrupt failed, err:%d\n", rc);
+			return rc;
+		}
+	} else {
+		rc = qpnp_vadc_write_reg(vadc,
+				QPNP_VADC_THR_INT_EN_CLR,
+				&data, 1);
+
+		if(rc < 0) {
+			pr_err("disabling high thr interrupt failed, err:%d\n", rc);
+			return rc;
+		}
+	}
+
+	return rc;
+}
+
+static int32_t qpnp_vadc_low_thr_int_en(struct qpnp_vadc_chip *vadc,
+		bool state)
+{
+	int rc = 0;
+	u8 data = QPNP_VADC_LOW_THR_INT_EN_SET;
+
+	pr_debug("%s\n", __func__);
+
+	if(state == true) {
+		rc = qpnp_vadc_write_reg(vadc,
+				QPNP_VADC_THR_INT_EN_SET,
+				&data, 1);
+
+		if(rc < 0) {
+			pr_err("enabling low thr interrupt failed, err:%d\n", rc);
+			return rc;
+		}
+	} else {
+		rc = qpnp_vadc_write_reg(vadc,
+				QPNP_VADC_THR_INT_EN_CLR,
+				&data,1 );
+
+		if(rc < 0) {
+			pr_err("disabling low thr interrupt failed, err:%d\n", rc);
+			return rc;
+		}
+	}
+
+	return rc;
+}
+#endif
+
 int32_t qpnp_vadc_channel_monitor(struct qpnp_vadc_chip *chip,
 					struct qpnp_adc_tm_btm_param *param)
 {
@@ -2455,6 +2545,19 @@ int32_t qpnp_vadc_channel_monitor(struct qpnp_vadc_chip *chip,
 		pr_err("vadc meas timer failed with %d\n", rc);
 		goto fail_unlock;
 	}
+
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	if (param->state_request == ADC_TM_HIGH_THR_ENABLE) {
+		qpnp_vadc_low_thr_int_en(vadc, false);
+		qpnp_vadc_high_thr_int_en(vadc, true);
+	} else if (param->state_request == ADC_TM_LOW_THR_ENABLE) {
+		qpnp_vadc_high_thr_int_en(vadc, false);
+		qpnp_vadc_low_thr_int_en(vadc, true);
+	} else if (param->state_request == ADC_TM_HIGH_LOW_THR_ENABLE) {
+		qpnp_vadc_high_thr_int_en(vadc, true);
+		qpnp_vadc_low_thr_int_en(vadc, true);
+	}
+#endif
 
 	rc = qpnp_vadc_thr_update(vadc, high_thr, low_thr);
 	if (rc) {

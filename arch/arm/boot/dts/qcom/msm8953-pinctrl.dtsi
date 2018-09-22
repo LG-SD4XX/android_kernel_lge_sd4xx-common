@@ -1057,27 +1057,27 @@
 		wsa-vi {
 			wsa_vi_on: wsa_vi_on {
 				mux {
-					pins = "gpio94", "gpio95";
-					function = "wsa_io";
+					/*pins = "gpio94", "gpio95";*/
+					/*function = "wsa_io";*/
 				};
 
 				config {
-					pins = "gpio94", "gpio95";
-					drive-strength = <8>; /* 8 MA */
-					bias-disable; /* NO pull */
+					/*pins = "gpio94", "gpio95";*/
+					/*drive-strength = <8>; 8 MA */
+					/*bias-disable; NO pull*/
 				};
 			};
 
 			wsa_vi_off: wsa_vi_off {
 				mux {
-					pins = "gpio94", "gpio95";
-					function = "wsa_io";
+					/*pins = "gpio94", "gpio95";*/
+					/*function = "wsa_io";*/
 				};
 
 				config {
-					pins = "gpio94", "gpio95";
-					drive-strength = <2>; /* 2 MA */
-					bias-pull-down;
+					/*pins = "gpio94", "gpio95";*/
+					/*drive-strength = <2>; 2 MA*/
+					/*bias-pull-down;*/
 				};
 			};
 		};

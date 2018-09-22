@@ -600,6 +600,11 @@ config QPNP_MISC
 	  and the driver provides an API to check if this interrupt
 	  is available on the current PMIC chip.
 
+config GPIO_VIBRATOR
+	tristate "GPIO Vibrator support"
+	help
+	  Vibrator with GPIO LDO Control uses this config
+
 config UID_SYS_STATS_DEBUG
 	bool "Per-TASK statistics"
 	depends on UID_SYS_STATS

@@ -28,6 +28,7 @@
 #include <linux/stat.h>
 #include <linux/string.h>
 #include <linux/types.h>
+#include <linux/io.h>
 
 #include <asm/system_misc.h>
 
@@ -66,6 +67,9 @@ enum {
 	HW_PLATFORM_STP = 23,
 	HW_PLATFORM_SBC = 24,
 	HW_PLATFORM_ADP = 25,
+	HW_PLATFORM_LGPS29 = 0x60,
+	HW_PLATFORM_LGPS29_1 = 0x61,
+	HW_PLATFORM_LV3_KR = 0x64,
 	HW_PLATFORM_TTP = 30,
 	HW_PLATFORM_INVALID
 };
@@ -88,6 +92,9 @@ const char *hw_platform[] = {
 	[HW_PLATFORM_STP] = "STP",
 	[HW_PLATFORM_SBC] = "SBC",
 	[HW_PLATFORM_ADP] = "ADP",
+	[HW_PLATFORM_LGPS29] = "LGPS29",
+	[HW_PLATFORM_LGPS29_1] = "LGPS29_1",
+	[HW_PLATFORM_LV3_KR] = "LV3_KR",
 	[HW_PLATFORM_TTP] = "TTP",
 };
 
@@ -1153,6 +1160,22 @@ msm_get_images(struct device *dev,
 	return pos;
 }
 
+#define QFPROM_RAW_SERIAL_NUM_LSB 0xA4128
+static ssize_t socinfo_show_msm_serial(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	unsigned int serial = 0;
+	void *addr = ioremap(QFPROM_RAW_SERIAL_NUM_LSB, SZ_4K);
+
+	if (!addr)
+		return 0;
+
+	serial = readl_relaxed(addr);
+
+	iounmap(addr);
+	return snprintf(buf, PAGE_SIZE, "%08x\n", serial);
+}
+
 static struct device_attribute msm_soc_attr_raw_version =
 	__ATTR(raw_version, S_IRUGO, msm_get_raw_version,  NULL);
 
@@ -1234,6 +1257,9 @@ static struct device_attribute select_image =
 
 static struct device_attribute images =
 	__ATTR(images, S_IRUGO, msm_get_images, NULL);
+
+static struct device_attribute msm_soc_attr_msm_serial =
+	__ATTR(msm_serial, S_IRUGO, socinfo_show_msm_serial, NULL);
 
 static void * __init setup_dummy_socinfo(void)
 {
@@ -1388,6 +1414,8 @@ static void __init populate_soc_sysfs_files(struct device *msm_soc_device)
 	case SOCINFO_VERSION(0, 1):
 		device_create_file(msm_soc_device,
 					&msm_soc_attr_build_id);
+		device_create_file(msm_soc_device,
+					&msm_soc_attr_msm_serial);
 		break;
 	default:
 		pr_err("Unknown socinfo format: v%u.%u\n",

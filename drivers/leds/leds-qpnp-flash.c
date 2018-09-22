@@ -268,6 +268,11 @@ static u8 qpnp_flash_led_ctrl_dbg_regs[] = {
 	0x4A, 0x4B, 0x4C, 0x4F, 0x51, 0x52, 0x54, 0x55, 0x5A, 0x5C, 0x5D,
 };
 
+#ifdef CONFIG_LGE_PM_CHARGING_VDD_FLASH_CAP_FOR_CAMERA
+static int brightness_value = 0; // LGE_UPDATE
+int otg_en = 0;
+#endif
+
 static int flash_led_dbgfs_file_open(struct qpnp_flash_led *led,
 					struct file *file)
 {
@@ -1006,6 +1011,22 @@ static int qpnp_flash_led_module_disable(struct qpnp_flash_led *led,
 	}
 
 	tmp = (~flash_node->trigger) & val;
+#ifdef CONFIG_LGE_PM_CHARGING_VDD_FLASH_CAP_FOR_CAMERA
+/* [LGE_UPDATE_S] */
+	if (flash_node->type == TORCH && !brightness_value) {
+		otg_en = 0;
+		psy_prop.intval = false;
+			rc = led->battery_psy->set_property(led->battery_psy,
+						POWER_SUPPLY_PROP_FLASH_ACTIVE,
+							&psy_prop);
+		if (rc) {
+			dev_err(&led->spmi_dev->dev,
+				"Failed to setup OTG pulse skip enable\n");
+				return -EINVAL;
+		}
+	}
+	/* [LGE_UPDATE_E] */
+#endif
 	if (!tmp) {
 		if (flash_node->type == TORCH) {
 			rc = qpnp_led_masked_write(led->spmi_dev,
@@ -1062,7 +1083,12 @@ static int qpnp_flash_led_module_disable(struct qpnp_flash_led *led,
 			led->gpio_enabled = false;
 		}
 
+#ifdef CONFIG_LGE_PM_CHARGING_VDD_FLASH_CAP_FOR_CAMERA
+		if (led->battery_psy && brightness_value) { // LGE_UPDATE
+		    otg_en = 0; // LGE_UPDATE
+#else
 		if (led->battery_psy) {
+#endif
 			psy_prop.intval = false;
 			rc = led->battery_psy->set_property(led->battery_psy,
 						POWER_SUPPLY_PROP_FLASH_ACTIVE,
@@ -1318,6 +1344,18 @@ static void qpnp_flash_led_work(struct work_struct *work)
 	if (!brightness)
 		goto turn_off;
 
+	if ((led->open_fault) && (flash_node->type == TORCH)) {
+		rc = spmi_ext_register_readl(led->spmi_dev->ctrl,
+				led->spmi_dev->sid,
+				FLASH_LED_FAULT_STATUS(led->base), &val, 1);
+		if (rc) {
+			dev_err(&led->spmi_dev->dev,
+				"Failed to read out fault status register\n");
+			goto exit_flash_led_work;
+		}
+		led->open_fault &= (val & FLASH_LED_OPEN_FAULT_DETECTED);
+	}
+
 	if (led->open_fault) {
 		dev_err(&led->spmi_dev->dev, "Open fault detected\n");
 		goto unlock_mutex;
@@ -1534,7 +1572,12 @@ static void qpnp_flash_led_work(struct work_struct *work)
 			max_curr_avail_ma += flash_node->max_current;
 
 		psy_prop.intval = true;
+#ifdef CONFIG_LGE_PM_CHARGING_VDD_FLASH_CAP_FOR_CAMERA
+		if (led->battery_psy && brightness_value) { // LGE_UPDATE
+		    otg_en = 1; // LGE_UPDATE
+#else
 		if (led->battery_psy) {
+#endif
 			rc = led->battery_psy->set_property(led->battery_psy,
 						POWER_SUPPLY_PROP_FLASH_ACTIVE,
 						&psy_prop);
@@ -1883,6 +1926,9 @@ static void qpnp_flash_led_brightness_set(struct led_classdev *led_cdev,
 		value = flash_node->cdev.max_brightness;
 
 	flash_node->cdev.brightness = value;
+#ifdef CONFIG_LGE_PM_CHARGING_VDD_FLASH_CAP_FOR_CAMERA
+    brightness_value = value; // LGE_UPDATE
+#endif
 	if (led->flash_node[led->num_leds - 1].id ==
 						FLASH_LED_SWITCH) {
 		if (flash_node->type == TORCH)

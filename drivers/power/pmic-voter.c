@@ -21,6 +21,7 @@
 #include <linux/pmic-voter.h>
 
 #define NUM_MAX_CLIENTS		16
+
 #define DEBUG_FORCE_CLIENT	"DEBUG_FORCE_CLIENT"
 
 static DEFINE_SPINLOCK(votable_list_slock);
@@ -419,10 +420,19 @@ int vote(struct votable *votable, const char *client_str, bool enabled, int val)
 			|| (effective_result != votable->effective_result)) {
 		votable->effective_client_id = effective_id;
 		votable->effective_result = effective_result;
+
+#ifdef CONFIG_LGE_PM
+		pr_info("%s: effective vote is now %d voted by %s,%d\n",
+			votable->name, effective_result,
+			get_client_str(votable, effective_id),
+			effective_id);
+#else
 		pr_debug("%s: effective vote is now %d voted by %s,%d\n",
 			votable->name, effective_result,
 			get_client_str(votable, effective_id),
 			effective_id);
+#endif
+
 		if (votable->callback && !votable->force_active)
 			rc = votable->callback(votable, votable->data,
 					effective_result,

@@ -28,6 +28,10 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/exception.h>
 
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+#include <soc/qcom/lge/lge_handle_panic.h>
+#endif
+
 #define PANIC_TIMER_STEP 100
 #define PANIC_BLINK_SPD 18
 
@@ -78,6 +82,11 @@ void panic(const char *fmt, ...)
 	va_list args;
 	long i, i_next = 0;
 	int state = 0;
+
+	/* disable watchdog timer to avoid unexpected watchdog bite */
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+	lge_disable_watchdog();
+#endif
 
 	trace_kernel_panic(0);
 	/*
@@ -169,7 +178,7 @@ void panic(const char *fmt, ...)
 		 * Delay timeout seconds before rebooting the machine.
 		 * We can't use the "normal" timers since we just panicked.
 		 */
-		pr_emerg("Rebooting in %d seconds..", panic_timeout);
+		pr_emerg("Rebooting in %d seconds..\n", panic_timeout);
 
 		for (i = 0; i < panic_timeout * 1000; i += PANIC_TIMER_STEP) {
 			touch_nmi_watchdog();

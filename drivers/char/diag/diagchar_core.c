@@ -49,6 +49,10 @@
 #include <linux/compat.h>
 #endif
 
+#ifdef CONFIG_LGE_DIAG_BYPASS
+#include "lg_diag_bypass.h"
+#endif
+
 MODULE_DESCRIPTION("Diag Char Driver");
 MODULE_LICENSE("GPL v2");
 MODULE_VERSION("1.0");
@@ -439,8 +443,10 @@ static void diag_close_logging_process(const int pid)
 	driver->mask_clear = 1;
 	mutex_unlock(&driver->diag_maskclear_mutex);
 
+	mutex_lock(&driver->diagchar_mutex);
 	session_peripheral_mask = session_info->peripheral_mask;
 	diag_md_session_close(session_info);
+	mutex_unlock(&driver->diagchar_mutex);
 	for (i = 0; i < NUM_MD_SESSIONS; i++)
 		if (MD_PERIPHERAL_MASK(i) & session_peripheral_mask)
 			diag_mux_close_peripheral(DIAG_LOCAL_PROC, i);
@@ -754,6 +760,11 @@ struct diag_cmd_reg_entry_t *diag_cmd_search(
 						continue;
 					}
 				}
+#ifdef CONFIG_LGE_DIAG_CMD_FORWARD_MODEM
+				if ((entry->cmd_code == 0x5D) && (item->proc != PERIPHERAL_MODEM)) {
+					continue;
+				}
+#endif
 				return &item->entry;
 			}
 		}
@@ -3076,7 +3087,12 @@ static ssize_t diagchar_write(struct file *file, const char __user *buf,
 		return -EIO;
 	}
 
+
+#ifdef CONFIG_LGE_DIAG_BYPASS
+	if (driver->logging_mode == DIAG_USB_MODE && !driver->usb_connected && !lge_bypass_status()) {
+#else
 	if (driver->logging_mode == DIAG_USB_MODE && !driver->usb_connected) {
+#endif
 		if (!((pkt_type == DCI_DATA_TYPE) ||
 		    (pkt_type == DCI_PKT_TYPE) ||
 		    (pkt_type & DATA_TYPE_DCI_LOG) ||

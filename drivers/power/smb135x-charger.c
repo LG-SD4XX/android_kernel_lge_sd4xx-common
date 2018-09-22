@@ -1152,6 +1152,9 @@ static int smb135x_set_fastchg_current(struct smb135x_chg *chip,
 	int i, rc, diff, best, best_diff;
 	u8 reg;
 
+#ifdef CONFIG_LGE_PM
+	pr_err("%s fastchg current to %dma\n", __func__, current_ma);
+#endif
 	/*
 	 * if there is no array loaded or if the smallest current limit is
 	 * above the requested current, then do nothing
@@ -1181,8 +1184,13 @@ static int smb135x_set_fastchg_current(struct smb135x_chg *chip,
 	rc = smb135x_masked_write(chip, CFG_1C_REG, FCC_MASK, reg);
 	if (rc < 0)
 		dev_err(chip->dev, "cannot write to config c rc = %d\n", rc);
+#ifdef CONFIG_LGE_PM
+	pr_err("fastchg current set to %dma\n",
+			chip->fastchg_current_table[i]);
+#else
 	pr_debug("fastchg current set to %dma\n",
 			chip->fastchg_current_table[i]);
+#endif
 	return rc;
 }
 
@@ -1191,6 +1199,10 @@ static int smb135x_set_high_usb_chg_current(struct smb135x_chg *chip,
 {
 	int i, rc;
 	u8 usb_cur_val;
+
+#ifdef CONFIG_LGE_PM
+	pr_err("%s high_usb_chg_current to %dma\n", __func__, current_ma);
+#endif
 
 	for (i = chip->usb_current_arr_size - 1; i >= 0; i--) {
 		if (current_ma >= chip->usb_current_table[i])
@@ -1226,6 +1238,10 @@ static int smb135x_set_high_usb_chg_current(struct smb135x_chg *chip,
 		dev_err(chip->dev, "Couldn't write cfg 5 rc = %d\n", rc);
 	else
 		chip->real_usb_psy_ma = chip->usb_current_table[i];
+#ifdef CONFIG_LGE_PM
+		pr_err("high_usb_chg_current set to %dma\n",
+				chip->usb_current_table[i]);
+#endif
 	return rc;
 }
 
@@ -1242,9 +1258,11 @@ static int smb135x_set_usb_chg_current(struct smb135x_chg *chip,
 							int current_ma)
 {
 	int rc;
-
+#ifdef CONFIG_LGE_PM
+	pr_err("USB current_ma = %d\n", current_ma);
+#else
 	pr_debug("USB current_ma = %d\n", current_ma);
-
+#endif
 	if (chip->workaround_flags & WRKARND_USB100_BIT) {
 		pr_info("USB requested = %dmA using %dmA\n", current_ma,
 						CURRENT_500_MA);
@@ -1857,12 +1875,20 @@ static int smb135x_parallel_set_chg_present(struct smb135x_chg *chip,
 			return rc;
 		}
 
+#ifdef CONFIG_LGE_PM
+		/* set chg en by command mode and enable auto recharge */
+		rc = smb135x_masked_write(chip, CFG_14_REG,
+				CHG_EN_BY_PIN_BIT | CHG_EN_ACTIVE_LOW_BIT
+				| DISABLE_AUTO_RECHARGE_BIT,
+				chip->parallel_pin_polarity_setting);
+#else
 		/* set chg en by pin active low and enable auto recharge */
 		rc = smb135x_masked_write(chip, CFG_14_REG,
 				CHG_EN_BY_PIN_BIT | CHG_EN_ACTIVE_LOW_BIT
 				| DISABLE_AUTO_RECHARGE_BIT,
 				CHG_EN_BY_PIN_BIT |
 				chip->parallel_pin_polarity_setting);
+#endif
 
 		/* set bit 0 = 100mA bit 1 = 500mA and set register control */
 		rc = smb135x_masked_write(chip, CFG_E_REG,
@@ -1883,6 +1909,28 @@ static int smb135x_parallel_set_chg_present(struct smb135x_chg *chip,
 			dev_err(chip->dev, "Couldn't set cfg rc=%d\n", rc);
 			return rc;
 		}
+
+#ifdef CONFIG_LGE_PM
+		/* disable jeita func */
+		rc = smb135x_write(chip, CFG_1A_REG, 0);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"Couldn't disable jeita func. rc=%d\n", rc);
+			return rc;
+		}
+
+		/* disable chg termination */
+		if(chip->iterm_disabled) {
+			rc = smb135x_masked_write(chip, CFG_14_REG,
+						DISABLE_CURRENT_TERM_BIT,
+						DISABLE_CURRENT_TERM_BIT);
+			if (rc < 0) {
+				dev_err(chip->dev,
+					"Couldn't disable charging termination. rc=%d\n", rc);
+				return rc;
+			}
+		}
+#endif
 
 		/* set the fastchg_current to the lowest setting */
 		if (chip->fastchg_current_arr_size > 0)
@@ -4428,6 +4476,11 @@ static int smb135x_parallel_charger_probe(struct i2c_client *client,
 	if (rc < 0)
 		chip->vfloat_mv = -EINVAL;
 
+#ifdef CONFIG_LGE_PM
+	chip->iterm_disabled = of_property_read_bool(node,
+						"qcom,iterm-disabled");
+#endif
+
 	rc = of_property_read_u32(node, "qcom,parallel-en-pin-polarity",
 					&chip->parallel_pin_polarity_setting);
 	if (rc)
@@ -4454,7 +4507,11 @@ static int smb135x_parallel_charger_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, chip);
 
+#ifdef CONFIG_LGE_PM
+	chip->parallel_psy.name     = "usb-parallel";
+#else
 	chip->parallel_psy.name		= "parallel";
+#endif
 	chip->parallel_psy.type		= POWER_SUPPLY_TYPE_PARALLEL;
 	chip->parallel_psy.get_property	= smb135x_parallel_get_property;
 	chip->parallel_psy.set_property	= smb135x_parallel_set_property;

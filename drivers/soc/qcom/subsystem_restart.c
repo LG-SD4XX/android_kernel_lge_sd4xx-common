@@ -39,6 +39,9 @@
 
 #include <asm/current.h>
 
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+#include <soc/qcom/lge/lge_handle_panic.h>
+#endif
 #include "peripheral-loader.h"
 
 #define DISABLE_SSR 0x9889deed
@@ -92,6 +95,11 @@ static const char * const restart_levels[] = {
 	[RESET_SOC] = "SYSTEM",
 	[RESET_SUBSYS_COUPLED] = "RELATED",
 };
+
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+#define LGE_BSP_BOOTUP_RUNTIME_BIT 0
+unsigned long boot_progress = 0x0;
+#endif
 
 /**
  * struct subsys_tracking - track state of a subsystem or restart order
@@ -486,11 +494,21 @@ static void do_epoch_check(struct subsys_device *dev)
 	}
 
 	if (time_first && n >= max_restarts_check) {
+#if defined(CONFIG_LGE_HANDLE_PANIC)
 		if ((curr_time->tv_sec - time_first->tv_sec) <
-				max_history_time_check)
+				max_history_time_check) {
+			lge_set_subsys_crash_reason(dev->desc->name, LGE_ERR_SUB_CLO);
 			panic("Subsystems have crashed %d times in less than "
 				"%ld seconds!", max_restarts_check,
 				max_history_time_check);
+		}
+#else
+                if ((curr_time->tv_sec - time_first->tv_sec) <
+                                max_history_time_check)
+                        panic("Subsystems have crashed %d times in less than "
+                                "%ld seconds!", max_restarts_check,
+                                max_history_time_check);
+#endif
 	}
 
 out:
@@ -623,11 +641,25 @@ static int wait_for_err_ready(struct subsys_device *subsys)
 
 	ret = wait_for_completion_timeout(&subsys->err_ready,
 					  msecs_to_jiffies(10000));
+
 	if (!ret) {
 		pr_err("[%s]: Error ready timed out\n", subsys->desc->name);
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+		if ((!strcmp(subsys->desc->name, "modem")) &&
+				!test_bit(LGE_BSP_BOOTUP_RUNTIME_BIT, &boot_progress)) {
+			pr_err("[%s] boot status[%ld] \n", __func__, boot_progress);
+			panic("[%s]: Error ready timed out\n", subsys->desc->name);
+		}
+#endif
 		return -ETIMEDOUT;
 	}
-
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+	if (!strcmp(subsys->desc->name, "modem")) {
+		if(!__test_and_set_bit(LGE_BSP_BOOTUP_RUNTIME_BIT, &boot_progress)) {
+			pr_err("[%s] boot_progress[%ld] \n", __func__, boot_progress);
+		}
+	}
+#endif
 	return 0;
 }
 
@@ -639,6 +671,20 @@ static int subsystem_shutdown(struct subsys_device *dev, void *data)
 	pr_info("[%s:%d]: Shutting down %s\n",
 			current->comm, current->pid, name);
 	ret = dev->desc->shutdown(dev->desc, true);
+	
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+	if (ret < 0) {
+		if (!dev->desc->ignore_ssr_failure){
+			lge_set_subsys_crash_reason(name, LGE_ERR_SUB_SD);
+			panic("subsys-restart: [%s:%d]: Failed to shutdown %s!",
+			current->comm, current->pid, name);
+		}
+		else {
+			pr_err("Shutdown failure on %s\n", name);
+			return ret;
+		}
+	}
+#else
 	if (ret < 0) {
 		if (!dev->desc->ignore_ssr_failure)
 			panic("subsys-restart: [%s:%d]: Failed to shutdown %s!",
@@ -648,6 +694,7 @@ static int subsystem_shutdown(struct subsys_device *dev, void *data)
 			return ret;
 		}
 	}
+#endif
 	dev->crash_count++;
 	subsys_set_state(dev, SUBSYS_OFFLINE);
 	disable_all_irqs(dev);
@@ -686,6 +733,17 @@ static int subsystem_powerup(struct subsys_device *dev, void *data)
 	if (ret < 0) {
 		notify_each_subsys_device(&dev, 1, SUBSYS_POWERUP_FAILURE,
 								NULL);
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+		if (!dev->desc->ignore_ssr_failure){
+			lge_set_subsys_crash_reason(name, LGE_ERR_SUB_PWR);
+			panic("[%s:%d]: Powerup error: %s!",
+				current->comm, current->pid, name);
+		}			
+		else {
+			pr_err("Powerup failure on %s\n", name);
+			return ret;
+		}		
+#else
 		if (!dev->desc->ignore_ssr_failure)
 			panic("[%s:%d]: Powerup error: %s!",
 				current->comm, current->pid, name);
@@ -693,6 +751,7 @@ static int subsystem_powerup(struct subsys_device *dev, void *data)
 			pr_err("Powerup failure on %s\n", name);
 			return ret;
 		}
+#endif
 	}
 	enable_all_irqs(dev);
 
@@ -700,11 +759,22 @@ static int subsystem_powerup(struct subsys_device *dev, void *data)
 	if (ret) {
 		notify_each_subsys_device(&dev, 1, SUBSYS_POWERUP_FAILURE,
 								NULL);
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+		if (!dev->desc->ignore_ssr_failure){
+			lge_set_subsys_crash_reason(name, LGE_ERR_SUB_TOW);
+			panic("[%s:%d]: Timed out waiting for error ready: %s!",
+				current->comm, current->pid, name);
+		}			
+		else {
+			return ret;
+		}		
+#else
 		if (!dev->desc->ignore_ssr_failure)
 			panic("[%s:%d]: Timed out waiting for error ready: %s!",
 				current->comm, current->pid, name);
 		else
-			return ret;
+			return ret;		
+#endif
 	}
 	subsys_set_state(dev, SUBSYS_ONLINE);
 	subsys_set_crash_status(dev, false);
@@ -1060,6 +1130,10 @@ static void __subsystem_restart_dev(struct subsys_device *dev)
 			__pm_stay_awake(&dev->ssr_wlock);
 			queue_work(ssr_wq, &dev->work);
 		} else {
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+			lge_set_subsys_crash_reason(name, LGE_ERR_SUB_CDS);
+#endif
+
 			panic("Subsystem %s crashed during SSR!", name);
 		}
 	} else
@@ -1079,6 +1153,9 @@ static void device_restart_work_hdlr(struct work_struct *work)
 	 * sync() and fclose() on attempting the dump.
 	 */
 	msleep(100);
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+	lge_set_subsys_crash_reason(dev->desc->name, LGE_ERR_SUB_RST);
+#endif
 	panic("subsys-restart: Resetting the SoC - %s crashed.",
 							dev->desc->name);
 }
@@ -1127,6 +1204,9 @@ int subsystem_restart_dev(struct subsys_device *dev)
 		schedule_work(&dev->device_restart_work);
 		return 0;
 	default:
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+		lge_set_subsys_crash_reason(name, LGE_ERR_SUB_UNK);
+#endif
 		panic("subsys-restart: Unknown restart level!\n");
 		break;
 	}
@@ -1150,6 +1230,35 @@ int subsystem_restart(const char *name)
 	return ret;
 }
 EXPORT_SYMBOL(subsystem_restart);
+
+int subsys_modem_restart(void)
+{
+	int ret;
+	int rsl;
+	struct subsys_tracking *track;
+	struct subsys_device *dev = find_subsys("modem");
+
+	if (!dev)
+		return -ENODEV;
+
+	track = subsys_get_track(dev);
+
+	if (dev->track.state != SUBSYS_ONLINE ||
+			track->p_state != SUBSYS_NORMAL)
+		return -ENODEV;
+
+	rsl = dev->restart_level;
+	dev->restart_level = RESET_SUBSYS_COUPLED;
+	subsys_set_crash_status(dev, true);
+	ret = subsystem_restart_dev(dev);
+	dev->restart_level = rsl;
+#ifdef CONFIG_MACH_LGE
+	//modem_reboot_cnt--;
+#endif
+	put_device(&dev->dev);
+	return ret;
+}
+EXPORT_SYMBOL(subsys_modem_restart);
 
 int subsystem_crashed(const char *name)
 {

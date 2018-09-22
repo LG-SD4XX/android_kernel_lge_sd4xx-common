@@ -357,6 +357,7 @@ static int gic_suspend(void)
 	return 0;
 }
 
+#ifdef CONFIG_LGE_PM_DEBUG
 static void gic_show_resume_irq(struct gic_chip_data *gic)
 {
 	unsigned int i;
@@ -388,13 +389,16 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 		pr_warn("%s: %d triggered %s\n", __func__, irq, name);
 	}
 }
+#endif
 
 static void gic_resume_one(struct gic_chip_data *gic)
 {
 	unsigned int i;
 	void __iomem *base = gic_data_dist_base(gic);
 
+#ifdef CONFIG_LGE_PM_DEBUG
 	gic_show_resume_irq(gic);
+#endif
 
 	for (i = 0; i * 32 < gic->irq_nr; i++) {
 		/* disable all of them */
