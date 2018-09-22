@@ -291,6 +291,9 @@ struct msm_fb_data_type {
 
 	u32 dst_format;
 	int panel_power_state;
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	int panel_shutdown_state;
+#endif
 	struct disp_info_type_suspend suspend;
 
 	struct dma_buf *dbuf;

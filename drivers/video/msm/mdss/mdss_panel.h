@@ -63,6 +63,15 @@ enum fps_resolution {
 
 #define DSC_PPS_LEN		128
 
+#if defined(CONFIG_LGE_HIGH_LUMINANCE_MODE)
+/* backlight mapping table type list */
+enum lge_bl_map_type {
+	LGE_BLDFT = 0,			/* default */
+	LGE_BL = LGE_BLDFT,		/* main backlight */
+	LGE_BLHL,				/* main backlight with high luminance */
+	LGE_BLMAPMAX
+};
+#endif
 /* HDR propeties count */
 #define DISPLAY_PRIMARIES_COUNT	8	/* WRGB x and y values*/
 
@@ -747,6 +756,20 @@ struct mdss_panel_info {
 
 	/* debugfs structure for the panel */
 	struct mdss_panel_debugfs_info *debugfs_info;
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_BL_USE_BLMAP)
+	int blmap_size;
+	int *blmap;
+#elif defined(CONFIG_LGE_HIGH_LUMINANCE_MODE)
+	int blmap_size;
+	int *blmap[LGE_BLMAPMAX];
+	int hl_mode_on;
+#endif //CONFIG_LGE_DISPLAY_BL_USE_BLMAP
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_RECOVERY)
+	int esd_bl_delay;
+#endif
+#if defined(CONFIG_LGE_DISPLAY_DAYLIGHT_MODE)
+	u32 daylight_mode;
+#endif
 
 	/* persistence mode on/off */
 	bool persist_mode;

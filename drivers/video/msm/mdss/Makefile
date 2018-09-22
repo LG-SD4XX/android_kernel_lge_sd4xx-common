@@ -37,6 +37,95 @@ endif
 
 mdss-dsi-objs := mdss_dsi.o mdss_dsi_host.o mdss_dsi_cmd.o mdss_dsi_status.o
 mdss-dsi-objs += mdss_dsi_panel.o
+ifeq ($(CONFIG_LGE_DISPLAY_READER_MODE),y)
+mdss-dsi-objs += lge/reader_mode.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_COMFORT_MODE),y)
+mdss-dsi-objs += lge/lge_comfort_view.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_COMMON),y)
+mdss-dsi-objs += lge/lge_mdss_dsi.o
+mdss-dsi-objs += lge/lge_mdss_dsi_panel.o
+mdss-dsi-objs += lge/lge_mdss_sysfs.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_B6),y)
+	mdss-dsi-objs += lge_b6/lge_mdss_dsi_b6.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_SF340_TOVIS_TD4100),y)
+	mdss-dsi-objs += lge_sf340_tovis_td4100/lge_mdss_dsi_sf340_tovis_td4100.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_SF3_LGD_TD4100),y)
+	mdss-dsi-objs += lge_sf3_lgd_td4100/lge_mdss_dsi_sf3_lgd_td4100.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_SF3F_LGD_TD4310),y)
+	mdss-dsi-objs += lge_sf3f/lge_mdss_dsi_sf3f_lgd_td4310.o
+	mdss-dsi-objs += lge_sf3f/lge_mdss_dsi_sf3f.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_SF3F_LGD_SW49105),y)
+	mdss-dsi-objs += lge_sf3f/lge_mdss_dsi_sf3f_lgd_sw49105.o
+	mdss-dsi-objs += lge_sf3f/lge_mdss_dsi_sf3f.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_MFTS),y)
+mdss-dsi-objs += lge/mfts_mode.o
+endif
+ifneq ($(filter y, &(CONFIG_LGE_DISPLAY_LV3_TIANMA_FT860X) $(CONFIG_LGE_DISPLAY_LV3_LGD_LG4894)), )
+mdss-dsi-objs += lge_lv3/lge_mdss_dsi_lv3.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_LV3_TIANMA_FT860X),y)
+mdss-dsi-objs += lge_lv3/lge_mdss_dsi_lv3_tianma_ft860x.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_LV3_LGD_LG4894),y)
+mdss-dsi-objs += lge_lv3/lge_mdss_dsi_lv3_lgd_lg4894.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_LV7_TOVIS_TD4100),y)
+mdss-dsi-objs += lge_lv7_tovis_td4100/lge_mdss_dsi_lv7_tovis_td4100.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_LV5_LGD_LG4894),y)
+mdss-dsi-objs += lge_lv5/lge_mdss_dsi_lv5.o
+mdss-dsi-objs += lge_lv5/lge_mdss_dsi_panel_lv5.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_LV9_JDI_NT35596),y)
+mdss-dsi-objs += lge_lv9_jdi_nt35596/lge_mdss_dsi_lv9_jdi_nt35596.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_TF8_INX_NT51021),y)
+mdss-dsi-objs += lge_tf8/lge_mdss_dsi_tf8.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_MH),y)
+mdss-dsi-objs += lge_mh/lge_mdss_dsi_mh.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_CV5A),y)
+mdss-dsi-objs += lge_cv5a/lge_mdss_dsi_cv5a.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_CV7A),y)
+mdss-dsi-objs += lge_cv7a_sdm450/lge_mdss_dsi_cv7a_sdm450.o
+endif
+
+
+ifneq ($(filter y, \
+	&(CONFIG_LGE_DISPLAY_CV1_TIANMA_FT8006M) \
+	$(CONFIG_LGE_DISPLAY_CV1_LGD_LG4894A) \
+	&(CONFIG_LGE_DISPLAY_CV1_TCL_FT8006M)), )
+mdss-dsi-objs += lge_cv1/lge_mdss_dsi_cv1.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_CV1_TIANMA_FT8006M),y)
+mdss-dsi-objs += lge_cv1/lge_mdss_dsi_cv1_tianma_ft8006m.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_CV1_LGD_LG4894A),y)
+mdss-dsi-objs += lge_cv1/lge_mdss_dsi_cv1_lgd_lg4894a.o
+endif
+ifeq ($(CONFIG_LGE_DISPLAY_CV1_TCL_FT8006M),y)
+mdss-dsi-objs += lge_cv1/lge_mdss_dsi_cv1_tcl_ft8006m.o
+endif
+
+ifeq ($(CONFIG_LGE_DISPLAY_CV3_LGD_LG4894),y)
+mdss-dsi-objs += lge_cv3/lge_mdss_dsi_cv3.o
+mdss-dsi-objs += lge_cv3/lge_mdss_dsi_panel_cv3.o
+endif
+
+ifeq ($(CONFIG_LGE_DISPLAY_CV3),y)
+mdss-dsi-objs += lge_cv3/lge_mdss_dsi_cv3.o
+endif
+
 mdss-dsi-objs += msm_mdss_io_8974.o
 mdss-dsi-objs += mdss_dsi_phy.o
 mdss-dsi-objs += mdss_dsi_clk.o
@@ -68,4 +157,14 @@ obj-$(CONFIG_FB_MSM_QPIC) += mdss-qpic.o
 obj-$(CONFIG_FB_MSM_QPIC_ILI_QVGA_PANEL) += qpic_panel_ili_qvga.o
 
 obj-$(CONFIG_FB_MSM_MDSS) += mdss_fb.o mdss_util.o
+ifeq ($(CONFIG_LGE_DISPLAY_BL_USE_BLMAP),y)
+obj-$(CONFIG_FB_MSM_MDSS) += lge/lge_blmap_tuning.o
+endif
 obj-$(CONFIG_COMPAT) += mdss_compat_utils.o
+
+ifeq ($(CONFIG_LGE_DISPLAY_DEBUG),y)
+mdss-dsi-objs += lge/lge_mdss_debug.o
+endif
+
+obj-$(CONFIG_LGE_INTERVAL_MONITOR) += lge/lge_interval_monitor.o
+obj-$(CONFIG_LGE_FBCN) += lge/lge_fbcn.o

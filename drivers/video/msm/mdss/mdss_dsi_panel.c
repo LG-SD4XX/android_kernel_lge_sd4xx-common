@@ -27,6 +27,24 @@
 #ifdef TARGET_HW_MDSS_HDMI
 #include "mdss_dba_utils.h"
 #endif
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
+#include "lge/reader_mode.h"
+#endif
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMFORT_MODE)
+#include "lge/lge_comfort_view.h"
+#endif
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_MFTS)
+#include "lge/mfts_mode.h"
+#endif
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_ESD_NOT_CHECK_WITH_FACTORY_CABLE)
+#include <soc/qcom/lge/board_lge.h>
+extern bool lge_get_disable_esd_absent_bettery(void);
+
+#endif
+
 #define DT_CMD_HDR 6
 #define MIN_REFRESH_RATE 48
 #define DEFAULT_MDP_TRANSFER_TIME 14000
@@ -180,8 +198,13 @@ static void mdss_dsi_panel_apply_settings(struct mdss_dsi_ctrl_pdata *ctrl,
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
+			struct dsi_panel_cmds *pcmds, u32 flags)
+#else
 static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 			struct dsi_panel_cmds *pcmds, u32 flags)
+#endif
 {
 	struct dcs_cmd_req cmdreq;
 	struct mdss_panel_info *pinfo;
@@ -289,6 +312,12 @@ static bool mdss_dsi_panel_get_idle_mode(struct mdss_panel_data *pdata)
 	return ctrl->idle;
 }
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_RESET)
+/*
+ * mdss_dsi_panel_reset() should be defined in other file.
+ */
+int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
+#else
 static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	int rc = 0;
@@ -489,6 +518,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 exit:
 	return rc;
 }
+#endif
 
 /**
  * mdss_dsi_roi_merge() -  merge two roi into single roi
@@ -849,6 +879,9 @@ static void mdss_dsi_panel_on_hdmi(struct mdss_dsi_ctrl_pdata *ctrl,
 }
 #endif
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_ON)
+int mdss_dsi_panel_on(struct mdss_panel_data *pdata);
+#else
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
@@ -878,11 +911,21 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 			(pinfo->mipi.boot_mode != pinfo->mipi.mode))
 		on_cmds = &ctrl->post_dms_on_cmds;
 
-	pr_debug("%s: ndx=%d cmd_cnt=%d\n", __func__,
+	pr_info("%s: ndx=%d cmd_cnt=%d\n", __func__,
 				ctrl->ndx, on_cmds->cmd_cnt);
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	LGE_MDELAY(ctrl->lge_extra.pre_on_cmds_delay);
+#endif
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
+	lge_mdss_dsi_panel_send_on_cmds(ctrl, on_cmds, lge_get_reader_mode());
+#elif IS_ENABLED(CONFIG_LGE_DISPLAY_COMFORT_MODE)
+	lge_mdss_dsi_panel_send_on_cmds(ctrl, on_cmds, lge_get_comfort_view());
+#else
 	if (on_cmds->cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, on_cmds, CMD_REQ_COMMIT);
+#endif
 
 	if (pinfo->compression_mode == COMPRESSION_DSC)
 		mdss_dsi_panel_dsc_pps_send(ctrl, pinfo);
@@ -896,6 +939,7 @@ end:
 	pr_debug("%s:-\n", __func__);
 	return ret;
 }
+#endif
 
 #ifdef TARGET_HW_MDSS_HDMI
 static void mdss_dsi_post_panel_on_hdmi(struct mdss_panel_info *pinfo)
@@ -942,6 +986,13 @@ static int mdss_dsi_post_panel_on(struct mdss_panel_data *pdata)
 		mdss_dsi_panel_cmds_send(ctrl, cmds, CMD_REQ_COMMIT);
 	}
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
+	lge_mdss_dsi_panel_send_post_on_cmds(ctrl, lge_get_reader_mode());
+#endif
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMFORT_MODE)
+	lge_mdss_dsi_panel_send_post_on_cmds(ctrl, lge_get_comfort_view());
+#endif
+
 	mdss_dsi_post_panel_on_hdmi(pinfo);
 
 end:
@@ -967,6 +1018,12 @@ static void mdss_dsi_panel_off_hdmi(struct mdss_dsi_ctrl_pdata *ctrl,
 }
 #endif
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_OFF)
+/*
+ * mdss_dsi_panel_off() should be defined in other file.
+*/
+extern int mdss_dsi_panel_off(struct mdss_panel_data *pdata);
+#else
 static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
@@ -999,6 +1056,7 @@ end:
 	pr_debug("%s:-\n", __func__);
 	return 0;
 }
+#endif
 
 static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 	int enable)
@@ -1047,9 +1105,13 @@ static void mdss_dsi_parse_trigger(struct device_node *np, char *trigger,
 	}
 }
 
-
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+int mdss_dsi_parse_dcs_cmds(struct device_node *np,
+		struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key)
+#else
 static int mdss_dsi_parse_dcs_cmds(struct device_node *np,
 		struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key)
+#endif
 {
 	const char *data;
 	int blen = 0, len;
@@ -1894,6 +1956,21 @@ static bool mdss_dsi_parse_esd_status_len(struct device_node *np,
 
 	return true;
 }
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_ESD_NOT_CHECK_WITH_FACTORY_CABLE)
+static bool factory_cable(void)
+{
+	enum lge_boot_mode_type lge_boot_mode;
+
+	lge_boot_mode = lge_get_boot_mode();
+
+	if(lge_boot_mode == LGE_BOOT_MODE_CHARGER ||
+		lge_boot_mode == LGE_BOOT_MODE_CHARGERLOGO ||
+		lge_boot_mode == LGE_BOOT_MODE_NORMAL )
+		return false;
+	else
+		return true;
+}
+#endif
 
 static void mdss_dsi_parse_esd_params(struct device_node *np,
 	struct mdss_dsi_ctrl_pdata *ctrl)
@@ -1907,6 +1984,12 @@ static void mdss_dsi_parse_esd_params(struct device_node *np,
 
 	pinfo->esd_check_enabled = of_property_read_bool(np,
 		"qcom,esd-check-enabled");
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_ESD_NOT_CHECK_WITH_FACTORY_CABLE)
+	if(factory_cable() && !lge_get_disable_esd_absent_bettery()) {
+		pinfo->esd_check_enabled = false;
+	}
+	pr_info("%s : esd_check is %d\n",__func__,pinfo->esd_check_enabled);
+#endif
 
 	if (!pinfo->esd_check_enabled)
 		return;
@@ -2592,7 +2675,10 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	const char *data;
 	static const char *pdest;
 	struct mdss_panel_info *pinfo = &(ctrl_pdata->panel_data.panel_info);
-
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_BL_USE_BLMAP)
+	u32 *array;
+	int i;
+#endif //CONFIG_LGE_DISPLAY_BL_USE_BLMAP
 	if (mdss_dsi_is_hw_config_split(ctrl_pdata->shared_data))
 		pinfo->is_split_display = true;
 
@@ -2656,7 +2742,39 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-bl-max-level", &tmp);
 	pinfo->bl_max = (!rc ? tmp : 255);
 	ctrl_pdata->bklt_max = pinfo->bl_max;
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_BL_USE_BLMAP)
+	rc = of_property_read_u32(np, "lge,blmap-size", &tmp);
+	pinfo->blmap_size = (!rc ? tmp : 0);
 
+	if (pinfo->blmap_size) {
+		array = kzalloc(sizeof(u32) * pinfo->blmap_size, GFP_KERNEL);
+
+		if (!array)
+			return -ENOMEM;
+		rc = of_property_read_u32_array(np,
+			"lge,blmap", array, pinfo->blmap_size);
+
+		if (rc) {
+			pr_err("%s:%d, unable to read backlight map\n",
+					__func__, __LINE__);
+		goto error;
+		}
+
+		pinfo->blmap = kzalloc(sizeof(int) * pinfo->blmap_size,
+					GFP_KERNEL);
+		if (!pinfo->blmap)
+			return -ENOMEM;
+
+		for (i = 0; i < pinfo->blmap_size; i++)
+			pinfo->blmap[i] = array[i];
+		kfree(array);
+	} else {
+		pinfo->blmap = NULL;
+	}
+#elif defined(CONFIG_LGE_HIGH_LUMINANCE_MODE)
+	lge_mdss_panel_parse_dt_blmaps(np, ctrl_pdata);
+	pinfo->hl_mode_on = 0;
+#endif //CONFIG_LGE_DISPLAY_BL_USE_BLMAP
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-interleave-mode", &tmp);
 	pinfo->mipi.interleave_mode = (!rc ? tmp : 0);
 
@@ -2823,6 +2941,25 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	mdss_dsi_parse_dfps_config(np, ctrl_pdata);
 
+#if IS_ENABLED(LGE_DISPLAY_LV5_LGD_LG4894)
+	lgd_lg4894_hd_video_mdss_panel_parse_dts(np, ctrl_pdata);
+#endif
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
+	lge_mdss_dsi_parse_reader_mode_cmds(np, ctrl_pdata);
+#endif
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMFORT_MODE)
+	lge_mdss_dsi_parse_comfort_view_cmds(np, ctrl_pdata);
+#endif
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	lge_mdss_panel_parse_dt_extra(np, ctrl_pdata);
+#endif
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_RECOVERY)
+	rc = of_property_read_u32(np, "lge,mdss-mdp-esd-bl-delay", &tmp);
+	pinfo->esd_bl_delay = (!rc ? tmp : 0);
+
+#endif
 	rc = mdss_panel_parse_dt_hdmi(np, ctrl_pdata);
 	if (rc)
 		goto error;
@@ -2858,11 +2995,20 @@ int mdss_dsi_panel_init(struct device_node *node,
 		pr_info("%s: Panel Name = %s\n", __func__, panel_name);
 		strlcpy(&pinfo->panel_name[0], panel_name, MDSS_MAX_PANEL_LEN);
 	}
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	/* initialization for panel param before dtsi parsing */
+	ctrl_pdata->lge_extra.esc_clk_rate = 0;
+#endif
+
 	rc = mdss_panel_parse_dt(node, ctrl_pdata);
 	if (rc) {
 		pr_err("%s:%d panel dt parse failed\n", __func__, __LINE__);
 		return rc;
 	}
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_MFTS)
+	lge_init_mfts();
+#endif
 
 	pinfo->dynamic_switch_pending = false;
 	pinfo->is_lpm_mode = false;
@@ -2877,6 +3023,13 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->panel_data.apply_display_setting =
 			mdss_dsi_panel_apply_display_setting;
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	lge_mdss_dsi_store_ctrl_pdata(ctrl_pdata);
+
+	lge_mdss_panel_select_initial_cmd_set(ctrl_pdata);
+#endif
+
 	ctrl_pdata->panel_data.get_idle = mdss_dsi_panel_get_idle_mode;
 	return 0;
 }
