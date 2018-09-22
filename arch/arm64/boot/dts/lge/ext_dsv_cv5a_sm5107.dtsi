@@ -1,0 +1,23 @@
+&i2c_2 {
+	ext_dsv@3e {
+		status = "ok";
+		compatible = "ext_dsv";
+		reg = <0x3e>;
+		lge,ext_dsv_primary = <&dsv_sm5107>;
+		lge,gpio-dsv_ena = <&tlmm 59 0>;
+		dsv_sm5107: ext_dsv_sm5107 {
+			mode-names =
+				"power_on_1_mode_reg",
+				"power_on_2_mode_reg",
+				"power_off_mode_reg",
+				"enm_enter_mode_reg",
+				"enm_exit_mode_reg";
+
+			power_on_1_mode_reg = <0x03 0x00 1>, <0xFF 0x42 2>, <0x00 0x0B 1>, <0x01 0x0B 1>;
+			power_on_2_mode_reg = <0x03 0x00 1>, <0xFF 0x68 2>;
+			power_off_mode_reg = <0x03 0x03 1>, <0xFF 0x00 10>, <0x03 0x00 1>, <0xFF 0x00 10>;
+			enm_enter_mode_reg = <0x03 0x40 1>, <0xFF 0x28 2>;
+			enm_exit_mode_reg = <0x03 0x00 1>, <0xFF 0x40 2>;
+		};
+	};
+};

@@ -1,0 +1,236 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+&eldo2_8953 {
+  status ="disabled";
+};
+
+&pm8953_l5 {
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
+	status = "ok";
+};
+
+/ {
+	aliases {
+		spi1 = &spi_1;
+	};
+
+	soc {
+		spi_1: spi@78b5000 {	// [Modified] QUP_BASE address for BLSP1 QUP1 (ref. AP datasheet, This model use BLSP-1 QUP1)
+			status = "ok";
+			compatible = "qcom,spi-qup-v2";
+
+			// [Fixed] Address, size for slave chips.
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* [Fixed] Resister region names referenced in reg.
+				"spi_physical"     : Physical address of controller register blocks.
+				when use BAM mode, add "spi_bam_physical"
+				"spi_bam_physical" : Physical address of BAM controller.
+				Keep the same names. */
+			reg-names = "spi_physical";
+
+			/* [Modified] Modify the reg field as below to add BLSP BAM base address (ref. AP datasheet)
+				First Row is BLSP_QUP base address, size,
+				Second Row is BAM address, size. */
+			reg = <0x78b5000 0x600> ;
+
+			/* [Fixed] Interrupt resource names referenced in interrupts.
+				"spi_irq"     : QUP-core interrupt
+				when use BAM mode, add "spi_bam_irq"
+				"spi_bam_irq" : BAM interrupt
+				Keep the same names. */
+			interrupt-names = "spi_irq";
+
+			/* [Modified] Replace the interrupt filed. (ref. AP datasheet)
+				First Field  : SPI interrupt, keep 0
+				Second Field : Interrupt #
+				Third Field  : Trigger type, keep 0
+				First Row is BLSP_QUP base, Second Row is BAM. */
+			interrupts = <0 95 0>;
+
+			// [Fixed] Specifies maximum SPI clock frequency of AP(50 MHz). (ref. QCT SPI datasheet)
+			spi-max-frequency = <50000000>;
+
+			// [Modified] BLSP bus master ID. (ref. AP datasheet)
+			qcom,master-id = <86>;
+
+			// [Fixed] Set up the clocks, Keep the same names.
+			clock-names = "iface_clk", "core_clk";
+			/* [Modified]
+				Add node to BLSP# AHB clock,
+				Add node to QUP Core clock (BLSP# QUP#)
+				Note : In clock QUP Core is label #1 to X. So QUP0 would be label as QUP1. */
+			clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>, <&clock_gcc clk_gcc_blsp1_qup1_spi_apps_clk>;
+
+			// [Fixed] When use pinctrl, enable.
+			qcom,use-pinctrl;
+			// [Fixed] Must contain "spi_default" and "spi_sleep" if pinctrl is to be used. Keep the same names.
+			pinctrl-names = "spi_default","spi_sleep";
+			/* [Fixed] List of phandles, each pointing at a pin configuration node within a pin controller.
+				The list of names to assign states, List entry 0 defines the name for integer state ID 0... */
+			pinctrl-0 = <&spi_isdbt_active>;
+			pinctrl-1 = <&spi_isdbt_suspend>;
+
+			/* [Modified] Set SPI GPIO (mosi, miso, cs, clk)
+				tlmm is the parent, second # is gpio #, third flag keep it 0. */
+			qcom,gpio-mosi = <&tlmm 0 0x00>;
+			qcom,gpio-miso = <&tlmm 1 0x00>;
+			qcom,gpio-cs0 = <&tlmm 2 0x00>;
+			qcom,gpio-clk = <&tlmm 3 0x00>;
+
+			// [Fixed] QUP uses infinite-mode. set zero
+			qcom,infinite-mode = <0>;
+			// [Fixed] When use BAM mode, enable.
+			/*qcom,use-bam;*/
+			// [Fixed] Version register exists.
+			/*qcom,ver-reg-exists;*/
+			// [Modified] Add consumer and producer pipes (ref. AP datasheet)
+			/*qcom,bam-consumer-pipe-index = <10>;*/
+			/*qcom,bam-producer-pipe-index = <11>;*/
+		};
+	};
+};
+
+&spi_1 {
+	isdbt@0 {
+		compatible = "fci,fc8180-spi";  // [Fixed] Should be "fci,fc8180-spi".
+		reg = <0>;
+		interrupt-parent = <&tlmm>; // [Fixed] msm_gpio is the parent (msm8937)
+		interrupts = <13 0x0>; // [Modified] Set INT GPIO, first # is gpio #, second flag keep it 0.
+
+		// [Fixed] Specifies maximum SPI clock frequency of isdbt chipset(38.4 MHz). (ref. FC8180 datasheet)
+		spi-max-frequency = <38400000>;
+
+		/* [Modified] List of phandles, each pointing at a pin configuration node within a pin controller.
+			The list of names to assign states, List entry 0,1,2... define the name for integer state ID 0,1,2...
+			Ex. control cases are INT(isdbt_int), EN(isdbt_ctrl), ANT SW(isdbt_ant) LNA Gain Ctrl(isdbt_lna_ctrl) LNA EN(isdbt_lna_en)*/
+		pinctrl-names = "isdbt_int", "isdbt_ctrl", "isdbt_lna_en";
+
+		pinctrl-0 = <&isdbt_int>;
+		pinctrl-1 = <&isdbt_ctrl>; 
+		pinctrl-2 = <&isdbt_lna_en>;
+
+		/* [Modified] Set isdbt-EN, isdbt-INT GPIO
+			tlmm is the parent, second # is gpio #, third flag keep it 0. */
+		isdbt_fc8180,en-gpio = <&tlmm 114 0x00>;
+		isdbt_fc8180,irq-gpio = <&tlmm 13 0x00>;		
+
+
+		/* [Modified] set hw configure here
+			when use pmic clk buffer, change use-xtal to 0, and set xtal-freq value. */
+
+		use-xtal = <0>;
+	        xtal-freq = <19200>;
+
+		/* [Modified] when using pmic clk buffer,
+			 you should check which clock buffer used for isdbt device */
+
+
+		clock-names = "isdbt_xo";
+		clocks = <&clock_gcc clk_rf_clk2>;
+
+
+		/* [Modified] when use ant switching, change use-ant-sw to 1,
+	                 and set ant active mode (high(1) or low(0)), ant-gpio.
+                         ant-apio should be tdmb_ant's Gpio number			 */
+		use-ant-sw = <0>;
+		//ant-active-mode = <1>;
+		//isdbt_fc8180,ant-gpio = <&tlmm 33 0x00>;
+
+		// [Modified] when use ldo for LDO_IN, chage ctrl-isdbt-ldo to 1, and set isdbt_ldo-supply.
+		ctrl-isdbt-ldo = <0>;
+		//isdbt_vdd_io-supply = <&pm8953_l5>;
+
+		// [Modified] when use ldo for LNA(U1800), chage ctrl-lna-ldo to 1, and set lna_ldo-supply.
+		ctrl-lna-ldo = <0>;
+		//isdbt_ant_io-supply = <&pm8937_l10??>;
+
+		// [Modified] when use LNA, chage use-lna-ctrl(Gain Ctrl) to 1, and set lna-ctrl-gpio.
+		use-lna-ctrl = <0>;
+		// isdbt_fc8180,lna-ctrl-gpio = <&tlmm 50 0x00>;
+
+		// [Modified] when use LNA EN, chage use-lna-en to 1, and set lna-en-gpio.
+		use-lna-en = <1>;
+		isdbt_fc8180,lna-en-gpio = <&tlmm 50 0x00>;
+	};
+};
+
+&soc {
+	tlmm: pinctrl@1000000 {
+		pmx_spi_isdbt {
+			spi_isdbt_active: spi_isdbt_active {
+				mux {
+					pins =  "gpio0", "gpio1", "gpio2", "gpio3";
+					function = "blsp_spi1";
+				};
+
+				config {
+					pins =  "gpio0", "gpio1", "gpio2", "gpio3";
+					drive-strength = <8>; /* 8MA */
+					bias-disable;
+				};
+			};
+
+			spi_isdbt_suspend: spi_isdbt_suspend {
+				mux {
+					pins =  "gpio0", "gpio1", "gpio2", "gpio3";
+					function = "gpio";
+				};
+
+				config {
+					pins =  "gpio0", "gpio1", "gpio2", "gpio3";
+					drive-strength = <2>; /* 8MA */
+					bias-pull-down;
+				};
+			};
+		};
+
+
+		isdbt_ctrl: isdbt_ctrl {
+			mux {
+				pins = "gpio114";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio114";
+				drive-strength = <8>;
+				bias-disable;
+			};
+		};
+		isdbt_int: isdbt_int {
+			mux {
+				pins = "gpio13";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio13";
+				drive-strength = <8>;
+				bias-pull-up;
+			};
+		};
+		isdbt_lna_en: isdbt_lna_en {
+			mux {
+				pins = "gpio50";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio50";
+				drive-strength = <8>;
+				bias-pull-up;
+			};
+		};
+
+	};
+};

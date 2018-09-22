@@ -1,0 +1,35 @@
+/*
+ * Copyright (c) 2015-2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "../sdm450-usb-typec-tusb422.dtsi"
+
+&pm8953_typec {
+        ss-mux-supply = <&pm8953_l13>;
+        qcom,ssmux-gpio = <&tlmm 139 GPIO_ACTIVE_HIGH>;
+        pinctrl-names = "default";
+        pinctrl-0 = <&typec_ssmux_config>;
+};
+
+&pm8953_gpios {
+        /* GPIO 4 (SBU_SEL) */
+        gpio@c300 {
+                qcom,mode = <0>;
+                qcom,output-type = <0>;
+                qcom,pull = <0>;
+                qcom,vin-sel = <2>;
+                qcom,out-strength = <3>;
+                qcom,src-sel = <0>;
+                qcom,master-en = <1>;
+                status = "okay";
+        };
+};

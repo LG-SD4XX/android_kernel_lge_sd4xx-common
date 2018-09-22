@@ -1,0 +1,74 @@
+/*
+ * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&int_codec {
+	qcom,hifi-mbhc-sw-gpios = <&tlmm 39 0>;
+	lge,adv-hdset-threshold = <80 600>;
+	akm,ak4376;
+	qcom,msm-quin-mi2s-slave;
+	qcom,cdc-us-euro-gpios;
+	qcom,audio-routing =
+		"hifi path", "AK4376 HPL",
+		"RX_BIAS", "MCLK",
+		"SPK_RX_BIAS", "MCLK",
+		"INT_LDO_H", "MCLK",
+		"MIC BIAS External", "Handset Mic",
+		"MIC BIAS External2", "Headset Mic",
+		"MIC BIAS External", "Secondary Mic",
+		"AMIC1", "MIC BIAS External",
+		"AMIC2", "MIC BIAS External2",
+		"AMIC3", "MIC BIAS External";
+	reg = <0xc051000 0x4>,
+		<0xc051004 0x4>,
+		<0xc055000 0x4>,
+		<0xc052000 0x4>,
+		<0xc056000 0x4>,
+		<0xc054008 0x4>;
+	reg-names = "csr_gp_io_mux_mic_ctl",
+		"csr_gp_io_mux_spkr_ctl",
+		"csr_gp_io_lpaif_pri_pcm_pri_mode_muxsel",
+		"csr_gp_io_mux_quin_ctl",
+		"csr_gp_io_lpaif_qui_pcm_sec_mode_muxsel",
+		"csr_gp_io_mux_quin_ext_ctl";
+};
+
+&pm8937_cajon_dig {
+	status = "okay";
+	qcom,cdc-micbias-cfilt-mv = <2100000>;
+	lge,cdc-gnd-cfilt;
+};
+
+&pm8937_cajon_analog {
+	status = "okay";
+};
+
+&i2c_2 {
+	ak4376@10{
+		status = "ok";
+		compatible = "akm,ak4376";
+		reg = <0x10>;
+		ak4376,pll-mode = <3>;
+		ak4376,xtalfreq = <3>;
+		ak4376,pdn-gpio = <&tlmm 50 0 >;
+		ak4376,ldo-gpios = <&pm8937_gpios 4 0>;
+	};
+};
+
+&soc {
+	qcom,iris-fm {
+		compatible = "qcom,iris_fm";
+		qcom,lna-en-gpio = <&tlmm 129 0>;
+		qcom,fm-sw-gpio = <&tlmm 45 0>;
+		xm,vdd_fm_sw-supply = <&pm8917_l10>;
+	};
+};

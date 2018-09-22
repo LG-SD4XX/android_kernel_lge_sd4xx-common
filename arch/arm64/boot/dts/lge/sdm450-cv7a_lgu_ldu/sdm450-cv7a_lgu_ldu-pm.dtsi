@@ -1,0 +1,344 @@
+/*
+ * Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/{
+	lge_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <20>;
+		#include "../battery_profile/LGE_BL45F1F_Tocad_TEMP_2500mAh.dtsi"
+		#include "../battery_profile/LGE_BLT37_Tocad_3300mAh.dtsi"
+		#include "../battery_profile/LGE_BLT37_LGC_3300mAh.dtsi"
+	};
+};
+
+&soc {
+	lge,battery-id{
+		compatible = "lge,battery-id";
+		/delete-property/ lge,restrict-mode-enabled;
+		/*default battery profile*/
+		lge,default-battery = "LGE_BLT37_Tocad_3300mAh";
+		/*Total number of combined of battery cell and battery id */
+		lge,battery-num = <3>;
+		/* battery id and battery profile match numbers */
+		lge,battery-id-num = <0 1 105>;
+		/* battery profile */
+		lge,battery-profile-name = "LGE_BL45F1F_Tocad_TEMP_2500mAh",
+						"LGE_BLT37_Tocad_3300mAh",
+						"LGE_BLT37_LGC_3300mAh";
+	};
+
+	/* vts = (0.09*xo_therm) + (0.6*quiet_therm) + (9.7) */
+	virtual_temp_sensor: lge,vts {
+		compatible = "lge,vts";
+		qcom,vts-vadc = <&pm8953_vadc>;
+		lge,scaling-factor= <10>;
+		lge,constant = <9700>;
+		composite_sensor_0: lge,sensor0 {
+			label = "xo_therm";
+			channel = <0x32>;
+			weight = <90>;
+		};
+		composite_sensor_1: lge,sensor1 {
+			label = "quiet_therm";
+			channel = <0x13>;
+			weight = <600>;
+		};
+	};
+
+	/* time to full */
+	lge,time-to-full {
+		compatible = "lge,time-to-full";
+		lge,battery_full_capacity = <3300>;
+		lge,dcp_current = <1800>;
+		lge,typec-supported;
+		/delete-property/lge,hvdcp-supported;
+		/delete-property/lge,hvdcp3-supported;
+		/delete-property/lge,parallel-supported;
+		lge,report_ttf_comp = <(-5)>;
+		profile@0 {
+			lge,profile_name = "LGE_BLT37_Tocad_3300mAh";
+				    /* current  soc */
+			lge,cc_data = < 2400	0
+					2300	696
+					2200	700
+					2100	703
+					1900	706
+					1600	920
+					1350	942
+					1175	959>;
+				    /* current  soc    time */
+			lge,cv_data = < 1206	970	469
+					1157	973	435
+					1116	977	394
+					1067	980	354
+					1007	983	311
+					950	986	267
+					896	989	218
+					842	992	168
+					787	995	116
+					742	998	59
+					687	1000	0>;
+			lge,sdp_comp = <(-10)>;
+			lge,cdp_comp = <5>;
+			lge,dcp_comp = <5>;
+			lge,min_comp = <0>;
+		};
+		profile@1 {
+			lge,profile_name = "LGE_BL45F1F_Tocad_TEMP_2500mAh";
+				    /* current  soc */
+			lge,cc_data = < 2400	0
+					2300	485
+					2200	489
+					2100	493
+					1900	563
+					1600	849
+					1350	884
+					1175	915>;
+				    /* current  soc    time */
+			lge,cv_data = < 1149	937	976
+					1111	941	939
+					1072	945	899
+					1035	949	858
+					1002	954	816
+					964	958	772
+					931	962	727
+					894	966	680
+					859	970	631
+					825	973	579
+					790	977	526
+					759	980	470
+					729	983	412
+					706	986	353
+					666	989	291
+					635	992	225
+					598	995	155
+					570	998	80
+					534	1000	0>;
+			lge,sdp_comp = <(-10)>;
+			lge,cdp_comp = <5>;
+			lge,dcp_comp = <5>;
+			lge,min_comp = <0>;
+		};
+		profile@2 {
+			lge,profile_name = "LGE_BLT37_LGC_3300mAh";
+					/* current  soc */
+			lge,cc_data = < 2400	0
+					2300	696
+					2200	700
+					2100	703
+					1900	706
+					1600	920
+					1350	942
+					1175	959>;
+					/* current  soc    time */
+			lge,cv_data = < 1206	970	469
+					1157	973	435
+					1116	977	394
+					1067	980	354
+					1007	983	311
+					950	986	267
+					896	989	218
+					842	992	168
+					787	995	116
+					742	998	59
+					687	1000	0>;
+			lge,sdp_comp = <(-10)>;
+			lge,cdp_comp = <5>;
+			lge,dcp_comp = <5>;
+			lge,min_comp = <0>;
+		};
+	};
+};
+
+&spmi_bus {
+	qcom,pm8937@0 {
+		qcom,power-on@800 {
+			interrupts = <0x0 0x8 0x0>,
+				     <0x0 0x8 0x1>,
+				     <0x0 0x8 0x4>,
+				     <0x0 0x8 0x5>;
+			interrupt-names = "kpdpwr", "resin",
+				"resin-bark", "kpdpwr-resin-bark";
+
+			qcom,pon_1 {
+				status = "ok";
+				qcom,support-reset = <0>;
+			};
+			qcom,pon_2 {
+				status = "ok";
+				qcom,support-reset = <0>;
+			};
+			qcom,pon_3 {
+				status = "ok";
+				qcom,pon-type = <3>;
+				qcom,pull-up = <1>;
+				qcom,s1-timer = <6720>;
+				qcom,s2-timer = <2000>;
+				qcom,s2-type = <7>;
+				qcom,support-reset = <1>;
+				qcom,use-bark;
+			};
+		};
+	};
+
+	qcom,pmi8950@2 {
+		pmi8950_mpps: mpps {
+			mpp@a100 {
+				status = "okay";
+				reg = <0xa100 0x100>;
+				qcom,mode = <6>;
+				qcom,invert = <0>;
+				qcom,src-sel = <4>;
+				qcom,master-en = <1>;
+				qcom,pin-num = <2>;
+				qcom,cs-out = <7>;
+			};
+		};
+		qcom,leds@a100 {
+			status = "okay";
+			qcom,led_mpp_2 {
+				label = "mpp";
+				linux,name = "red";
+				linux,default-trigger = "none";
+				qcom,default-state = "on";
+				qcom,max-current = <40>;
+				qcom,current-setting = <10>;
+				charge-current = <5>;
+				qcom,id = <6>;
+				qcom,mode = "pwm";
+				qcom,pwm-us = <1000>;
+				qcom,source-sel = <8>;
+				qcom,mode-ctrl = <0x60>;
+				pwms = <&pmi8950_pwm 0 0>;
+			};
+		};
+	};
+
+	qcom,pmi8950@3 {
+		pmi8950_pwm: pwm@b000 {
+			status = "ok";
+			qcom,dtest-output = <1>;
+			qcom,dtest-line = <1>;
+			qcom,mode-select = <0>;
+			qcom,period = <4000000>;
+			qcom,pwm {
+				label = "pwm";
+				qcom,duty = <2000000>;
+			};
+		};
+		qcom,leds@d300 {
+			qcom,torch_0 {
+				qcom,current = <50>;
+			};
+			qcom,torch_1 {
+				qcom,current = <50>;
+			};
+		};
+		qcom,leds@d800 {
+			/delete-property/ qcom,en-ext-pfet-sc-pro;
+		};
+	};
+};
+
+&pmi8950_fg {
+	qcom,temp-by-chg-factor = <63>;
+	qcom,fg-cutoff-voltage-mv = <3400>;
+	qcom,fg-cc-cv-threshold-mv = <4340>;
+	qcom,fg-batt-life-cycle-set = <0 200 300 400>;
+	qcom,fg-batt-life-cycle-offset = <0 3 7 10>;
+	qcom,fg-batt-life-cycle-vfloat = <4350 4340 4320 4300>;
+	qcom,cl-max-start-capacity = <50>;
+	qcom,fg-chg-iterm-ma = <150>;
+	lge_fg_cutoff_low_temp_voltage_mv = <3200>;
+	lge_batt_vts_raw = <669>;
+	lge_batt_vts_xo = <153>;
+	lge_batt_vts_quiet = <168>;
+	lge_batt_vts_constant = <(-1)>;
+};
+
+&pmi8950_charger {
+	qcom,battery-data = <&lge_batterydata>;
+	qcom,fastchg-current-ma = <2400>;
+	qcom,resume-delta-mv = <100>;
+	qcom,float-voltage-mv = <4400>;
+	qcom,parallel-usb-min-current-ma = <1400>;
+	qcom,parallel-usb-9v-min-current-ma = <900>;
+	qcom,bmd-pin-src = "bpd_none";
+	qcom,override-usb-current;
+	qcom,parallel-main-chg-fcc-percent = <50>;
+	qcom,parallel-main-chg-icl-percent = <50>;
+	qcom,maximum-icl-ma = <2000>;
+	lge,jeita-disabled;
+	/delete-property/lge,parallel-supported;
+	qcom,batt-life-cycle-fcc-ma = <2400 2300 2200 2100>;
+	qcom,fg-batt-life-cycle-vfloat = <4400 4380 4360 4340>;
+	qcom,usb_pin-vadc = <&pmi8950_vadc>;
+
+
+	lge,no-init-cable = <0 0 0>;
+
+	/* ref resistance 1.8V, 200K */
+	lge,cable-56k-1v8-200k = <600000 1500 1500>;
+	lge,cable-130k-1v8-200k = <780000 1500 1500>;
+	lge,cable-910k-1v8-200k = <1630000 1500 1500>;
+	lge,cable-none-1v8-200k = <1900000 1800  500>;
+
+	/* ref resistance 1V, 100K */
+	lge,cable-56k-1v0-100k =  <500000 1500 1500>;
+	lge,cable-130k-1v0-100k = <700000 1500 1500>;
+	lge,cable-910k-1v0-100k = <950000 1500 1500>;
+	lge,cable-none-1v0-100k = <1100000 1800  500>;
+
+	lge,usb-max-current-ma = <1800>;
+	lge,iusb-qc20 = <1800 1800>;
+	lge,ibat-qc20 = <2200 1000>;
+	lge,otp-warm-ibat = <900>;
+	lge,otp-cold-ibat = <900>;
+	lge,battery-spec-size = <7>;
+		lge,battery-spec = <
+			0 10 4000 1500	/* 0.5C */
+			0 10 4400 600	/* 0.2C */
+			10 20 4000 3300	/* 1.0C */
+			10 20 4400 900	/* 0.3C */
+			20 45 4200 3300	/* 1.0C */
+			20 45 4400 2100	/* 0.7C */
+			45 60 4100 1500	/* 0.5C */
+		>;
+
+};
+
+&pm8953_l10 {
+        regulator-min-microvolt = <3000000>;
+        regulator-max-microvolt = <3000000>;
+        qcom,init-voltage = <3000000>;
+};
+
+&i2c_2 {
+	/* Parallel-charger configuration */
+	smb135x-charger@1c{
+		compatible = "qcom,smb1358-charger";
+		reg = <0x1c>;
+		qcom,parallel-charger;
+		qcom,float-voltage-mv = <4400>;
+		qcom,recharge-thresh-mv = <100>;
+		qcom,iterm-disabled;
+		qcom,parallel-en-pin-polarity = <1>;
+	};
+};
+
+&pmi_haptic{
+	status = "okay";
+	qcom,actuator-type = "erm";
+	qcom,vmax-mv = <3016>;
+};
+
+

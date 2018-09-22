@@ -1,0 +1,37 @@
+&i2c_2 {
+	ext_dsv@3e {
+		status = "ok";
+		compatible = "ext_dsv";
+		reg = <0x3e>;
+		lge,ext_dsv_primary = <&dsv_dw8768_tovis>;
+		lge,gpio-dsv_ena = <&tlmm 59 0>;
+		dsv_dw8768_tovis: ext_dsv_dw8768_tovis {
+			mode-names =
+				"power_on_mode_reg",
+				"power_off_mode_reg",
+				"enm_enter_mode_reg",
+				"enm_exit_mode_reg",
+				"fast_discharging_mode_reg";
+
+			power_on_mode_reg = <0x03 0x83 1>, <0x05 0x0F 8>; //+5.5V, -5.5V NOTE : not necessary to set because it is a default
+			power_off_mode_reg = <0x05 0x0E 2>, <0x05 0x0C 1>, <0x03 0x80 5>; //power down with -5.5V and power down all with floating mode
+			enm_enter_mode_reg = <0x03 0x80 1>, <0x05 0x07 1>, <0x07 0x08 1>; //for deep sleep only
+			enm_exit_mode_reg = <0x05 0x0F 1>, <0x03 0x83 1>, <0x07 0x00 1>;
+			fast_discharging_mode_reg = <0x03 0x83 1>;
+		};
+		dsv_dw8768_lgd: ext_dsv_dw8768_lgd {
+			mode-names =
+				"power_on_mode_reg",
+				"power_off_mode_reg",
+				"enm_enter_mode_reg",
+				"enm_exit_mode_reg",
+				"fast_discharging_mode_reg";
+
+			power_on_mode_reg = <0x03 0x83 1>, <0x05 0x0F 8>, <0x00 0x0F 1>, <0x01 0x14 1>;
+			power_off_mode_reg = <0x05 0x0E 2>, <0x05 0x0C 1>, <0x03 0x80 5>; //power down with -5.5V and power down all with floating mode
+			enm_enter_mode_reg = <0x03 0x80 1>, <0x05 0x07 1>, <0x07 0x08 1>; //for deep sleep only
+			enm_exit_mode_reg = <0x05 0x0F 1>, <0x03 0x83 1>, <0x07 0x00 1>;
+			fast_discharging_mode_reg = <0x03 0x83 1>;
+		};
+	};
+};

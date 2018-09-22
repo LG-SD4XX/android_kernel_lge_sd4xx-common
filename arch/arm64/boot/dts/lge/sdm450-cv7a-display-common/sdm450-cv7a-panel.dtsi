@@ -1,0 +1,86 @@
+/*
+ * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "../dsi-panel-lgd-incell-sw49107-fhd-command-sdm450.dtsi"
+#include "../dsi-panel-lgd-incell-sw49107-hd-command-sdm450.dtsi"
+#include "../dsi-panel-tovis-incell-sw49107-fhd-command-sdm450.dtsi"
+#include "../dsi-panel-tovis-incell-sw49107-hd-command-sdm450.dtsi"
+#include "../ext_dsv_cv7a_dw8768_sdm450.dtsi"
+
+&wled {
+	qcom,cons-sync-write-delay-us = <1000>;
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&mdss_dsi {
+	hw-config = "single_dsi";
+};
+
+&dsi_tovis_incell_sw49107_hd_incell_cmd {
+	lge,panel-id = <1>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+};
+
+&dsi_tovis_incell_sw49107_fhd_incell_cmd {
+	lge,panel-id = <1>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+};
+
+&dsi_lgd_incell_sw49107_hd_incell_cmd {
+	lge,panel-id = <0>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+};
+
+&dsi_lgd_incell_sw49107_fhd_incell_cmd {
+	lge,panel-id = <0>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_lgd_incell_sw49107_fhd_incell_cmd>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_te_active>;
+	pinctrl-1 = <&mdss_te_suspend>;
+	qcom,regulator-ldo-mode;
+
+	qcom,platform-te-gpio = <&tlmm 24 0>;
+	qcom,platform-reset-gpio = <&tlmm 61 0>;
+
+	lge,extra-gpio-names = "vddio", "touch_reset";
+	lge,gpio-vddio = <&tlmm 35 0>;
+	lge,gpio-touch_reset = <&tlmm 64 0>;
+};
+
+&mdss_fb0 {
+	/delete-property/ qcom,mdss-fb-splash-logo-enabled;
+};
+
+&spmi_bus {
+	qcom,pmi8950@3 {
+		wled: qcom,leds@d800 {
+			qcom,fs-curr-ua = <20000>;
+			qcom,en-cabc;
+		};
+	};
+};

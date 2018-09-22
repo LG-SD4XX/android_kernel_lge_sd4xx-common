@@ -1,0 +1,84 @@
+/*
+ * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&pm8953_diangu_dig {
+    status = "okay";
+    qcom,cdc-micbias-cfilt-mv = <2100000>;
+};
+
+&pm8953_diangu_analog {
+    status = "okay";
+};
+
+&pm8953_gpios {
+    gpio@c000 {
+        qcom,mode = <1>;
+        qcom,pull = <4>;
+        qcom,vin-sel = <2>;
+        qcom,src-sel = <0>;
+        status = "okay";
+    };
+    gpio@c400 {
+        qcom,mode = <1>;
+        qcom,pull = <4>;
+        qcom,vin-sel = <2>;
+        qcom,src-sel = <0>;
+        status = "okay";
+    };
+    gpio@c500 {
+        qcom,mode = <1>;
+        qcom,pull = <4>;
+        qcom,vin-sel = <2>;
+        qcom,src-sel = <0>;
+        status = "okay";
+    };
+};
+
+&int_codec {
+    status = "okay";
+    qcom,model = "msm8953-snd-card";
+    qcom,msm-mbhc-hphl-swh = <1>;
+    qcom,msm-hs-micbias-type = "external";
+    /delete-property/ qcom,hdmi-dba-codec-rx;
+    /delete-property/ asoc-wsa-codec-names;
+
+    qcom,audio-routing =
+        "RX_BIAS", "MCLK",
+        "SPK_RX_BIAS", "MCLK",
+        "INT_LDO_H", "MCLK",
+        "MIC BIAS Internal1", "Handset Mic",
+        "MIC BIAS External2", "Headset Mic",
+        "MIC BIAS Internal1", "Secondary Mic",
+        "AMIC1", "MIC BIAS Internal1",
+        "AMIC2", "MIC BIAS External2",
+        "AMIC3", "MIC BIAS Internal1";
+
+    dac,es9218-codec;
+};
+
+&i2c_2 {
+    es9218-codec@48 {
+        status = "okay";
+        compatible = "dac,es9218-codec";
+        reg = <0x48>;
+        dac,power-gpio = <&pm8953_gpios 5 0x0>;
+        dac,hph-sw = <&pm8953_gpios 1 0x0>;
+        dac,hifi-ldo-comp = <&pm8953_gpios 6 0x0>;
+        dac,reset-gpio = <&tlmm 60 0x0>;
+    };
+};
+
+&adv_vreg {
+    status = "disabled";
+};
+
