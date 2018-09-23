@@ -177,14 +177,10 @@ config SND_SOC_MSM8X16
 	select SND_SOC_WSA881X
 	select MFD_CORE
 	select QTI_PP
-	select DTS_SRS_TM
-	select DOLBY_DAP
-	select DOLBY_DS2
 	select SND_SOC_CPE
 	select SND_SOC_WCD_CPE
 	select SND_SOC_MSM_HDMI_DBA_CODEC_RX
 	select SND_HWDEP
-        select DTS_EAGLE
 	help
 	 To add support for SoC audio on MSM8996.
 	 This will enable sound soc drivers which
@@ -230,6 +226,42 @@ config SND_SOC_MDM9607
 	 interfaces with DSP, also it will enable
 	 the machine drivers and the corresponding
 	 DAI-links.
+
+config LGE_AUDIO_EFFECT
+	bool "LGE DSP EFFECT"
+	default n
+	help
+	 To support LGE DSP EFFECT
+
+config LGE_AUDIO_NORMALIZER
+	bool "LGE DSP NORMALIZER"
+	default n
+	help
+	 To support LGE DSP NORMALIZER
+
+config LGE_AUDIO_MABL
+	bool "LGE DSP MABL"
+	default n
+	help
+	 To support LGE DSP MABL
+
+config SND_LGE_DTS
+	bool "LGE DSP DTS"
+	default n
+	help
+	 To support LGE DSP DTS
+
+config LGE_AUDIO_NXP_LVVE
+	bool "LGE AUDIO NXP LVVE"
+	default n
+	help
+	 To support LGE AUDIO NXP LVVE
+
+config SND_LV9_ECO_HS
+	bool "LGE LV9 ECO HS"
+	default n
+	help
+	 To support LV9 HS MIC BIAS Type
 
 config SND_SOC_MSM8909
 	tristate "SoC Machine driver for MSM8909 boards"

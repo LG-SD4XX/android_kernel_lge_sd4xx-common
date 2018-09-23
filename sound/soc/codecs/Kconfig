@@ -34,6 +34,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_ADAU1701 if I2C
 	select SND_SOC_ADS117X
 	select SND_SOC_AK4104 if SPI_MASTER
+	select SND_SOC_AK4376 if I2C
 	select SND_SOC_AK4535 if I2C
 	select SND_SOC_AK4554
 	select SND_SOC_AK4641 if I2C
@@ -61,6 +62,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_BT_SCO
 	select SND_SOC_ES8328_SPI if SPI_MASTER
 	select SND_SOC_ES8328_I2C if I2C
+	select SND_SOC_ES9218P if I2C
 	select SND_SOC_ISABELLE if I2C
 	select SND_SOC_JZ4740_CODEC
 	select SND_SOC_LM4857 if I2C
@@ -299,6 +301,9 @@ config SND_SOC_AK4104
 	tristate "AKM AK4104 CODEC"
 	depends on SPI_MASTER
 
+config SND_SOC_AK4376
+	tristate "AKM AK4376 CODEC"
+
 config SND_SOC_AK4535
 	tristate
 
@@ -442,6 +447,49 @@ config SND_SOC_MAX98095
 
 config SND_SOC_MAX9850
 	tristate
+
+config SND_SOC_MAX98925
+    tristate "Speaker Protection IC"
+config SND_SOC_MAX98927
+    tristate "Speaker Protection IC"
+
+config SND_SOC_ES9218P
+    tristate "es9218P Hi-Fi headphones amp"
+    default n
+
+config SND_SOC_QUIN_HIFI
+    tristate "Quanary MI2S backend configuration"
+    default n
+    depends on SND_SOC_ES9218P
+
+config SND_SOC_LGE_ESS_DIGITAL_FILTER
+    tristate "Digital filter setting of ess"
+    default n
+    depends on SND_SOC_ES9218P
+
+config LGE_MOISTURE_DETECTION
+    tristate "lge moisture detection"
+    depends on LGE_USB_MOISTURE_DETECT
+    default n
+
+config SND_SOC_USE_QUIN_MI2S
+    bool "Use quinary mi2s"
+    default n
+
+config SND_SOC_MAXIM_DSM
+    bool "Maxim spk protection library"
+    default n
+    depends on (SND_SOC_MAX98925 || SND_SOC_MAX98927)
+
+config SND_SOC_MAXIM_DSM_CAL
+    bool "Maxim spk protection calibration"
+    default n
+    depends on (SND_SOC_MAX98925 || SND_SOC_MAX98927)
+
+config SND_SOC_MAXIM_DSM_POWER
+    bool "Maxim spk protection power management"
+    default n
+    depends on SND_SOC_MAX98927
 
 config SND_SOC_PCM1681
 	tristate "Texas Instruments PCM1681 CODEC"
@@ -861,6 +909,10 @@ config SND_SOC_TPA6130A2
 config SND_SOC_MSM_STUB
 	tristate
 
+config SND_USE_MBHC_EXTN_CABLE
+        tristate "MBHC EXTN CABLE USECASE"
+        depends on MACH_LGE
+        default n
 config SND_SOC_MSM_HDMI_CODEC_RX
 	bool "HDMI Audio Playback"
 	depends on FB_MSM_MDSS_HDMI_PANEL && (SND_SOC_APQ8084 || SND_SOC_MSM8994 || SND_SOC_MSM8996)

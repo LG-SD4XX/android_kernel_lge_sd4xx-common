@@ -228,6 +228,7 @@ struct msm8916_asoc_mach_data {
 	int ext_pa;
 	int us_euro_gpio;
 	int spk_ext_pa_gpio;
+	int hifi_sw_gpio;
 	int mclk_freq;
 	int lb_mode;
 	int afe_clk_ver;
@@ -245,6 +246,8 @@ struct msm8916_asoc_mach_data {
 	void __iomem *vaddr_gpio_mux_mic_ctl;
 	void __iomem *vaddr_gpio_mux_quin_ctl;
 	void __iomem *vaddr_gpio_mux_pcm_ctl;
+	void __iomem *vaddr_gpio_mux_qui_pcm_ctl;
+	void __iomem *vaddr_gpio_mux_quin_ext_ctl;
 	struct on_demand_supply wsa_switch_supply;
 };
 
@@ -319,6 +322,9 @@ struct msm8x16_wcd_priv {
 	unsigned long status_mask;
 	struct wcd_imped_i_ref imped_i_ref;
 	enum wcd_mbhc_imp_det_pin imped_det_pin;
+#ifdef CONFIG_MACH_LGE // add switch dev for SAR backoff
+	struct switch_dev sar;
+#endif
 };
 
 extern int msm8x16_wcd_mclk_enable(struct snd_soc_codec *codec, int mclk_enable,

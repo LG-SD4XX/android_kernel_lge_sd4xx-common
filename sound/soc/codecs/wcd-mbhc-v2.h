@@ -15,6 +15,14 @@
 #include <linux/wait.h>
 #include <linux/stringify.h>
 #include "wcdcal-hwdep.h"
+#ifdef CONFIG_MACH_LGE
+#include <linux/switch.h>
+#endif
+
+#ifdef CONFIG_MACH_LGE
+#include <linux/wakelock.h>
+#define WCD_BTN_RELEASE_WAKE_LOCK_MS 200
+#endif  // CONFIG_MACH_LGE
 
 #define TOMBAK_MBHC_NC	0
 #define TOMBAK_MBHC_NO	1
@@ -248,6 +256,7 @@ struct wcd_mbhc_config {
 	bool detect_extn_cable;
 	bool mono_stero_detection;
 	bool (*swap_gnd_mic)(struct snd_soc_codec *codec);
+	bool (*hifi_earjack_sw)(struct snd_soc_codec *codec, int value);
 	bool hs_ext_micbias;
 	bool gnd_det_en;
 	int key_code[WCD_MBHC_KEYCODE_NUM];
@@ -363,6 +372,7 @@ struct wcd_mbhc_cb {
 	int (*mbhc_micb_ctrl_thr_mic)(struct snd_soc_codec *, int, bool);
 	void (*mbhc_gnd_det_ctrl)(struct snd_soc_codec *, bool);
 	void (*hph_pull_down_ctrl)(struct snd_soc_codec *, bool);
+	void (*remove_detach_mic_noise)(struct snd_soc_codec *); //LG Added
 };
 
 struct wcd_mbhc {
@@ -427,7 +437,24 @@ struct wcd_mbhc {
 	struct mutex hphl_pa_lock;
 	struct mutex hphr_pa_lock;
 
+#ifdef CONFIG_MACH_LGE //LGE Update // add switch dev for mbhc
+	struct switch_dev sdev;
+#ifdef CONFIG_LGE_MOISTURE_DETECTION
+	/* impedance of org hphl and hphr */
+	//uint32_t zl_org, zr_org;
+	bool moisture_status;
+#endif
+#endif //LGE Update // add switch dev for mbhc
 	unsigned long intr_status;
+
+#ifdef CONFIG_MACH_LGE
+    struct wake_lock btn_release_wake_lock;
+#endif  // CONFIG_MACH_LGE
+
+#ifdef CONFIG_MACH_LGE
+	u32 adv_hdset_min;
+	u32 adv_hdset_max;
+#endif
 };
 #define WCD_MBHC_CAL_SIZE(buttons, rload) ( \
 	sizeof(struct wcd_mbhc_general_cfg) + \
