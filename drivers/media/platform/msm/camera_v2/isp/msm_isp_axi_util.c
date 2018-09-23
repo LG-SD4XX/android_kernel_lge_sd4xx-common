@@ -17,7 +17,7 @@
 #include "trace/events/msm_cam.h"
 
 
-#define ISP_SOF_DEBUG_COUNT 0
+#define ISP_SOF_DEBUG_COUNT 5//0=>5
 static int msm_isp_update_dual_HW_ms_info_at_start(
 	struct vfe_device *vfe_dev,
 	enum msm_vfe_input_src stream_src,
@@ -1007,6 +1007,13 @@ void msm_isp_notify(struct vfe_device *vfe_dev, uint32_t event_type,
 	struct msm_vfe_axi_shared_data *axi_data = &vfe_dev->axi_data;
 	int i, j;
 	unsigned long flags;
+
+/* LGE_CHANGE_S, STATIC_ANALYSYS_DEV */
+	if (frame_src >= VFE_SRC_MAX) {
+		pr_err("%s: frame_src value is error = %d\n", __func__,	frame_src);
+		return;
+	}
+/* LGE_CHANGE_E, STATIC_ANALYSYS_DEV */
 
 	memset(&event_data, 0, sizeof(event_data));
 
@@ -3364,8 +3371,16 @@ static int msm_isp_request_frame(struct vfe_device *vfe_dev,
 	/*
 	 * If frame_id = 1 then no eof check is needed
 	 */
-	if (((frame_src == VFE_PIX_0) && ((frame_id !=
-		vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id + vfe_dev->
+	if ((frame_id ==
+			   vfe_dev->axi_data.src_info[frame_src].frame_id) &&
+			 (stream_info->undelivered_request_cnt <= MAX_BUFFERS_IN_HW)) {
+		vfe_dev->isp_page->drop_reconfig = 1;
+		pr_debug("%s:%d vfe_%d request_frame %d cur frame id %d pix %d\n",
+			__func__, __LINE__, vfe_dev->pdev->id, frame_id,
+			vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id,
+			vfe_dev->axi_data.src_info[VFE_PIX_0].active);
+	} else if (((frame_src == VFE_PIX_0) && ((frame_id !=
+				vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id + vfe_dev->
 		axi_data.src_info[VFE_PIX_0].sof_counter_step))) ||
 		((frame_src != VFE_PIX_0) && (frame_id !=
 		vfe_dev->axi_data.src_info[frame_src].frame_id + vfe_dev->
