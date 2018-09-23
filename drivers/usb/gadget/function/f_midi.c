@@ -421,6 +421,12 @@ static void f_midi_unbind(struct usb_configuration *c, struct usb_function *f)
 
 	kfree(midi->id);
 	midi->id = NULL;
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	if (midi->out_ep)
+		midi->out_ep->driver_data = NULL;
+	if (midi->in_ep)
+		midi->in_ep->driver_data = NULL;
+#endif
 
 	usb_free_all_descriptors(f);
 	kfree(midi);

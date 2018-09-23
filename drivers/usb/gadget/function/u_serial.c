@@ -330,8 +330,18 @@ EXPORT_SYMBOL_GPL(gs_alloc_req);
  */
 void gs_free_req(struct usb_ep *ep, struct usb_request *req)
 {
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	if (req != NULL) {
+		if (req->buf != NULL) {
+			kfree(req->buf);
+			req->buf = NULL;
+		}
+		usb_ep_free_request(ep, req);
+	}
+#else
 	kfree(req->buf);
 	usb_ep_free_request(ep, req);
+#endif
 }
 EXPORT_SYMBOL_GPL(gs_free_req);
 
@@ -521,7 +531,6 @@ __acquires(&port->port_lock)
 		 */
 		if (!port->port_usb) {
 			started = 0;
-			gs_free_req(out, req);
 			break;
 		}
 		if (status) {
@@ -792,7 +801,11 @@ static int gs_start_io(struct gs_port *port)
 	if (!port->port_usb)
 		return -EIO;
 	/* unblock any pending writes into our circular buffer */
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	if (started && port->port.tty) {
+#else
 	if (started) {
+#endif
 		tty_wakeup(port->port.tty);
 	} else {
 		gs_free_requests(ep, head, &port->read_allocated);

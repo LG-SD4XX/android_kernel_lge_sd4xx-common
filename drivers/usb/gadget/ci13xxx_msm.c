@@ -62,6 +62,10 @@ static void ci13xxx_msm_resume(void)
 	}
 }
 
+#ifdef CONFIG_LGE_USB_EMBEDDED_BATTERY
+extern void lge_atd_mid_poweroff(void);
+#endif
+
 static void ci13xxx_msm_disconnect(void)
 {
 	struct ci13xxx *udc = _udc;
@@ -88,6 +92,9 @@ static void ci13xxx_msm_disconnect(void)
 		 */
 		mb();
 	}
+#ifdef CONFIG_LGE_USB_EMBEDDED_BATTERY
+	lge_atd_mid_poweroff();
+#endif
 }
 
 /* Link power management will reduce power consumption by

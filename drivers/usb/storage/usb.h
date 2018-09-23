@@ -204,4 +204,9 @@ extern void usb_stor_disconnect(struct usb_interface *intf);
 extern void usb_stor_adjust_quirks(struct usb_device *dev,
 		unsigned long *fflags);
 
+#ifdef CONFIG_INPUT_EPACK
+extern void usb_stor_add(void);
+extern void usb_stor_del(void);
+#endif
+
 #endif

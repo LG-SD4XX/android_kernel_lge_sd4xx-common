@@ -924,6 +924,9 @@ int usb_stor_probe1(struct us_data **pus,
 
 	dev_info(&intf->dev, "USB Mass Storage device detected\n");
 
+#ifdef CONFIG_INPUT_EPACK
+	usb_stor_add();
+#endif
 	/*
 	 * Ask the SCSI layer to allocate a host structure, with extra
 	 * space at the end for our private us_data structure.
@@ -937,6 +940,9 @@ int usb_stor_probe1(struct us_data **pus,
 	/*
 	 * Allow 16-byte CDBs and thus > 2TB
 	 */
+#ifdef CONFIG_USB_HOST_NOTIFY
+	host->by_usb = 1;
+#endif
 	host->max_cmd_len = 16;
 	host->sg_tablesize = usb_stor_sg_tablesize(intf);
 	*pus = us = host_to_us(host);
@@ -1050,6 +1056,9 @@ void usb_stor_disconnect(struct usb_interface *intf)
 {
 	struct us_data *us = usb_get_intfdata(intf);
 
+#ifdef CONFIG_INPUT_EPACK
+	usb_stor_del();
+#endif
 	quiesce_and_remove_host(us);
 	release_everything(us);
 }
