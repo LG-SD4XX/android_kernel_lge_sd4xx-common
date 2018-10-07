@@ -121,13 +121,14 @@
 			/* Sleep In */
 			05 01 00 00 78 00 01 10
         ];
-        qcom,mdss-dsi-post-panel-on-command = [
+        qcom,mdss-dsi-post-panel-off-command = [
 			/* Display Off */
 			05 01 00 00 64 00 01 28        
 		];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
         qcom,mdss-dsi-post-panel-on-command-state = "dsi_lp_mode"
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+        qcom,mdss-dsi-post-panel-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-h-sync-pulse = <0>;
 		qcom,mdss-dsi-traffic-mode = "non_burst_sync_event";
         qcom,mdss-tear-check-frame-rate: <6000>;
