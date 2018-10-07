@@ -70,9 +70,9 @@ static int gen_key_panic = 0;
 static int key_crash_cnt = 0;
 static unsigned long key_crash_last_time = 0;
 static DEFINE_SPINLOCK(lge_panic_lock);
-static unsigned int sctrl_reg, ttbr0_reg, ttbr1_reg, ttbcr_reg;
+/*static unsigned int sctrl_reg, ttbr0_reg, ttbr1_reg, ttbcr_reg;*/
 
-void lge_get_mmu_cp15_register(void)
+/*void lge_get_mmu_cp15_register(void)
 {
 	asm volatile ("mrc p15, 0, %0, c1, c0, 0\n" : "=r" (sctrl_reg));
 	asm volatile ("mrc p15, 0, %0, c2, c0, 0\n" : "=r" (ttbr0_reg));
@@ -80,7 +80,7 @@ void lge_get_mmu_cp15_register(void)
 	asm volatile ("mrc p15, 0, %0, c2, c0, 2\n" : "=r" (ttbcr_reg));
 
 	printk("SCTRL: %08x  TTBR0: %08x TTBR1: %08x  TTBCR: %08x \n", sctrl_reg, ttbr0_reg, ttbr1_reg, ttbcr_reg);
-}
+}*/
 
 void lge_set_subsys_crash_reason(const char *name, int type)
 {
@@ -442,8 +442,8 @@ static int lge_handler_panic(struct notifier_block *this,
 	unsigned long flags;
 	spin_lock_irqsave(&lge_panic_lock, flags);
 
-	printk(KERN_CRIT "%s called\n", __func__);
-	lge_get_mmu_cp15_register();
+	/*printk(KERN_CRIT "%s called\n", __func__);
+	lge_get_mmu_cp15_register();*/
 
 	spin_unlock_irqrestore(&lge_panic_lock, flags);
 	return NOTIFY_DONE;
