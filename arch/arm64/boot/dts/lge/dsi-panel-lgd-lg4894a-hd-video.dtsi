@@ -27,9 +27,6 @@
 		qcom,mdss-dsi-force-clock-lane-hs;
 		qcom,mdss-dsi-panel-framerate = <60>;
 		qcom,mdss-dsi-virtual-channel-id = <0>;
-        qcom,mdss-dsi-fbc-enable: <1>;
-        qcom,mdss-dsi-fbc-bpp: <1>;
-        qcom,mdss-dsi-pan-enable-dynamic-fps: <1>;
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-lp11-init;
 		qcom,suspend-ulps-enabled;
@@ -111,26 +108,16 @@
 			/* Display On */
 			05 01 00 00 00 00 01 29
 		];
-        qcom,mdss-dsi-post-panel-on-command = [
-			/* Display On */
-			05 01 00 00 00 00 01 29
-        ];
 		qcom,mdss-dsi-off-command = [
 			/* Display Off */
 			05 01 00 00 64 00 01 28
 			/* Sleep In */
 			05 01 00 00 78 00 01 10
-        ];
-        qcom,mdss-dsi-post-panel-on-command = [
-			/* Display Off */
-			05 01 00 00 64 00 01 28        
 		];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
-        qcom,mdss-dsi-post-panel-on-command-state = "dsi_lp_mode"
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-h-sync-pulse = <0>;
 		qcom,mdss-dsi-traffic-mode = "non_burst_sync_event";
-        qcom,mdss-tear-check-frame-rate: <6000>;
 		qcom,mdss-dsi-lane-map = "lane_map_0123";
 		qcom,mdss-dsi-bllp-eof-power-mode;
 		qcom,mdss-dsi-bllp-power-mode;
@@ -144,7 +131,7 @@
 		qcom,mdss-dsi-bl-min-level = <1>;
 		qcom,mdss-dsi-bl-max-level = <255>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
-		qcom,mdss-dsi-mdp-trigger = "trigger_sw";
+		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 		qcom,mdss-dsi-reset-sequence = <1 0>, <0 1>, <1 5>;
 		lge,mdss-dsi-extra-command-names = "touch-osc-on", "touch-osc-off";
