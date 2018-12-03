@@ -96,3 +96,4 @@ obj-$(CONFIG_TOUCHSCREEN_ATMEL_T1066)	+= atmel_t1066.o
 obj-$(CONFIG_TOUCHSCREEN_ATMEL_T1066)	+= atmel_t1066_patch.o
 obj-$(CONFIG_LGE_TOUCH_CORE)		+= lge/
 obj-$(CONFIG_LGE_TOUCH_CORE_NOS)	+= lge_nos/
+obj-$(CONFIG_TOUCHSCREEN_HIMAX_CHIPSET)	+= hxchipset/
