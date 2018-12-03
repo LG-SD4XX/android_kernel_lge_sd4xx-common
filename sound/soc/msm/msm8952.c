@@ -200,7 +200,6 @@ static struct afe_clk_set wsa_ana_clk = {
 	0,
 };
 
-<<<<<<< HEAD
 #ifdef CONFIG_SND_SOC_USE_QUIN_MI2S
 struct afe_clk_set quin_mi2s_clk = {
 	AFE_API_VERSION_I2S_CONFIG,
@@ -539,7 +538,7 @@ static int msm_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	pr_debug("%s(), channel:%d\n", __func__, msm_ter_mi2s_tx_ch);
 	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
-			mi2s_tx_bit_format);
+			SNDRV_PCM_FORMAT_S16_LE);
 	rate->min = rate->max = 48000;
 	channels->min = channels->max = msm_ter_mi2s_tx_ch;
 
@@ -630,7 +629,7 @@ static int msm_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
 			       mi2s_rx_bit_format);
 	else
 		param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
-			       mi2s_tx_bit_format);
+			       SNDRV_PCM_FORMAT_S16_LE);
 	return 0;
 }
 #ifndef CONFIG_SND_SOC_QUIN_HIFI
@@ -729,9 +728,7 @@ static uint32_t get_mi2s_clk_val(int port_id)
 #endif
 	if (is_mi2s_rx_port(port_id))
 		clk_val = (mi2s_rx_sample_rate * mi2s_rx_bits_per_sample * 2);
-	else
-		clk_val = (mi2s_tx_sample_rate * mi2s_tx_bits_per_sample * 2);
-
+	
 	pr_debug("%s: MI2S bit clock value: 0x%0x\n", __func__, clk_val);
 	return clk_val;
 }
@@ -1031,21 +1028,21 @@ static int mi2s_tx_bit_format_put(struct snd_kcontrol *kcontrol,
 {
 	switch (ucontrol->value.integer.value[0]) {
 	case 3:
-		mi2s_tx_bit_format = SNDRV_PCM_FORMAT_S32_LE;
-		mi2s_tx_bits_per_sample = 32;
+		mi2s_rx_bit_format = SNDRV_PCM_FORMAT_S32_LE;
+		mi2s_rx_bits_per_sample = 32;
 		break;
 	case 2:
-		mi2s_tx_bit_format = SNDRV_PCM_FORMAT_S24_3LE;
-		mi2s_tx_bits_per_sample = 32;
+		mi2s_rx_bit_format = SNDRV_PCM_FORMAT_S24_3LE;
+		mi2s_rx_bits_per_sample = 32;
 		break;
 	case 1:
-		mi2s_tx_bit_format = SNDRV_PCM_FORMAT_S24_LE;
-		mi2s_tx_bits_per_sample = 32;
+		mi2s_rx_bit_format = SNDRV_PCM_FORMAT_S24_LE;
+		mi2s_rx_bits_per_sample = 32;
 		break;
 	case 0:
 	default:
-		mi2s_tx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
-		mi2s_tx_bits_per_sample = 16;
+		mi2s_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+		mi2s_rx_bits_per_sample = 16;
 		break;
 	}
 	return 0;
@@ -1055,7 +1052,7 @@ static int mi2s_tx_bit_format_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 
-	switch (mi2s_tx_bit_format) {
+	switch (SNDRV_PCM_FORMAT_S16_LE) {
 	case SNDRV_PCM_FORMAT_S32_LE:
 		ucontrol->value.integer.value[0] = 3;
 		break;
@@ -1074,8 +1071,8 @@ static int mi2s_tx_bit_format_get(struct snd_kcontrol *kcontrol,
 		break;
 	}
 
-	pr_debug("%s: mi2s_tx_bit_format = %d, ucontrol value = %ld\n",
-			__func__, mi2s_tx_bit_format,
+	pr_debug("%s: SNDRV_PCM_FORMAT_S16_LE = %d, ucontrol value = %ld\n",
+			__func__, mi2s_rx_bit_format,
 			ucontrol->value.integer.value[0]);
 
 	return 0;

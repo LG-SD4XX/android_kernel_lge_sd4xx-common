@@ -733,7 +733,6 @@ static int subsystem_powerup(struct subsys_device *dev, void *data)
 	if (ret < 0) {
 		notify_each_subsys_device(&dev, 1, SUBSYS_POWERUP_FAILURE,
 								NULL);
-<<<<<<< HEAD
 #if defined(CONFIG_LGE_HANDLE_PANIC)
 		if (!dev->desc->ignore_ssr_failure){
 			lge_set_subsys_crash_reason(name, LGE_ERR_SUB_PWR);
