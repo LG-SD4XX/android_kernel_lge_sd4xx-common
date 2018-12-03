@@ -20,16 +20,6 @@
 #include "msm8917-lv517_tmo_us-touch.dtsi"
 #include "msm8917-pmi8950-lv517_tmo_us-fingerprint.dtsi"
 
-&firmware {
-	android {
-		fstab {
-			vendor {
-				status = "disabled";
-			};
-		};
-	};
-};
-
 &modem_mem {
 	reg = <0x0 0x86800000 0x0 0x5000000>;
 };
