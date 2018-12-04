@@ -252,6 +252,10 @@ ifeq ($(CONFIG_MACH_SDM450_CV5A_LGU_LDU),y)
 DTS_TARGET := sdm450-cv5a_lgu_ldu
 endif
 
+ifeq ($(CONFIG_MACH_MSM8937_PH2N_GSM_US),y)
+DTS_TARGET := msm8937-ph2n_gsm_us
+endif
+
 ALL_DTS := $(notdir $(wildcard echo $(srctree)/$(src)/$(DTS_TARGET)/*.dts))
 dtb-y += $(patsubst %.dts,%.dtb,$(ALL_DTS))
 
