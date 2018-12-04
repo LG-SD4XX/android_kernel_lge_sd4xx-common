@@ -25,7 +25,7 @@ config MACH_MSM8937_PH2_CMO_CN
 	select MACH_LGE
 	help
 	  Support for the Qualcomm MSM8937 PH2_CMO_CN device.
- 
+
 config MACH_MSM8937_PH2N_TMO_US
 	bool "MSM8937 PH2N_TMO_US"
 	depends on ARCH_MSM8916
@@ -46,6 +46,13 @@ config MACH_MSM8937_PH2N_GLOBAL_CA
 	select MACH_LGE
 	help
 	  Support for the Qualcomm MSM8937 PH2N_GLOBAL_CA device.
+
+config MACH_MSM8937_PH2N_GSM_US
+	bool "MSM8937 PH2N_GSM_US"
+	depends on ARCH_MSM8916
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8937 PH2N_GSM_US devices (TMO/MPCS).
 
 config MACH_MSM8937_L5_DCM_JP
 	bool "MSM8937 L5_DCM_JP"
