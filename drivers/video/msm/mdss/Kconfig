@@ -222,6 +222,12 @@ config LGE_DISPLAY_TF8_INX_NT51021
 	---help---
 	It provides support for LGE_DISPLAY_TF8_INX_NT51021 panel
 
+config LGE_DISPLAY_PH2N_TMO_US
+	depends on LGE_DISPLAY_COMMON
+	bool "Use LGE DISPLAY PH2N TMO US"
+	---help---
+	The PH2N TMO US provides support for PH2N TMO US panel
+
 config LGE_DISPLAY_MH
 	depends on LGE_DISPLAY_COMMON
 	bool "Use LGE DISPLAY MH"

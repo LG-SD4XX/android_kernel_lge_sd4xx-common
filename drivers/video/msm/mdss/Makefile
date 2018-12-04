@@ -48,6 +48,10 @@ mdss-dsi-objs += lge/lge_mdss_dsi.o
 mdss-dsi-objs += lge/lge_mdss_dsi_panel.o
 mdss-dsi-objs += lge/lge_mdss_sysfs.o
 endif
+ifeq ($(CONFIG_LGE_DISPLAY_PH2N_TMO_US),y)
+	mdss-dsi-objs += lge_ph2n_tmo_us/lge_mdss_dsi_ph2n_tmo_us.o
+	mdss-dsi-objs += lge_ph2n_tmo_us/lge_mdss_dsi_panel_ph2n_tmo_us.o
+endif
 ifeq ($(CONFIG_LGE_DISPLAY_B6),y)
 	mdss-dsi-objs += lge_b6/lge_mdss_dsi_b6.o
 endif
