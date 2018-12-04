@@ -8,4 +8,7 @@ enum { // DSV Type
 };
 
 int lge_get_dsv_type(void);
+
+extern void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl, struct dsi_panel_cmds *pcmds, u32 flags);
+extern int mdss_dsi_parse_dcs_cmds(struct device_node *np, struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key);
 #endif

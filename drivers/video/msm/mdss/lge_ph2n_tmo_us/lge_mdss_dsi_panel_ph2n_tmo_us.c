@@ -3,29 +3,22 @@
 #include "mdss_dsi.h"
 #include "mdss_mdp.h"
 #include "lge_mdss_dsi_panel_ph2n_tmo_us.h"
-#include "lge/reader_mode.h"
+
+#if defined(CONFIG_LGE_DISPLAY_RECOVERY)
+#include <linux/msm_lcd_recovery.h>
+#endif
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMFORT_MODE)
+#include "mdss_mdp.h"
+#include "lge/lge_comfort_view.h"
+#endif
 
 #if IS_ENABLED(CONFIG_TOUCHSCREEN_UNIFIED_DRIVER4)
 extern void MIT300_Reset(int status, int delay);
 extern int mfts_lpwg;
 #endif
 
-#if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
-static struct dsi_panel_cmds reader_mode_initial_step1_cmds;
-static struct dsi_panel_cmds reader_mode_initial_step2_cmds;
-static struct dsi_panel_cmds reader_mode_initial_step3_cmds;
-static struct dsi_panel_cmds reader_mode_initial_mono_enable_cmds;
-static struct dsi_panel_cmds reader_mode_step1_cmds;
-static struct dsi_panel_cmds reader_mode_step2_cmds;
-static struct dsi_panel_cmds reader_mode_step3_cmds;
-static struct dsi_panel_cmds reader_mode_off_cmds;
-static struct dsi_panel_cmds reader_mode_mono_enable_cmds;
-static struct dsi_panel_cmds reader_mode_mono_disable_cmds;
-#endif
-
 extern int lge_mdss_fb_get_shutdown_state(void);
-extern void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl, struct dsi_panel_cmds *pcmds, u32 flags);
-extern int mdss_dsi_parse_dcs_cmds(struct device_node *np, struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key);
 
 int lge_get_dsv_type(void)
 {
@@ -221,217 +214,61 @@ end:
 }
 #endif
 
-#if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
-int lge_mdss_dsi_parse_reader_mode_cmds(struct device_node *np, struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMFORT_MODE)
+extern int mdss_dsi_parse_dcs_cmds(struct device_node *np, struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key);
+extern void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl, struct dsi_panel_cmds *pcmds, u32 flags);
+
+static struct dsi_panel_cmds comfort_view_cmds[COMFORT_VIEW_STEP_NUMS];
+static char *comfort_view_step_cmds[] = {
+	"lge,comfort-view-cmds-off",
+	"lge,comfort-view-cmds-step1",
+	"lge,comfort-view-cmds-step2",
+	"lge,comfort-view-cmds-step3",
+	"lge,comfort-view-cmds-step4",
+	"lge,comfort-view-cmds-step5",
+	"lge,comfort-view-cmds-step6",
+	"lge,comfort-view-cmds-step7",
+	"lge,comfort-view-cmds-step8",
+	"lge,comfort-view-cmds-step9",
+	"lge,comfort-view-cmds-step10",
+};
+
+int lge_mdss_dsi_parse_comfort_view_cmds(struct device_node *np, struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
-	mdss_dsi_parse_dcs_cmds(np, &reader_mode_initial_step1_cmds,
-		"qcom,panel-reader-mode-initial-step1-command", "qcom,mdss-dsi-on-command-state");
-	mdss_dsi_parse_dcs_cmds(np, &reader_mode_initial_step2_cmds,
-		"qcom,panel-reader-mode-initial-step2-command", "qcom,mdss-dsi-on-command-state");
-	mdss_dsi_parse_dcs_cmds(np, &reader_mode_initial_step3_cmds,
-		"qcom,panel-reader-mode-initial-step3-command", "qcom,mdss-dsi-on-command-state");
+	int i;
 
-	mdss_dsi_parse_dcs_cmds(np, &reader_mode_initial_mono_enable_cmds,
-		"qcom,panel-reader-mode-mono-enable-command", "qcom,mdss-dsi-on-command-state");
-
-	mdss_dsi_parse_dcs_cmds(np, &reader_mode_step1_cmds,
-		"qcom,panel-reader-mode-step1-command", "qcom,mdss-dsi-reader-mode-command-state");
-	mdss_dsi_parse_dcs_cmds(np, &reader_mode_step2_cmds,
-		"qcom,panel-reader-mode-step2-command", "qcom,mdss-dsi-reader-mode-command-state");
-	mdss_dsi_parse_dcs_cmds(np, &reader_mode_step3_cmds,
-		"qcom,panel-reader-mode-step3-command", "qcom,mdss-dsi-reader-mode-command-state");
-	mdss_dsi_parse_dcs_cmds(np, &reader_mode_off_cmds,
-		"qcom,panel-reader-mode-off-command", "qcom,mdss-dsi-reader-mode-command-state");
-	mdss_dsi_parse_dcs_cmds(np, &reader_mode_mono_enable_cmds,
-		"qcom,panel-reader-mode-mono-enable-command", "qcom,mdss-dsi-reader-mode-command-state");
-	mdss_dsi_parse_dcs_cmds(np, &reader_mode_mono_disable_cmds,
-		"qcom,panel-reader-mode-mono-disable-command", "qcom,mdss-dsi-reader-mode-command-state");
-
+	for (i = 0 ; i < COMFORT_VIEW_STEP_NUMS ; i++) {
+		mdss_dsi_parse_dcs_cmds(np, &comfort_view_cmds[i],
+			comfort_view_step_cmds[i], "lge,comfort-view-cmds-state");
+	}
 	return 0;
 }
 
-int lge_mdss_dsi_panel_send_on_cmds(struct mdss_dsi_ctrl_pdata *ctrl, struct dsi_panel_cmds *default_on_cmds, int cur_mode)
+static bool change_comfort_view(struct mdss_dsi_ctrl_pdata *ctrl, int new_mode)
 {
-	if (default_on_cmds->cmd_cnt)
-		mdss_dsi_panel_cmds_send(ctrl, default_on_cmds, CMD_REQ_COMMIT);
-
-	pr_info("%s: reader_mode (%d).\n", __func__, cur_mode);
-
-	switch(cur_mode)
-	{
-		case READER_MODE_STEP_1:
-			pr_info("%s: reader_mode STEP1\n", __func__);
-			if (reader_mode_initial_step1_cmds.cmd_cnt) {
-				pr_info("%s: reader_mode_initial_step1_cmds: cnt = %d \n",
-					__func__, reader_mode_initial_step1_cmds.cmd_cnt);
-				mdss_dsi_panel_cmds_send(ctrl, &reader_mode_initial_step1_cmds, CMD_REQ_COMMIT);
-			}
-			break;
-		case READER_MODE_STEP_2:
-			pr_info("%s: reader_mode STEP2\n", __func__);
-			if (reader_mode_initial_step2_cmds.cmd_cnt) {
-				pr_info("%s: reader_mode_initial_step2_cmds: cnt = %d \n",
-					__func__, reader_mode_initial_step2_cmds.cmd_cnt);
-				mdss_dsi_panel_cmds_send(ctrl, &reader_mode_initial_step2_cmds, CMD_REQ_COMMIT);
-			}
-			break;
-		case READER_MODE_STEP_3:
-			pr_info("%s: reader_mode STEP3\n", __func__);
-			if (reader_mode_initial_step3_cmds.cmd_cnt) {
-				pr_info("%s: reader_mode_initial_step3_cmds: cnt = %d \n",
-					__func__, reader_mode_initial_step3_cmds.cmd_cnt);
-				mdss_dsi_panel_cmds_send(ctrl, &reader_mode_initial_step3_cmds, CMD_REQ_COMMIT);
-			}
-			break;
-		case READER_MODE_MONO:
-			pr_info("%s: reader_mode MONO \n", __func__);
-			if (reader_mode_initial_mono_enable_cmds.cmd_cnt) {
-				pr_info("%s: reader_mode_mono_enable_cmds: cnt = %d \n",
-					__func__, reader_mode_initial_mono_enable_cmds.cmd_cnt);
-				mdss_dsi_panel_cmds_send(ctrl, &reader_mode_initial_mono_enable_cmds, CMD_REQ_COMMIT);
-			}
-			break;
-		case READER_MODE_OFF:
-		default:
-			break;
+	if(comfort_view_cmds[new_mode].cmd_cnt) {
+		pr_info("%s: sending comfort mode commands [%d]\n", __func__, new_mode);
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
+		mdss_dsi_panel_cmds_send(ctrl, &comfort_view_cmds[new_mode], CMD_REQ_COMMIT);
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
 	}
-
-	return 0;
-}
-
-bool lge_change_reader_mode(struct mdss_dsi_ctrl_pdata *ctrl, int old_mode, int new_mode)
-{
-	if(new_mode == READER_MODE_OFF) {
-		switch(old_mode)
-		{
-			case READER_MODE_STEP_1:
-			case READER_MODE_STEP_2:
-			case READER_MODE_STEP_3:
-				if(reader_mode_off_cmds.cmd_cnt) {
-					pr_info("%s: sending reader mode OFF commands: cnt = %d\n",
-						__func__, reader_mode_off_cmds.cmd_cnt);
-					mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
-					mdss_dsi_panel_cmds_send(ctrl, &reader_mode_off_cmds, CMD_REQ_COMMIT);
-					mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
-				}
-			    break;
-			case READER_MODE_MONO:
-				if(reader_mode_mono_disable_cmds.cmd_cnt || reader_mode_off_cmds.cmd_cnt) {
-					mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
-				}
-				if(reader_mode_off_cmds.cmd_cnt) {
-					pr_info("%s: sending reader mode OFF commands: cnt = %d\n",
-						__func__, reader_mode_off_cmds.cmd_cnt);
-					mdss_dsi_panel_cmds_send(ctrl, &reader_mode_off_cmds, CMD_REQ_COMMIT);
-				}
-				if(reader_mode_mono_disable_cmds.cmd_cnt) {
-					pr_info("%s: sending MONO OFF commands: cnt = %d\n",
-						__func__, reader_mode_mono_disable_cmds.cmd_cnt);
-					mdss_dsi_panel_cmds_send(ctrl, &reader_mode_mono_disable_cmds, CMD_REQ_COMMIT);
-				}
-				if(reader_mode_mono_disable_cmds.cmd_cnt || reader_mode_off_cmds.cmd_cnt) {
-					mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
-				}
-				break;
-			default:
-				pr_err("%s: Invalid old status : %d\n", __func__, old_mode);
-				break;
-		}
-	} else {
-		switch(old_mode)
-		{
-			case READER_MODE_OFF:
-			case READER_MODE_STEP_1:
-			case READER_MODE_STEP_2:
-			case READER_MODE_STEP_3:
-				if(old_mode == new_mode)
-				{
-					pr_info("%s: Same as older mode\n", __func__);
-					break;
-				}
-				mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
-				switch(new_mode)
-				{
-					case READER_MODE_STEP_1:
-						if(reader_mode_step1_cmds.cmd_cnt) {
-							pr_info("%s: sending reader mode STEP1 commands: cnt = %d\n",
-								__func__, reader_mode_step1_cmds.cmd_cnt);
-							mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step1_cmds, CMD_REQ_COMMIT);
-						}
-						break;
-					case READER_MODE_STEP_2:
-						if(reader_mode_step2_cmds.cmd_cnt) {
-							pr_info("%s: sending reader mode STEP2 commands: cnt = %d\n",
-								__func__, reader_mode_step2_cmds.cmd_cnt);
-							mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step2_cmds, CMD_REQ_COMMIT);
-						}
-						break;
-					case READER_MODE_STEP_3:
-						if (reader_mode_step3_cmds.cmd_cnt) {
-							pr_info("%s: sending reader mode STEP3 commands: cnt = %d\n",
-								__func__, reader_mode_step3_cmds.cmd_cnt);
-							mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step3_cmds, CMD_REQ_COMMIT);
-						}
-						break;
-					case READER_MODE_MONO:
-						if (reader_mode_mono_enable_cmds.cmd_cnt) {
-							pr_info("%s: sending reader mode mono enable commands: cnt = %d \n",
-								__func__, reader_mode_mono_enable_cmds.cmd_cnt);
-							mdss_dsi_panel_cmds_send(ctrl, &reader_mode_mono_enable_cmds, CMD_REQ_COMMIT);
-						}
-						break;
-					default:
-						pr_err("%s: Input Invalid parameter: %d \n", __func__, new_mode);
-						break;
-				}
-				mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
-				break;
-			case READER_MODE_MONO:
-				mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
-				if(new_mode != READER_MODE_MONO) {
-					if (reader_mode_mono_disable_cmds.cmd_cnt) {
-						pr_err("%s: sending reader MONO mode OFF commands: FIRST cnt : %d \n",
-							__func__, reader_mode_mono_disable_cmds.cmd_cnt);
-						mdss_dsi_panel_cmds_send(ctrl, &reader_mode_mono_disable_cmds, CMD_REQ_COMMIT);
-					}
-				}
-				switch(new_mode)
-				{
-					case READER_MODE_STEP_1:
-						if (reader_mode_step1_cmds.cmd_cnt) {
-							pr_err("%s: sending reader mode STEP1 commands: cnt : %d \n",
-								__func__, reader_mode_step1_cmds.cmd_cnt);
-							mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step1_cmds, CMD_REQ_COMMIT);
-						}
-						break;
-					case READER_MODE_STEP_2:
-						if (reader_mode_step2_cmds.cmd_cnt) {
-							pr_err("%s: sending reader mode STEP1 commands: cnt : %d \n",
-								__func__, reader_mode_step2_cmds.cmd_cnt);
-							mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step2_cmds, CMD_REQ_COMMIT);
-						}
-						break;
-					case READER_MODE_STEP_3:
-						if (reader_mode_step3_cmds.cmd_cnt) {
-							pr_info("%s: sending reader mode STEP3 commands: cnt = %d \n",
-								__func__, reader_mode_step3_cmds.cmd_cnt);
-							mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step3_cmds, CMD_REQ_COMMIT);
-						}
-						break;
-					case READER_MODE_MONO:
-						break;
-					default:
-						pr_err("%s: Input Invalid parameter : %d \n", __func__, new_mode);
-						break;
-				}
-				mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
-				break;
-			default:
-				pr_err("%s: Invalid old status : %d\n", __func__, old_mode);
-				break;
-		}
-	}
-
 	return true;
+}
+
+bool lge_change_comfort_view(struct mdss_dsi_ctrl_pdata *ctrl, int old_mode, int new_mode)
+{
+	if (old_mode == new_mode) {
+		pr_info("%s: same mode [%d]\n", __func__, new_mode);
+		return true;
+	}
+
+	return change_comfort_view(ctrl, new_mode);
+}
+
+int lge_mdss_dsi_panel_send_post_on_cmds(struct mdss_dsi_ctrl_pdata *ctrl, int cur_mode)
+{
+	if (cur_mode != 0)
+		change_comfort_view(ctrl, cur_mode);
+	return 0;
 }
 #endif
