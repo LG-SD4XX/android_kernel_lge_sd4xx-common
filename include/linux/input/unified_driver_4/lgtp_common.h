@@ -115,7 +115,7 @@ enum {
 enum {
 	TOUCH_SUCCESS = 0,
 	TOUCH_FAIL = -1,
-#if defined(CONFIG_LGE_DISPLAY_RECOVERY_ESD)
+#if defined(CONFIG_LGE_DISPLAY_RECOVERY)
 	TOUCH_ESD = -2,
 #endif
 };
