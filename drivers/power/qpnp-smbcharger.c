@@ -5781,9 +5781,11 @@ static ssize_t at_chg_status_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	if (!chip) {
-		pr_err("called before init\n");
-		return -EINVAL;
+	if (chip->bms_psy) {
+		if (value > LED_OFF)
+			power_supply_set_hi_power_state(chip->bms_psy, 1);
+		else
+			power_supply_set_hi_power_state(chip->bms_psy, 0);
 	}
 
 	if (strncmp(buf, "0", 1) == 0) {
@@ -8861,10 +8863,8 @@ static int smbchg_ccd_set_batchg_en(struct smbchg_chip *chip, int val)
 
 	pr_smb(PR_LGE, "ccd_log BATCHG_EN request : %d\n", smbchg_ccd_batchg_en);
 
-	if (smbchg_ccd_batchg_en == 1)
-		ret = vote(the_chip->battchg_suspend_votable, CCD_BATCHG_EN_VOTER, false, 0);
-	else
-		ret = vote(the_chip->battchg_suspend_votable, CCD_BATCHG_EN_VOTER, true, 0);
+	rc = chip->usb_psy->get_property(chip->usb_psy,
+				POWER_SUPPLY_PROP_REAL_TYPE, &prop);
 
 	if (ret < 0)
 		pr_err("Couldn't update vote ret =%d\n", ret);

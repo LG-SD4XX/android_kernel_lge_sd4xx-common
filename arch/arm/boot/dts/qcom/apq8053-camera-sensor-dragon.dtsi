@@ -1,5 +1,9 @@
 /*
+<<<<<<< HEAD
  * Copyright (c) 2017, 2018 The Linux Foundation. All rights reserved.
+=======
+ * Copyright (c) 2015-2017, The Linux Foundation. All rights reserved.
+>>>>>>> dca593ee5573ea5c4c3a5d13924d34758ed5a020
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -36,6 +40,7 @@
 		qcom,cam-vreg-op-mode = <80000>;
 	};
 
+<<<<<<< HEAD
 	eeprom0: qcom,eeprom@0 {
 		cell-index = <0>;
 		compatible = "qcom,eeprom";
@@ -139,6 +144,8 @@
 		qcom,clock-rates = <24000000 0>;
 	};
 
+=======
+>>>>>>> dca593ee5573ea5c4c3a5d13924d34758ed5a020
 	camera0: qcom,camera@0 {
 		cell-index = <0>;
 		compatible = "qcom,camera";
@@ -148,6 +155,7 @@
 		qcom,mount-angle = <0>;
 		/*qcom,led-flash-src = <&led_flash0>;*/
 		qcom,actuator-src = <&actuator0>;
+<<<<<<< HEAD
 		qcom,eeprom-src = <&eeprom0>;
 		cam_vio-supply = <&pm8953_l6>;
 		cam_vdig-supply = <&pm8953_l2>;
@@ -156,6 +164,15 @@
 						"cam_vana";
 		qcom,cam-vreg-min-voltage = <1800000 1200000 2850000>;
 		qcom,cam-vreg-max-voltage = <1800000 1200000 2850000>;
+=======
+		cam_vio-supply = <&pm8953_l6>;
+		cam_vdig-supply = <&eldo_cam0_vreg>;
+		cam_vana-supply = <&pm8953_l17>;
+		qcom,cam-vreg-name = "cam_vio", "cam_vdig",
+						"cam_vana";
+		qcom,cam-vreg-min-voltage = <1800000 1100000 2850000>;
+		qcom,cam-vreg-max-voltage = <1800000 1100000 2850000>;
+>>>>>>> dca593ee5573ea5c4c3a5d13924d34758ed5a020
 		qcom,cam-vreg-op-mode = <105000 0 100000>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk0_default
@@ -190,6 +207,7 @@
 		qcom,csiphy-sd-index = <1>;
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <0>;
+<<<<<<< HEAD
 		qcom,actuator-src = <&actuator0>;
 		qcom,eeprom-src = <&eeprom1>;
 		cam_vio-supply = <&pm8953_l6>;
@@ -199,6 +217,16 @@
 						"cam_vana";
 		qcom,cam-vreg-min-voltage = <1800000 1200000 2850000>;
 		qcom,cam-vreg-max-voltage = <1800000 1200000 2850000>;
+=======
+		qcom,actuator-src = <&actuator1>;
+		cam_vio-supply = <&pm8953_l6>;
+		cam_vdig-supply = <&eldo_cam1_vreg>;
+		cam_vana-supply = <&pm8953_l17>;
+		qcom,cam-vreg-name = "cam_vio", "cam_vdig",
+						"cam_vana";
+		qcom,cam-vreg-min-voltage = <1800000 1100000 2850000>;
+		qcom,cam-vreg-max-voltage = <1800000 1100000 2850000>;
+>>>>>>> dca593ee5573ea5c4c3a5d13924d34758ed5a020
 		qcom,cam-vreg-op-mode = <105000 0 100000>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk1_default
@@ -215,7 +243,11 @@
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK1",
 			"CAM_RESET1",
 			"CAM_STANDBY1";
+<<<<<<< HEAD
 		qcom,sensor-position = <1>;
+=======
+		qcom,sensor-position = <0>;
+>>>>>>> dca593ee5573ea5c4c3a5d13924d34758ed5a020
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <0>;
 		status = "ok";
@@ -233,6 +265,7 @@
 		qcom,csid-sd-index = <2>;
 		qcom,mount-angle = <0>;
 		qcom,actuator-src = <&actuator0>;
+<<<<<<< HEAD
 		qcom,eeprom-src = <&eeprom2>;
 		cam_vio-supply = <&pm8953_l6>;
 		cam_vdig-supply = <&pm8953_l2>;
@@ -241,6 +274,15 @@
 						"cam_vana";
 		qcom,cam-vreg-min-voltage = <1800000 1200000 2850000>;
 		qcom,cam-vreg-max-voltage = <1800000 1200000 2850000>;
+=======
+		cam_vio-supply = <&pm8953_l6>;
+		cam_vdig-supply = <&eldo_cam2_vreg>;
+		cam_vana-supply = <&pm8953_l17>;
+		qcom,cam-vreg-name = "cam_vio", "cam_vdig",
+						"cam_vana";
+		qcom,cam-vreg-min-voltage = <1800000 1100000 2850000>;
+		qcom,cam-vreg-max-voltage = <1800000 1100000 2850000>;
+>>>>>>> dca593ee5573ea5c4c3a5d13924d34758ed5a020
 		qcom,cam-vreg-op-mode = <105000 0 100000>;
 		/*qcom,gpio-no-mux = <0>;*/
 		pinctrl-names = "cam_default", "cam_suspend";

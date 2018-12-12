@@ -22,7 +22,11 @@
 / {
 	model = "Qualcomm Technologies, Inc. SDA450 + PMI8950 CDP";
 	compatible = "qcom,sda450-cdp", "qcom,sda450", "qcom,cdp";
+<<<<<<< HEAD
 	qcom,board-id= <1 0>;
+=======
+	qcom,board-id = <1 0>;
+>>>>>>> dca593ee5573ea5c4c3a5d13924d34758ed5a020
 };
 
 &pmi8950_charger {

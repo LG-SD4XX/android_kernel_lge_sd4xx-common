@@ -2687,7 +2687,6 @@ static ssize_t wcnss_ctrl_write(struct file *fp, const char __user
 	    WCNSS_MAX_CMD_LEN < count || WCNSS_MIN_CMD_LEN > count)
 		return -EFAULT;
 
-
 	mutex_lock(&penv->ctrl_lock);
 	rc = copy_from_user(buf, user_buffer, count);
 	if (rc) {

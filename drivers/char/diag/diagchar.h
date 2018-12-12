@@ -402,6 +402,11 @@ struct diag_logging_mode_param_t {
 	uint8_t mode_param;
 } __packed;
 
+struct diag_con_all_param_t {
+	uint32_t diag_con_all;
+	uint32_t num_peripherals;
+};
+
 struct diag_md_session_t {
 	int pid;
 	int peripheral_mask;
@@ -464,8 +469,6 @@ struct diagchar_dev {
 	struct class *diagchar_class;
 	struct device *diag_dev;
 	int ref_count;
-	int mask_clear;
-	struct mutex diag_maskclear_mutex;
 	struct mutex diag_notifier_mutex;
 	struct mutex diagchar_mutex;
 	struct mutex diag_file_mutex;

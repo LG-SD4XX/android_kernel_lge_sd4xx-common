@@ -8957,4 +8957,7 @@ MODULE_LICENSE("GPL v2");
 
 module_init(BMA2X2_init);
 module_exit(BMA2X2_exit);
+<<<<<<< HEAD
 
+=======
+>>>>>>> dca593ee5573ea5c4c3a5d13924d34758ed5a020

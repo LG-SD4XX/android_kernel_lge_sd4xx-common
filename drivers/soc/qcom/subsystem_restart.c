@@ -753,8 +753,7 @@ static int subsystem_powerup(struct subsys_device *dev, void *data)
 				current->comm, current->pid, name);
 		else
 			pr_err("Powerup failure on %s\n", name);
-			return ret;
-		}
+		return ret;
 #endif
 	}
 	enable_all_irqs(dev);

@@ -38,6 +38,7 @@ static int32_t msm_led_trigger_get_subdev_id(struct msm_led_flash_ctrl_t *fctrl,
 	return 0;
 }
 
+<<<<<<< HEAD
 static int32_t msm_led_trigger_release(struct msm_led_flash_ctrl_t *fctrl)
 {
 	int rc = 0;
@@ -59,6 +60,8 @@ static int32_t msm_led_trigger_release(struct msm_led_flash_ctrl_t *fctrl)
 	return rc;
 }
 
+=======
+>>>>>>> dca593ee5573ea5c4c3a5d13924d34758ed5a020
 static int32_t msm_led_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 	void *data)
 {
@@ -339,7 +342,10 @@ static int __init msm_led_trigger_add_driver(void)
 static struct msm_flash_fn_t msm_led_trigger_func_tbl = {
 	.flash_get_subdev_id = msm_led_trigger_get_subdev_id,
 	.flash_led_config = msm_led_trigger_config,
+<<<<<<< HEAD
 	.flash_led_release = msm_led_trigger_release,
+=======
+>>>>>>> dca593ee5573ea5c4c3a5d13924d34758ed5a020
 };
 
 static struct msm_led_flash_ctrl_t fctrl = {

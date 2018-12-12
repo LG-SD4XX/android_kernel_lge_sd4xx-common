@@ -1,5 +1,9 @@
 /*
+<<<<<<< HEAD
  * Copyright (c) 2017, 2018 The Linux Foundation. All rights reserved.
+=======
+ * Copyright (c) 2015-2018, The Linux Foundation. All rights reserved.
+>>>>>>> dca593ee5573ea5c4c3a5d13924d34758ed5a020
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -173,6 +177,7 @@
 	/delete-property/ qcom,msm-vdd-wsa-switch-current;
 };
 
+<<<<<<< HEAD
 &pm8953_l2 {
 	status = "okay";
 	regulator-always-on;
@@ -190,6 +195,8 @@
 	qcom,mount-angle = <90>;
 };
 
+=======
+>>>>>>> dca593ee5573ea5c4c3a5d13924d34758ed5a020
 &pm8953_diangu_dig {
 	status = "ok";
 };
@@ -405,8 +412,13 @@
 	interrupt-map-mask = <0xffffffff>;
 	interrupt-map = <0 &intc 0 125 0
 		1 &intc 0 221 0
+<<<<<<< HEAD
 		2 &tlmm 133 0>;
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
+=======
+		2 &tlmm 114 0x1>;
+	interrupt-names = "hc_irq", "pwr_irq", "sdiowakeup_irq";
+>>>>>>> dca593ee5573ea5c4c3a5d13924d34758ed5a020
 
 	qcom,clk-rates = <400000 20000000 25000000 50000000 100000000
 				177770000>;
@@ -565,3 +577,31 @@
 		status = "disabled";
 	};
 };
+<<<<<<< HEAD
+=======
+
+&firmware {
+	android {
+		compatible = "android,firmware";
+		fstab {
+			compatible = "android,fstab";
+			vendor {
+				compatible = "android,vendor";
+				dev = "/dev/block/platform/soc/7824900.sdhci/by-name/vendor";
+				type = "ext4";
+				mnt_flags = "ro,barrier=1,discard";
+				fsmgr_flags = "wait";
+				status = "ok";
+			};
+			system {
+				compatible = "android,system";
+				dev = "/dev/block/platform/soc/7824900.sdhci/by-name/system";
+				type = "ext4";
+				mnt_flags = "ro,barrier=1,discard";
+				fsmgr_flags = "wait";
+				status = "ok";
+			};
+		};
+	};
+};
+>>>>>>> dca593ee5573ea5c4c3a5d13924d34758ed5a020

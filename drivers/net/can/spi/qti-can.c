@@ -603,6 +603,13 @@ static int qti_can_notify_power_events(struct qti_can *priv_data, u8 event_type)
 	ret = qti_can_do_spi_transaction(priv_data);
 	mutex_unlock(&priv_data->spi_lock);
 
+	if (ret == 0) {
+		wait_for_completion_interruptible_timeout(
+				&priv_data->response_completion,
+				msecs_to_jiffies(QUERY_FIRMWARE_TIMEOUT_MS));
+		ret = priv_data->cmd_result;
+	}
+
 	return ret;
 }
 
