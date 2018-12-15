@@ -223,8 +223,6 @@ int f2fs_write_inline_data(struct inode *inode, struct page *page)
 {
 	void *src_addr, *dst_addr;
 	struct dnode_of_data dn;
-	struct address_space *mapping = page_mapping(page);
-	unsigned long flags;
 	int err;
 
 	set_new_dnode(&dn, inode, NULL, NULL, 0);
@@ -386,9 +384,6 @@ static int f2fs_move_inline_dirents(struct inode *dir, struct page *ipage,
 	f2fs_wait_on_page_writeback(page, DATA, true);
 
 	dentry_blk = page_address(page);
-
-	make_dentry_ptr_inline(dir, &src, inline_dentry);
-	make_dentry_ptr_block(dir, &dst, dentry_blk);
 
 	make_dentry_ptr_inline(dir, &src, inline_dentry);
 	make_dentry_ptr_block(dir, &dst, dentry_blk);

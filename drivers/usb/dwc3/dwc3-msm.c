@@ -258,7 +258,9 @@ struct dwc3_msm {
 	u32			bus_perf_client;
 	struct msm_bus_scale_pdata	*bus_scale_table;
 	struct power_supply	usb_psy;
-	enum power_supply_type	usb_supply_type;
+#ifdef CONFIG_LGE_USB_TYPE_C
+	struct power_supply	*typec_psy;
+#endif
 	unsigned int		online;
 	bool			in_host_mode;
 	unsigned int		voltage_max;
@@ -2359,12 +2361,6 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 		return -EBUSY;
 	}
 
-	if (!mdwc->in_host_mode && (mdwc->vbus_active && !mdwc->suspend)) {
-		dev_dbg(mdwc->dev,
-			"Received wakeup event before the core suspend\n");
-		return -EBUSY;
-	}
-
 	ret = dwc3_msm_prepare_suspend(mdwc);
 	if (ret)
 		return ret;
@@ -2841,9 +2837,6 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_ONLINE:
 		val->intval = mdwc->online;
 		break;
-	case POWER_SUPPLY_PROP_REAL_TYPE:
-		val->intval = mdwc->usb_supply_type;
-		break;
 	case POWER_SUPPLY_PROP_TYPE:
 #ifdef CONFIG_LGE_PM
 		if (psy->type == POWER_SUPPLY_TYPE_UNKNOWN)
@@ -3006,22 +2999,13 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 						mdwc->bc1p2_current_max);
 		}
 		break;
+	case POWER_SUPPLY_PROP_TYPE:
+#ifdef CONFIG_LGE_PM
 	case POWER_SUPPLY_PROP_REAL_TYPE:
-		mdwc->usb_supply_type = val->intval;
-		/*
-		 * Update TYPE property to DCP for HVDCP/HVDCP3 charger types
-		 * so that they can be recongized as AC chargers by healthd.
-		 * Don't report UNKNOWN charger type to prevent healthd missing
-		 * detecting this power_supply status change.
-		 */
-		if (mdwc->usb_supply_type == POWER_SUPPLY_TYPE_USB_HVDCP_3
-			|| mdwc->usb_supply_type == POWER_SUPPLY_TYPE_USB_HVDCP)
-			psy->type = POWER_SUPPLY_TYPE_USB_DCP;
-		else if (mdwc->usb_supply_type == POWER_SUPPLY_TYPE_UNKNOWN)
-			psy->type = POWER_SUPPLY_TYPE_USB;
-		else
-			psy->type = mdwc->usb_supply_type;
-		switch (mdwc->usb_supply_type) {
+#endif
+		psy->type = val->intval;
+
+		switch (psy->type) {
 		case POWER_SUPPLY_TYPE_USB:
 			mdwc->chg_type = DWC3_SDP_CHARGER;
 			mdwc->voltage_max = MICRO_5V;
@@ -3121,7 +3105,10 @@ dwc3_msm_property_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_PRESENT:
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_MAX:
+	case POWER_SUPPLY_PROP_TYPE:
+#ifdef CONFIG_LGE_PM
 	case POWER_SUPPLY_PROP_REAL_TYPE:
+#endif
 		return 1;
 	default:
 		break;
@@ -3148,7 +3135,20 @@ static enum power_supply_property dwc3_msm_pm_power_props_usb[] = {
 #endif
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_USB_OTG,
-	POWER_SUPPLY_PROP_REAL_TYPE,
+#ifdef CONFIG_LGE_USB_FLOATED_CHARGER_DETECT
+#if defined(CONFIG_LGE_PM_VZW_REQ) || defined(CONFIG_LGE_PM_LGE_POWER_CLASS_VZW_REQ)
+	/* do not make POWER_SUPPLY_PROP_INCOMPATIBLE_CHG when VZW */
+#else
+	POWER_SUPPLY_PROP_INCOMPATIBLE_CHG,
+#endif
+#endif
+#if defined (CONFIG_LGE_PM_CABLE_DETECTION) || \
+	defined (CONFIG_LGE_PM_LGE_POWER_CLASS_CABLE_DETECT)
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+#endif
+#ifdef CONFIG_LGE_PM
+	POWER_SUPPLY_PROP_FASTCHG,
+#endif
 };
 
 static irqreturn_t dwc3_pmic_id_irq(int irq, void *data)
@@ -4255,7 +4255,9 @@ static int dwc3_otg_start_peripheral(struct dwc3_msm *mdwc, int on)
 static int dwc3_msm_gadget_vbus_draw(struct dwc3_msm *mdwc, unsigned mA)
 {
 	enum power_supply_type power_supply_type;
-	union power_supply_propval propval;
+#ifdef CONFIG_LGE_PM_CABLE_DETECTION
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+#endif
 
 	if (mdwc->charging_disabled)
 		return 0;
@@ -4287,9 +4289,7 @@ static int dwc3_msm_gadget_vbus_draw(struct dwc3_msm *mdwc, unsigned mA)
 	else
 		power_supply_type = POWER_SUPPLY_TYPE_UNKNOWN;
 
-	propval.intval = power_supply_type;
-	mdwc->usb_psy.set_property(&mdwc->usb_psy,
-			POWER_SUPPLY_PROP_REAL_TYPE, &propval);
+	power_supply_set_supply_type(&mdwc->usb_psy, power_supply_type);
 
 skip_psy_type:
 

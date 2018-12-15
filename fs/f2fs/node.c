@@ -2143,7 +2143,7 @@ retry:
 		spin_unlock(&nm_i->nid_list_lock);
 		return false;
 	}
-	
+
 	/* We should not use stale free nids created by f2fs_build_free_nids */
 	if (nm_i->nid_cnt[FREE_NID] && !on_f2fs_build_free_nids(nm_i)) {
 		f2fs_bug_on(sbi, list_empty(&nm_i->free_nid_list));

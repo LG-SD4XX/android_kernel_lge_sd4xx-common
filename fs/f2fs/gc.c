@@ -85,11 +85,6 @@ static int gc_thread_func(void *data)
 		if (!mutex_trylock(&sbi->gc_mutex))
 			goto next;
 
-		if (gc_th->gc_urgent) {
-			wait_ms = gc_th->urgent_sleep_time;
-			goto do_gc;
-		}
-
 		if (!is_idle(sbi)) {
 			increase_sleep_time(gc_th, &wait_ms);
 			mutex_unlock(&sbi->gc_mutex);
@@ -135,7 +130,6 @@ int f2fs_start_gc_thread(struct f2fs_sb_info *sbi)
 	gc_th->min_sleep_time = DEF_GC_THREAD_MIN_SLEEP_TIME;
 	gc_th->max_sleep_time = DEF_GC_THREAD_MAX_SLEEP_TIME;
 	gc_th->no_gc_sleep_time = DEF_GC_THREAD_NOGC_SLEEP_TIME;
-
 
 	gc_th->gc_wake= 0;
 
@@ -720,8 +714,6 @@ static void move_data_block(struct inode *inode, block_t bidx,
 
 	f2fs_update_iostat(fio.sbi, FS_GC_DATA_IO, F2FS_BLKSIZE);
 
-	f2fs_update_iostat(fio.sbi, FS_GC_DATA_IO, F2FS_BLKSIZE);
-
 	f2fs_update_data_blkaddr(&dn, newaddr);
 	set_inode_flag(inode, FI_APPEND_WRITE);
 	if (page->index == 0)
@@ -1043,15 +1035,6 @@ int f2fs_gc(struct f2fs_sb_info *sbi, bool sync,
 	};
 	unsigned long long last_skipped = sbi->skipped_atomic_files[FG_GC];
 	unsigned int skipped_round = 0, round = 0;
-
-	trace_f2fs_gc_begin(sbi->sb, sync, background,
-				get_pages(sbi, F2FS_DIRTY_NODES),
-				get_pages(sbi, F2FS_DIRTY_DENTS),
-				get_pages(sbi, F2FS_DIRTY_IMETA),
-				free_sections(sbi),
-				free_segments(sbi),
-				reserved_segments(sbi),
-				prefree_segments(sbi));
 
 	trace_f2fs_gc_begin(sbi->sb, sync, background,
 				get_pages(sbi, F2FS_DIRTY_NODES),

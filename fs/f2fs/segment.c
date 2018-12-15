@@ -1266,11 +1266,9 @@ static int __issue_discard_cmd(struct f2fs_sb_info *sbi,
 					struct discard_policy *dpolicy)
 {
 	struct discard_cmd_control *dcc = SM_I(sbi)->dcc_info;
-	struct discard_cmd *prev_dc = NULL, *next_dc = NULL;
-	struct rb_node **insert_p = NULL, *insert_parent = NULL;
-	struct discard_cmd *dc;
+	struct list_head *pend_list;
+	struct discard_cmd *dc, *tmp;
 	struct blk_plug plug;
-    
 	int i, iter = 0, issued = 0;
 	bool io_interrupted = false;
 
@@ -2725,7 +2723,6 @@ static int __get_segment_type_6(struct f2fs_io_info *fio)
 				is_inode_flag_set(inode, FI_ATOMIC_FILE) ||
 				is_inode_flag_set(inode, FI_VOLATILE_FILE))
 			return CURSEG_HOT_DATA;
-
 		/* f2fs_rw_hint_to_seg_type(inode->i_write_hint); */
 		return CURSEG_WARM_DATA;
 	} else {
@@ -2872,8 +2869,6 @@ reallocate:
 	if (fio->retry) {
 		fio->old_blkaddr = fio->new_blkaddr;
 		goto reallocate;
-	} else if (!err) {
-		update_device_state(fio);
 	}
 
 	update_device_state(fio);

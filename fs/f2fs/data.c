@@ -584,53 +584,6 @@ static int f2fs_submit_page_read(struct inode *inode, struct page *page,
 	return 0;
 }
 
-static struct bio *f2fs_grab_read_bio(struct inode *inode, block_t blkaddr,
-							 unsigned nr_pages)
-{
-	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
-	struct fscrypt_ctx *ctx = NULL;
-	struct bio *bio;
-
-	if (f2fs_encrypted_file(inode)) {
-		ctx = fscrypt_get_ctx(inode, GFP_NOFS);
-		if (IS_ERR(ctx))
-			return ERR_CAST(ctx);
-
-		/* wait the page to be moved by cleaning */
-		f2fs_wait_on_block_writeback(sbi, blkaddr);
-	}
-
-	bio = f2fs_bio_alloc(sbi, min_t(int, nr_pages, BIO_MAX_PAGES), false);
-	if (!bio) {
-		if (ctx)
-			fscrypt_release_ctx(ctx);
-		return ERR_PTR(-ENOMEM);
-	}
-	f2fs_target_device(sbi, blkaddr, bio);
-	bio->bi_end_io = f2fs_read_end_io;
-	bio->bi_private = ctx;
-	bio_set_op_attrs(bio, REQ_OP_READ, 0);
-
-	return bio;
-}
-
-/* This can handle encryption stuffs */
-static int f2fs_submit_page_read(struct inode *inode, struct page *page,
-							block_t blkaddr)
-{
-	struct bio *bio = f2fs_grab_read_bio(inode, blkaddr, 1);
-
-	if (IS_ERR(bio))
-		return PTR_ERR(bio);
-
-	if (bio_add_page(bio, page, PAGE_SIZE, 0) < PAGE_SIZE) {
-		bio_put(bio);
-		return -EFAULT;
-	}
-	__submit_bio(F2FS_I_SB(inode), bio, DATA);
-	return 0;
-}
-
 static void __set_data_blkaddr(struct dnode_of_data *dn)
 {
 	struct f2fs_node *rn = F2FS_NODE(dn->node_page);

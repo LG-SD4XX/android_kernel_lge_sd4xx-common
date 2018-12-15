@@ -4345,9 +4345,6 @@ static int otg_power_get_property_usb(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_ONLINE:
 		val->intval = motg->online;
 		break;
-	case POWER_SUPPLY_PROP_REAL_TYPE:
-		val->intval = motg->usb_supply_type;
-		break;
 	case POWER_SUPPLY_PROP_TYPE:
 #ifdef CONFIG_LGE_PM
 		if (psy->type == POWER_SUPPLY_TYPE_UNKNOWN)
@@ -4505,21 +4502,6 @@ static int otg_power_set_property_usb(struct power_supply *psy,
 				 psy->type == POWER_SUPPLY_TYPE_USB_DCP)
 			motg->epack_w_ta = true;
 #endif
-	case POWER_SUPPLY_PROP_REAL_TYPE:
-		motg->usb_supply_type = val->intval;
-		/*
-		 * Update TYPE property to DCP for HVDCP/HVDCP3 charger types
-		 * so that they can be recongized as AC chargers by healthd.
-		 * Don't report UNKNOWN charger type to prevent healthd missing
-		 * detecting this power_supply status change.
-		 */
-		if (motg->usb_supply_type == POWER_SUPPLY_TYPE_USB_HVDCP_3
-			|| motg->usb_supply_type == POWER_SUPPLY_TYPE_USB_HVDCP)
-			psy->type = POWER_SUPPLY_TYPE_USB_DCP;
-		else if (motg->usb_supply_type == POWER_SUPPLY_TYPE_UNKNOWN)
-			psy->type = POWER_SUPPLY_TYPE_USB;
-		else
-			psy->type = motg->usb_supply_type;
 		/*
 		 * If charger detection is done by the USB driver,
 		 * motg->chg_type is already assigned in the
@@ -4610,7 +4592,6 @@ static int otg_power_property_is_writeable_usb(struct power_supply *psy,
 #ifdef CONFIG_INPUT_EPACK
 	case POWER_SUPPLY_PROP_USB_EPACK:
 #endif
-	case POWER_SUPPLY_PROP_REAL_TYPE:
 		return 1;
 	default:
 		break;
@@ -4649,7 +4630,6 @@ static enum power_supply_property otg_pm_power_props_usb[] = {
 	POWER_SUPPLY_PROP_INCOMPATIBLE_CHG,
 #endif
 #endif
-	POWER_SUPPLY_PROP_REAL_TYPE,
 };
 
 const struct file_operations msm_otg_bus_fops = {

@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 /* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
-=======
-/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
->>>>>>> dca593ee5573ea5c4c3a5d13924d34758ed5a020
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -41,27 +37,6 @@ static long msm_led_flash_subdev_ioctl(struct v4l2_subdev *sd,
 	}
 	switch (cmd) {
 	case VIDIOC_MSM_SENSOR_GET_SUBDEV_ID:
-<<<<<<< HEAD
-                if (fctrl->func_tbl->flash_get_subdev_id)
-			return fctrl->func_tbl->flash_get_subdev_id(fctrl, argp);
-		else
-			pr_err("NULL flash_get_subdev function\n");
-			return -EINVAL;
-	case VIDIOC_MSM_FLASH_LED_DATA_CFG:
-                if (fctrl->func_tbl->flash_led_config)
-			return fctrl->func_tbl->flash_led_config(fctrl, argp);
-		else
-			pr_err("NULL flash_led_config function\n");
-			return -EINVAL;
-	case MSM_SD_NOTIFY_FREEZE:
-		return 0;
-	case MSM_SD_SHUTDOWN:
-                if (fctrl->func_tbl->flash_led_release)
-			return fctrl->func_tbl->flash_led_release(fctrl);
-		else
-			pr_err("NULL flash_led_release function\n");
-			return -EINVAL;
-=======
 		return fctrl->func_tbl->flash_get_subdev_id(fctrl, argp);
 	case VIDIOC_MSM_FLASH_LED_DATA_CFG:
 		return fctrl->func_tbl->flash_led_config(fctrl, argp);
@@ -69,7 +44,6 @@ static long msm_led_flash_subdev_ioctl(struct v4l2_subdev *sd,
 		return 0;
 	case MSM_SD_SHUTDOWN:
 		return fctrl->func_tbl->flash_led_release(fctrl);
->>>>>>> dca593ee5573ea5c4c3a5d13924d34758ed5a020
 	default:
 		pr_err_ratelimited("invalid cmd %d\n", cmd);
 		return -ENOIOCTLCMD;
@@ -108,11 +82,7 @@ int32_t msm_led_flash_create_v4lsubdev(struct platform_device *pdev, void *data)
 		"msm_flash");
 	media_entity_init(&fctrl->msm_sd.sd.entity, 0, NULL, 0);
 	fctrl->msm_sd.sd.entity.type = MEDIA_ENT_T_V4L2_SUBDEV;
-<<<<<<< HEAD
-	fctrl->msm_sd.sd.entity.group_id = MSM_CAMERA_SUBDEV_LED_FLASH;
-=======
 	fctrl->msm_sd.sd.entity.group_id = MSM_CAMERA_SUBDEV_FLASH;
->>>>>>> dca593ee5573ea5c4c3a5d13924d34758ed5a020
 	fctrl->msm_sd.close_seq = MSM_SD_CLOSE_2ND_CATEGORY | 0x1;
 	msm_sd_register(&fctrl->msm_sd);
 

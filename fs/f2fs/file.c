@@ -420,7 +420,7 @@ static loff_t f2fs_seek_block(struct file *file, loff_t offset, int whence)
 				dn.ofs_in_node++, pgofs++,
 				data_ofs = (loff_t)pgofs << PAGE_SHIFT) {
 			block_t blkaddr;
-        
+
 			blkaddr = datablock_addr(dn.inode,
 					dn.node_page, dn.ofs_in_node);
 
@@ -1065,6 +1065,7 @@ static int __clone_blkaddrs(struct inode *src_inode, struct inode *dst_inode,
 				dn.data_blkaddr = datablock_addr(dn.inode,
 						dn.node_page, dn.ofs_in_node);
 				f2fs_truncate_data_blocks_range(&dn, 1);
+
 				if (do_replace[i]) {
 					f2fs_i_blocks_write(src_inode,
 							1, false, false);
@@ -1207,9 +1208,6 @@ static int f2fs_collapse_range(struct inode *inode, loff_t offset, loff_t len)
 	ret = filemap_write_and_wait_range(inode->i_mapping, offset, LLONG_MAX);
 	if (ret)
 		goto out_unlock;
-
-	/* avoid gc operation during block exchange */
-	down_write(&F2FS_I(inode)->dio_rwsem[WRITE]);
 
 	truncate_pagecache(inode, offset);
 
@@ -1417,9 +1415,6 @@ static int f2fs_insert_range(struct inode *inode, loff_t offset, loff_t len)
 	if (ret)
 		goto out;
 
-	/* avoid gc operation during block exchange */
-	down_write(&F2FS_I(inode)->dio_rwsem[WRITE]);
-
 	truncate_pagecache(inode, offset);
 
 	pg_start = offset >> PAGE_SHIFT;
@@ -1447,8 +1442,6 @@ static int f2fs_insert_range(struct inode *inode, loff_t offset, loff_t len)
 
 	if (!ret)
 		f2fs_i_size_write(inode, new_size);
-
-	up_write(&F2FS_I(inode)->dio_rwsem[WRITE]);
 out:
 	up_write(&F2FS_I(inode)->i_mmap_sem);
 	up_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);

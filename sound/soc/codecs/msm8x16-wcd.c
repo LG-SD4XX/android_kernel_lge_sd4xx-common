@@ -141,8 +141,10 @@ static bool reversed_dmic = false;
 static const DECLARE_TLV_DB_SCALE(digital_gain, 0, 1, 0);
 static const DECLARE_TLV_DB_SCALE(analog_gain, 0, 25, 1);
 static struct snd_soc_dai_driver msm8x16_wcd_i2s_dai[];
-/* By default enable the internal speaker boost */
-static bool spkr_boost_en = true;
+
+static struct switch_dev accdet_data;
+static int accdet_state;
+static bool spkr_boost_en;
 
 #define MSM8X16_WCD_ACQUIRE_LOCK(x) \
 	mutex_lock_nested(&x, SINGLE_DEPTH_NESTING)
@@ -970,7 +972,8 @@ exit:
 	msm8x16_wcd_compute_impedance(codec, impedance_l, impedance_r,
 				      zl, zr, high);
 
-	pr_debug("%s: RL %d ohm, RR %d ohm\n", __func__, *zl, *zr);
+
+	pr_err("%s: RL %d ohm, RR %d ohm\n", __func__, *zl, *zr);
 	pr_debug("%s: Impedance detection completed\n", __func__);
 }
 
@@ -1180,6 +1183,11 @@ static int __msm8x16_wcd_reg_read(struct snd_soc_codec *codec,
 	pr_debug("%s reg = %x\n", __func__, reg);
 	mutex_lock(&msm8x16_wcd->io_lock);
 	pdata = snd_soc_card_get_drvdata(codec->component.card);
+
+	if (pdata == NULL) {
+		mutex_unlock(&msm8x16_wcd->io_lock);
+		return ret;
+	}
 	if (MSM8X16_WCD_IS_TOMBAK_REG(reg))
 		ret = msm8x16_wcd_spmi_read(reg, 1, &temp);
 	else if (MSM8X16_WCD_IS_DIGITAL_REG(reg)) {
@@ -1236,6 +1244,11 @@ static int __msm8x16_wcd_reg_write(struct snd_soc_codec *codec,
 
 	mutex_lock(&msm8x16_wcd->io_lock);
 	pdata = snd_soc_card_get_drvdata(codec->component.card);
+
+	if (pdata == NULL) {
+		mutex_unlock(&msm8x16_wcd->io_lock);
+		return ret;
+	}
 	if (MSM8X16_WCD_IS_TOMBAK_REG(reg))
 		ret = msm8x16_wcd_spmi_write(reg, 1, &val);
 	else if (MSM8X16_WCD_IS_DIGITAL_REG(reg)) {
@@ -4184,6 +4197,9 @@ void wcd_imped_config(struct snd_soc_codec *codec,
 
 	codec_version = get_codec_version(msm8x16_wcd);
 
+	pr_err("%s codec_version %d imped %u set_gain %d\n", __func__,
+									codec_version, value, set_gain);
+
 	if (set_gain) {
 		switch (codec_version) {
 		case TOMBAK_1_0:
@@ -4402,6 +4418,17 @@ static int msm8x16_wcd_hphr_dac_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+void msm8x16_wcd_codec_set_headset_state(u32 state)
+{
+	switch_set_state((struct switch_dev *)&accdet_data, state);
+	accdet_state = state;
+}
+
+int msm8x16_wcd_codec_get_headset_state(void)
+{
+	pr_debug("%s accdet_state = %d\n", __func__, accdet_state);
+	return accdet_state;
+}
 static int msm8x16_wcd_hph_pa_event(struct snd_soc_dapm_widget *w,
 			      struct snd_kcontrol *kcontrol, int event)
 {
@@ -5597,7 +5624,7 @@ static struct regulator *wcd8x16_wcd_codec_find_regulator(
 			return msm8x16->supplies[i].consumer;
 	}
 
-	dev_dbg(msm8x16->dev, "Error: regulator not found:%s\n"
+	dev_err(msm8x16->dev, "Error: regulator not found:%s\n"
 				, name);
 	return NULL;
 }
@@ -6011,6 +6038,15 @@ static int msm8x16_wcd_codec_probe(struct snd_soc_codec *codec)
 
 	wcd_mbhc_init(&msm8x16_wcd_priv->mbhc, codec, &mbhc_cb, &intr_ids,
 		      wcd_mbhc_registers, true);
+	accdet_data.name = "h2w";
+	accdet_data.index = 0;
+	accdet_data.state = 0;
+
+	ret = switch_dev_register(&accdet_data);
+	if (ret) {
+		dev_err(codec->dev, "%s: Failed to register h2w\n", __func__);
+		return -ENOMEM;
+	}
 
 	msm8x16_wcd_priv->mclk_enabled = false;
 	msm8x16_wcd_priv->clock_active = false;

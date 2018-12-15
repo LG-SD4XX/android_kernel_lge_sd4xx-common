@@ -1387,8 +1387,8 @@ static int diagfwd_mux_close(int id, int mode)
 	}
 
 	if ((driver->logging_mode == DIAG_MULTI_MODE &&
-	     driver->md_session_mode == DIAG_MD_NONE) ||
-	     (driver->md_session_mode == DIAG_MD_PERIPHERAL)) {
+		driver->md_session_mode == DIAG_MD_NONE) ||
+		(driver->md_session_mode == DIAG_MD_PERIPHERAL)) {
 		/*
 		 * This case indicates that the USB is removed
 		 * but there is a client running in background

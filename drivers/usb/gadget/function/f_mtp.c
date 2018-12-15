@@ -836,16 +836,19 @@ retry_tx_alloc:
 		mtp_tx_reqs = 4;
 
 	/* now allocate requests for our endpoints */
-	for (i = 0; i < dev->mtp_tx_reqs; i++) {
+	for (i = 0; i < mtp_tx_reqs; i++) {
 		req = mtp_request_new(dev->ep_in,
-				dev->mtp_tx_req_len + extra_buf_alloc);
+				mtp_tx_req_len + extra_buf_alloc);
+
 		if (!req) {
-			if (dev->mtp_tx_req_len <= MTP_BULK_BUFFER_SIZE)
-				goto fail;
 			while ((req = mtp_req_get(dev, &dev->tx_idle)))
 				mtp_request_free(req, dev->ep_in);
-			dev->mtp_tx_req_len = MTP_BULK_BUFFER_SIZE;
-			dev->mtp_tx_reqs = MTP_TX_REQ_MAX;
+
+			if (mtp_tx_req_len <= MTP_BULK_BUFFER_SIZE)
+				goto tx_fail;
+
+			mtp_tx_req_len = MTP_BULK_BUFFER_SIZE;
+			mtp_tx_reqs = MTP_TX_REQ_MAX;
 			goto retry_tx_alloc;
 		}
 		req->complete = mtp_complete_in;
@@ -865,7 +868,97 @@ retry_rx_alloc:
 	for (i = 0; i < RX_REQ_MAX; i++) {
 		req = mtp_request_new(dev->ep_out, dev->mtp_rx_req_len);
 		if (!req) {
-			if (dev->mtp_rx_req_len <= MTP_BULK_BUFFER_SIZE)
+			for (--i; i >= 0; i--)
+				mtp_request_free(dev->rx_req[i], dev->ep_out);
+
+			if (mtp_rx_req_len <= MTP_BULK_BUFFER_SIZE)
+				goto rx_fail;
+
+			mtp_rx_req_len /= 2;
+			DBG(cdev, "retry rx_req alloc: %d\n", mtp_rx_req_len);
+			goto retry_rx_alloc;
+		}
+		req->complete = mtp_complete_out;
+		dev->rx_req[i] = req;
+	}
+
+	for (i = 0; i < INTR_REQ_MAX; i++) {
+		req = mtp_request_new(dev->ep_intr,
+				INTR_BUFFER_SIZE + extra_buf_alloc);
+
+		if (!req) {
+			while ((req = mtp_req_get(dev, &dev->intr_idle)))
+				mtp_request_free(req, dev->ep_intr);
+			goto intr_fail;
+		}
+		req->complete = mtp_complete_intr;
+		mtp_req_put(dev, &dev->intr_idle, req);
+	}
+
+	return 0;
+
+intr_fail:
+	for (i = 0; i < RX_REQ_MAX; i++)
+		mtp_request_free(dev->rx_req[i], dev->ep_out);
+rx_fail:
+	while ((req = mtp_req_get(dev, &dev->tx_idle)))
+		mtp_request_free(req, dev->ep_in);
+tx_fail:
+	pr_err("mtp_bind() could not allocate requests\n");
+	return -ENOMEM;
+}
+#else
+static int mtp_create_bulk_endpoints(struct mtp_dev *dev,
+				struct usb_endpoint_descriptor *in_desc,
+				struct usb_endpoint_descriptor *out_desc,
+				struct usb_endpoint_descriptor *intr_desc)
+{
+	struct usb_composite_dev *cdev = dev->cdev;
+	struct usb_request *req;
+	struct usb_ep *ep;
+	size_t extra_buf_alloc = cdev->gadget->extra_buf_alloc;
+	int i;
+
+	DBG(cdev, "create_bulk_endpoints dev: %pK\n", dev);
+
+	ep = usb_ep_autoconfig(cdev->gadget, in_desc);
+	if (!ep) {
+		DBG(cdev, "usb_ep_autoconfig for ep_in failed\n");
+		return -ENODEV;
+	}
+	DBG(cdev, "usb_ep_autoconfig for ep_in got %s\n", ep->name);
+	ep->driver_data = dev;		/* claim the endpoint */
+	dev->ep_in = ep;
+
+	ep = usb_ep_autoconfig(cdev->gadget, out_desc);
+	if (!ep) {
+		DBG(cdev, "usb_ep_autoconfig for ep_out failed\n");
+		return -ENODEV;
+	}
+	DBG(cdev, "usb_ep_autoconfig for mtp ep_out got %s\n", ep->name);
+	ep->driver_data = dev;		/* claim the endpoint */
+	dev->ep_out = ep;
+
+	ep = usb_ep_autoconfig(cdev->gadget, intr_desc);
+	if (!ep) {
+		DBG(cdev, "usb_ep_autoconfig for ep_intr failed\n");
+		return -ENODEV;
+	}
+	DBG(cdev, "usb_ep_autoconfig for mtp ep_intr got %s\n", ep->name);
+	ep->driver_data = dev;		/* claim the endpoint */
+	dev->ep_intr = ep;
+
+retry_tx_alloc:
+	if (mtp_tx_req_len > MTP_BULK_BUFFER_SIZE)
+		mtp_tx_reqs = 4;
+
+	/* now allocate requests for our endpoints */
+	for (i = 0; i < mtp_tx_reqs; i++) {
+		req = mtp_request_new(dev->ep_in,
+				mtp_tx_req_len + extra_buf_alloc);
+		if (!req) {
+#ifndef CONFIG_LGE_USB_G_ANDROID
+			if (mtp_tx_req_len <= MTP_BULK_BUFFER_SIZE)
 				goto fail;
 #endif
 			while ((req = mtp_req_get(dev, &dev->tx_idle)))
@@ -893,7 +986,7 @@ retry_rx_alloc:
 
 retry_rx_alloc:
 	for (i = 0; i < RX_REQ_MAX; i++) {
-		req = mtp_request_new(dev->ep_out, dev->mtp_rx_req_len);
+		req = mtp_request_new(dev->ep_out, mtp_rx_req_len);
 		if (!req) {
 #ifndef CONFIG_LGE_USB_G_ANDROID
 			if (dev->mtp_rx_req_len <= MTP_BULK_BUFFER_SIZE)
