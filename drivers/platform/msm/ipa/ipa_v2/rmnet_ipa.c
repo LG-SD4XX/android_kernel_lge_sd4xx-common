@@ -636,8 +636,6 @@ static int wwan_add_ul_flt_rule_to_ipa(void)
 		return -ENOMEM;
 	}
 
-	memset(req, 0, sizeof(struct ipa_fltr_installed_notif_req_msg_v01));
-
 	param->commit = 1;
 	param->ep = IPA_CLIENT_APPS_LAN_WAN_PROD;
 	param->global = false;
@@ -1116,9 +1114,8 @@ send:
 	dev->stats.tx_bytes += skb->len;
 	ret = NETDEV_TX_OK;
 out:
-	if (atomic_read(&wwan_ptr->outstanding_pkts) == 0)
-		ipa_rm_inactivity_timer_release_resource(
-			IPA_RM_RESOURCE_WWAN_0_PROD);
+	ipa_rm_inactivity_timer_release_resource(
+		IPA_RM_RESOURCE_WWAN_0_PROD);
 	return ret;
 }
 
@@ -1170,12 +1167,10 @@ static void apps_ipa_tx_complete_notify(void *priv,
 				wwan_ptr->outstanding_low);
 		netif_wake_queue(wwan_ptr->net);
 	}
-
-	if (atomic_read(&wwan_ptr->outstanding_pkts) == 0)
-		ipa_rm_inactivity_timer_release_resource(
-			IPA_RM_RESOURCE_WWAN_0_PROD);
 	__netif_tx_unlock_bh(netdev_get_tx_queue(dev, 0));
 	dev_kfree_skb_any(skb);
+	ipa_rm_inactivity_timer_release_resource(
+		IPA_RM_RESOURCE_WWAN_0_PROD);
 }
 
 /**
@@ -1317,8 +1312,6 @@ static int ipa_wwan_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 
 	/*  Extended IOCTLs  */
 	case RMNET_IOCTL_EXTENDED:
-		if (!ns_capable(dev_net(dev)->user_ns, CAP_NET_ADMIN))
-			return -EPERM;
 		IPAWANDBG("get ioctl: RMNET_IOCTL_EXTENDED\n");
 		if (copy_from_user(&extend_ioctl_data,
 			(u8 *)ifr->ifr_ifru.ifru_data,
@@ -1406,8 +1399,8 @@ static int ipa_wwan_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 		/*  Get driver name  */
 		case RMNET_IOCTL_GET_DRIVER_NAME:
 			memcpy(&extend_ioctl_data.u.if_name,
-						ipa_netdevs[0]->name, IFNAMSIZ);
-			extend_ioctl_data.u.if_name[IFNAMSIZ - 1] = '\0';
+						ipa_netdevs[0]->name,
+							sizeof(IFNAMSIZ));
 			if (copy_to_user((u8 *)ifr->ifr_ifru.ifru_data,
 					&extend_ioctl_data,
 					sizeof(struct rmnet_ioctl_extended_s)))
@@ -1622,7 +1615,6 @@ static int ipa_wwan_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 				sizeof(wan_msg->upstream_ifname);
 			strlcpy(wan_msg->upstream_ifname,
 				extend_ioctl_data.u.if_name, len);
-			wan_msg->upstream_ifname[len - 1] = '\0';
 			memset(&msg_meta, 0, sizeof(struct ipa_msg_meta));
 			msg_meta.msg_type = WAN_XLAT_CONNECT;
 			msg_meta.msg_len = sizeof(struct ipa_wan_msg);
@@ -2652,12 +2644,10 @@ int rmnet_ipa_query_tethering_stats(struct wan_ioctl_query_tether_stats *data,
 	int pipe_len, rc;
 
 	if (data != NULL) {
-		/* prevent string buffer overflows */
 		data->upstreamIface[IFNAMSIZ-1] = '\0';
 		data->tetherIface[IFNAMSIZ-1] = '\0';
-	} else if (reset == false) {
-		/* only reset can have data == NULL*/
-		IPAWANERR("query without allocate tether_stats strucutre\n");
+	} else if (reset != false) {
+		/* Data can be NULL for reset stats, checking reset != False */
 		return -EINVAL;
 	}
 
@@ -2681,7 +2671,7 @@ int rmnet_ipa_query_tethering_stats(struct wan_ioctl_query_tether_stats *data,
 	if (reset) {
 		req->reset_stats_valid = true;
 		req->reset_stats = true;
-		IPAWANDBG("reset the pipe stats\n");
+		IPAWANERR("reset the pipe stats\n");
 	} else {
 		/* print tethered-client enum */
 		if (data == NULL)
