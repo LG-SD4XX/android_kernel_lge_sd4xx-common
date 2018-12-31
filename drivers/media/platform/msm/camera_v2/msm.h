@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -39,7 +39,7 @@
 #define BIT_CLR( x, idx )    ( x &= ~(1<<(idx&7)))
 /* LGE_CHANGE_E, camera stability task, added  msm-config debugfs*/
 
-/* Setting MAX timeout to 10seconds considering
+/* Setting MAX timeout to 6.5seconds considering
  * backend will operate @ .6fps in certain usecases
  * like Long exposure usecase and isp needs max of 2 frames
  * to stop the hardware which will be around 3 seconds*/

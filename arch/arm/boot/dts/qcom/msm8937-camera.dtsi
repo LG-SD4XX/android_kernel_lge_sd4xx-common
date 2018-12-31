@@ -474,6 +474,10 @@
 		};
 
 	};
+
+        qcom,earlycamera{
+		compatible = "qcom,earlycamera";
+	};
 };
 
 &i2c_freq_100Khz {
