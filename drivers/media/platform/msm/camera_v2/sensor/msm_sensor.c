@@ -1514,4 +1514,3 @@ int32_t msm_sensor_init_default_params(struct msm_sensor_ctrl_t *s_ctrl)
 
 	return 0;
 }
-
