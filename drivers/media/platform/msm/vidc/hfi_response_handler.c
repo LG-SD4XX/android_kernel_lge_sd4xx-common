@@ -113,7 +113,6 @@ static int hfi_process_sess_evt_seq_changed(u32 device_id,
 	int prop_id;
 	enum msm_vidc_pixel_depth luma_bit_depth, chroma_bit_depth;
 	struct hfi_colour_space *colour_info;
-
 	 /* Initialize pic_struct to unknown as default */
 	event_notify.pic_struct = MSM_VIDC_PIC_STRUCT_UNKNOWN;
 

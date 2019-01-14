@@ -12,6 +12,7 @@
  */
 
 #define CREATE_TRACE_POINTS
+#define MAX_SSR_STRING_LEN 10
 #include "msm_vidc_common.h"
 #define MAX_SSR_STRING_LEN 10
 #include "msm_vidc_debug.h"
@@ -293,7 +294,6 @@ static int publish_unreleased_reference(struct msm_vidc_inst *inst,
 	*dbuf = cur;
 	return 0;
 }
-
 static void put_inst_helper(struct kref *kref)
 {
 	struct msm_vidc_inst *inst = container_of(kref,
