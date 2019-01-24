@@ -25,10 +25,11 @@ suffix-$(CONFIG_KERNEL_BZIP2)	:= bz2
 suffix-$(CONFIG_KERNEL_LZMA)	:= lzma
 suffix-$(CONFIG_KERNEL_XZ)	:= xz
 suffix-$(CONFIG_KERNEL_LZO)	:= lzo
+suffix-$(CONFIG_KERNEL_LZ4)	:= lz4
 
-targets := zImage vmlinux.srec romImage uImage uImage.srec uImage.gz \
+targets := zImage vmlinux.srec romImage uImage uImage.srec uImage.gz uImage.lz4 \
 	   uImage.bz2 uImage.lzma uImage.xz uImage.lzo uImage.bin
-extra-y += vmlinux.bin vmlinux.bin.gz vmlinux.bin.bz2 vmlinux.bin.lzma \
+extra-y += vmlinux.bin vmlinux.bin.gz vmlinux.bin.bz2 vmlinux.bin.lzma vmlinux.bin.lz4 \
 	   vmlinux.bin.xz vmlinux.bin.lzo
 subdir- := compressed romimage
 
@@ -79,6 +80,9 @@ $(obj)/vmlinux.bin.xz: $(obj)/vmlinux.bin FORCE
 
 $(obj)/vmlinux.bin.lzo: $(obj)/vmlinux.bin FORCE
 	$(call if_changed,lzo)
+	
+$(obj)/vmlinux.bin.lz4: $(obj)/vmlinux.bin FORCE
+	$(call if_changed,lz4)
 
 $(obj)/uImage.bz2: $(obj)/vmlinux.bin.bz2
 	$(call if_changed,uimage,bzip2)
@@ -94,6 +98,9 @@ $(obj)/uImage.xz: $(obj)/vmlinux.bin.xz
 
 $(obj)/uImage.lzo: $(obj)/vmlinux.bin.lzo
 	$(call if_changed,uimage,lzo)
+	
+$(obj)/uImage.lz4: $(obj)/vmlinux.bin.lz4
+	$(call if_changed,uimage,lz4)
 
 $(obj)/uImage.bin: $(obj)/vmlinux.bin
 	$(call if_changed,uimage,none)

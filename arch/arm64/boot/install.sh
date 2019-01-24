@@ -24,7 +24,7 @@
 if [ -x ~/bin/${INSTALLKERNEL} ]; then exec ~/bin/${INSTALLKERNEL} "$@"; fi
 if [ -x /sbin/${INSTALLKERNEL} ]; then exec /sbin/${INSTALLKERNEL} "$@"; fi
 
-if [ "$(basename $2)" = "Image.gz" ]; then
+if [ "$(basename $2)" = "[Image.gz/Image.lz4]" ]; then
 # Compressed install
   echo "Installing compressed kernel"
   base=vmlinuz

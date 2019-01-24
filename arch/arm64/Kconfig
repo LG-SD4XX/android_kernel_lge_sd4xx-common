@@ -1006,19 +1006,19 @@ config EFI
 	  is only useful on systems that have UEFI firmware.
 
 config BUILD_ARM64_APPENDED_DTB_IMAGE
-	bool "Build a concatenated Image.gz/dtb by default"
+	bool "Build a concatenated Image.[gz/lz4]/dtb by default"
 	depends on OF
 	help
 	  Enabling this option will cause a concatenated Image.gz and list of
-	  DTBs to be built by default (instead of a standalone Image.gz.)
-	  The image will built in arch/arm64/boot/Image.gz-dtb
+	  DTBs to be built by default (instead of a standalone Image.[gz/lz4].)
+	  The image will built in arch/arm64/boot/Image.[gz/lz4]-dtb
 
 config BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES
 	string "Default dtb names"
 	depends on BUILD_ARM64_APPENDED_DTB_IMAGE
 	help
 	  Space separated list of names of dtbs to append when
-	  building a concatenated Image.gz-dtb
+	  building a concatenated Image.[gz/lz4]-dtb
 
 choice
 	prompt "Kernel compression method"

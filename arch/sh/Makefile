@@ -203,7 +203,7 @@ endif
 libs-$(CONFIG_SUPERH32)		:= arch/sh/lib/	$(libs-y)
 libs-$(CONFIG_SUPERH64)		:= arch/sh/lib64/ $(libs-y)
 
-BOOT_TARGETS = uImage uImage.bz2 uImage.gz uImage.lzma uImage.xz uImage.lzo \
+BOOT_TARGETS = uImage uImage.bz2 uImage.gz uImage.lzma uImage.xz uImage.lzo uImage.lz4 \
 	       uImage.srec uImage.bin zImage vmlinux.bin vmlinux.srec \
 	       romImage
 PHONY += $(BOOT_TARGETS)
@@ -235,4 +235,5 @@ define archhelp
 	@echo '  uImage.lzma	           - Kernel-only image for U-Boot (lzma)'
 	@echo '  uImage.xz	           - Kernel-only image for U-Boot (xz)'
 	@echo '  uImage.lzo	           - Kernel-only image for U-Boot (lzo)'
+	@echo '  uImage.lz4	           - Kernel-only image for U-Boot (lz4)'
 endef

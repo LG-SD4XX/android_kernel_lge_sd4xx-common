@@ -55,7 +55,6 @@
 			compatible = "android,firmware";
 			fstab {
 				compatible = "android,fstab";
-
 				 system {
 					compatible = "android,system";
 					dev = "/dev/block/platform/soc/7824900.sdhci/by-name/system";
