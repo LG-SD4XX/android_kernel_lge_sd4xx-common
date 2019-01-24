@@ -33,6 +33,7 @@
 #include <linux/workqueue.h>
 #include <linux/sched.h>
 #include <sound/q6afe-v2.h>
+#include <linux/switch.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
@@ -102,7 +103,7 @@ enum {
 #define SPK_PMD 2
 #define SPK_PMU 3
 
-#define MICBIAS_DEFAULT_VAL 1800000
+#define MICBIAS_DEFAULT_VAL 2400000
 #define MICBIAS_MIN_VAL 1600000
 #define MICBIAS_STEP_SIZE 50000
 
@@ -141,10 +142,8 @@ static bool reversed_dmic = false;
 static const DECLARE_TLV_DB_SCALE(digital_gain, 0, 1, 0);
 static const DECLARE_TLV_DB_SCALE(analog_gain, 0, 25, 1);
 static struct snd_soc_dai_driver msm8x16_wcd_i2s_dai[];
-
-static struct switch_dev accdet_data;
-static int accdet_state;
-static bool spkr_boost_en;
+/* By default enable the internal speaker boost */
+static bool spkr_boost_en = true;
 
 #define MSM8X16_WCD_ACQUIRE_LOCK(x) \
 	mutex_lock_nested(&x, SINGLE_DEPTH_NESTING)
@@ -657,11 +656,7 @@ static void msm8x16_wcd_mbhc_common_micb_ctrl(struct snd_soc_codec *codec,
 	case MBHC_COMMON_MICB_SET_VAL:
 		reg = MSM8X16_WCD_A_ANALOG_MICB_1_VAL;
 		mask = 0xFF;
-        #ifdef CONFIG_SND_USE_MBHC_EXTN_CABLE
-                val = (enable ? 0xA0 : 0x00);
-        #else
 		val = (enable ? 0xC0 : 0x00);
-        #endif
 		break;
 	case MBHC_COMMON_MICB_TAIL_CURR:
 		reg = MSM8X16_WCD_A_ANALOG_MICB_1_EN;
@@ -3986,19 +3981,10 @@ static int msm8x16_wcd_codec_config_compander(struct snd_soc_codec *codec,
 					int interp_n, int event)
 {
 	struct msm8x16_wcd_priv *msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
-	int comp_ch_bits_set = 0x03;
 
 	dev_dbg(codec->dev, "%s: event %d shift %d, enabled %d\n",
 		__func__, event, interp_n,
 		msm8x16_wcd->comp_enabled[interp_n]);
-
-	/* compander is invalid */
-	if (msm8x16_wcd->comp_enabled[interp_n] != COMPANDER_1 &&
-	    msm8x16_wcd->comp_enabled[interp_n]) {
-		dev_dbg(codec->dev, "%s: Invalid compander %d\n", __func__,
-			msm8x16_wcd->comp_enabled[interp_n]);
-		return 0;
-	}
 
 	/* compander is not enabled */
 	if (!msm8x16_wcd->comp_enabled[interp_n]) {
@@ -4010,50 +3996,55 @@ static int msm8x16_wcd_codec_config_compander(struct snd_soc_codec *codec,
 		return 0;
 	}
 
-	if (SND_SOC_DAPM_EVENT_ON(event)) {
-		if (get_codec_version(msm8x16_wcd) >= DIANGU)
+	switch (msm8x16_wcd->comp_enabled[interp_n]) {
+	case COMPANDER_1:
+		if (SND_SOC_DAPM_EVENT_ON(event)) {
+			if (get_codec_version(msm8x16_wcd) >= DIANGU)
+				snd_soc_update_bits(codec,
+					MSM8X16_WCD_A_ANALOG_RX_COM_BIAS_DAC,
+					0x08, 0x08);
+			/* Enable Compander Clock */
 			snd_soc_update_bits(codec,
-				MSM8X16_WCD_A_ANALOG_RX_COM_BIAS_DAC,
-				0x08, 0x08);
-		/* Enable Compander Clock */
-		snd_soc_update_bits(codec,
-			MSM8X16_WCD_A_CDC_COMP0_B2_CTL, 0x0F, 0x09);
-		snd_soc_update_bits(codec,
-			MSM8X16_WCD_A_CDC_CLK_RX_B2_CTL, 0x01, 0x01);
-		snd_soc_update_bits(codec,
-			MSM8X16_WCD_A_CDC_COMP0_B1_CTL,
-			1 << interp_n, 1 << interp_n);
-		snd_soc_update_bits(codec,
-			MSM8X16_WCD_A_CDC_COMP0_B3_CTL, 0xFF, 0x01);
-		snd_soc_update_bits(codec,
-			MSM8X16_WCD_A_CDC_COMP0_B2_CTL, 0xF0, 0x50);
-		/* add sleep for compander to settle */
-		usleep_range(1000, 1100);
-		snd_soc_update_bits(codec,
-			MSM8X16_WCD_A_CDC_COMP0_B3_CTL, 0xFF, 0x28);
-		snd_soc_update_bits(codec,
-			MSM8X16_WCD_A_CDC_COMP0_B2_CTL, 0xF0, 0xB0);
+				MSM8X16_WCD_A_CDC_COMP0_B2_CTL, 0x0F, 0x09);
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_CDC_CLK_RX_B2_CTL, 0x01, 0x01);
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_CDC_COMP0_B1_CTL,
+				1 << interp_n, 1 << interp_n);
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_CDC_COMP0_B3_CTL, 0xFF, 0x01);
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_CDC_COMP0_B2_CTL, 0xF0, 0x50);
+			/* add sleep for compander to settle */
+			usleep_range(1000, 1100);
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_CDC_COMP0_B3_CTL, 0xFF, 0x28);
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_CDC_COMP0_B2_CTL, 0xF0, 0xB0);
 
-		/* Enable Compander GPIO */
-		if (msm8x16_wcd->codec_hph_comp_gpio)
-			msm8x16_wcd->codec_hph_comp_gpio(1);
-	} else if (SND_SOC_DAPM_EVENT_OFF(event)) {
-		/* Disable Compander GPIO */
-		if (msm8x16_wcd->codec_hph_comp_gpio)
-			msm8x16_wcd->codec_hph_comp_gpio(0);
+			/* Enable Compander GPIO */
+			if (msm8x16_wcd->codec_hph_comp_gpio)
+				msm8x16_wcd->codec_hph_comp_gpio(1);
+		} else if (SND_SOC_DAPM_EVENT_OFF(event)) {
+			/* Disable Compander GPIO */
+			if (msm8x16_wcd->codec_hph_comp_gpio)
+				msm8x16_wcd->codec_hph_comp_gpio(0);
 
-		snd_soc_update_bits(codec,
-			MSM8X16_WCD_A_CDC_COMP0_B1_CTL,
-			1 << interp_n, 0);
-		comp_ch_bits_set = snd_soc_read(codec,
-					MSM8X16_WCD_A_CDC_COMP0_B1_CTL);
-		if ((comp_ch_bits_set & 0x03) == 0x00) {
 			snd_soc_update_bits(codec,
 				MSM8X16_WCD_A_CDC_COMP0_B2_CTL, 0x0F, 0x05);
-		snd_soc_update_bits(codec,
-			MSM8X16_WCD_A_CDC_CLK_RX_B2_CTL, 0x01, 0x00);
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_CDC_COMP0_B1_CTL,
+				1 << interp_n, 0);
+			snd_soc_update_bits(codec,
+				MSM8X16_WCD_A_CDC_CLK_RX_B2_CTL, 0x01, 0x00);
 		}
-	}
+		break;
+	default:
+		dev_dbg(codec->dev, "%s: Invalid compander %d\n", __func__,
+				msm8x16_wcd->comp_enabled[interp_n]);
+		break;
+	};
+
 	return 0;
 }
 
@@ -4351,6 +4342,8 @@ static int msm8x16_wcd_lo_dac_event(struct snd_soc_dapm_widget *w,
 			MSM8X16_WCD_A_ANALOG_RX_LO_DAC_CTL, 0x80, 0x80);
 		snd_soc_update_bits(codec,
 			MSM8X16_WCD_A_ANALOG_RX_LO_DAC_CTL, 0x08, 0x00);
+		snd_soc_update_bits(codec,
+			MSM8X16_WCD_A_ANALOG_RX_LO_EN_CTL, 0x40, 0x40);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		usleep_range(20000, 20100);
@@ -4362,6 +4355,8 @@ static int msm8x16_wcd_lo_dac_event(struct snd_soc_dapm_widget *w,
 			MSM8X16_WCD_A_ANALOG_RX_LO_DAC_CTL, 0x08, 0x00);
 		snd_soc_update_bits(codec,
 			MSM8X16_WCD_A_ANALOG_RX_LO_EN_CTL, 0x80, 0x00);
+		snd_soc_update_bits(codec,
+			MSM8X16_WCD_A_ANALOG_RX_LO_EN_CTL, 0x40, 0x00);
 		snd_soc_update_bits(codec,
 			MSM8X16_WCD_A_ANALOG_RX_LO_EN_CTL, 0x20, 0x00);
 		snd_soc_update_bits(codec,
@@ -4418,17 +4413,6 @@ static int msm8x16_wcd_hphr_dac_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
-void msm8x16_wcd_codec_set_headset_state(u32 state)
-{
-	switch_set_state((struct switch_dev *)&accdet_data, state);
-	accdet_state = state;
-}
-
-int msm8x16_wcd_codec_get_headset_state(void)
-{
-	pr_debug("%s accdet_state = %d\n", __func__, accdet_state);
-	return accdet_state;
-}
 static int msm8x16_wcd_hph_pa_event(struct snd_soc_dapm_widget *w,
 			      struct snd_kcontrol *kcontrol, int event)
 {
@@ -5050,9 +5034,9 @@ static int msm8x16_wcd_codec_enable_lo_pa(struct snd_soc_dapm_widget *w,
 		snd_soc_update_bits(codec,
 			MSM8X16_WCD_A_CDC_RX3_B6_CTL, 0x01, 0x00);
 		break;
-	case SND_SOC_DAPM_PRE_PMD:
+	case SND_SOC_DAPM_POST_PMD:
 		snd_soc_update_bits(codec,
-			MSM8X16_WCD_A_CDC_RX3_B6_CTL, 0x01, 0x01);
+			MSM8X16_WCD_A_CDC_RX3_B6_CTL, 0x01, 0x00);
 		break;
 	}
 
@@ -5244,8 +5228,8 @@ static const struct snd_soc_dapm_widget msm8x16_wcd_dapm_widgets[] = {
 			SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMD),
 
 	SND_SOC_DAPM_PGA_E("LINEOUT PA", MSM8X16_WCD_A_ANALOG_RX_LO_EN_CTL,
-			6, 0 , NULL, 0, msm8x16_wcd_codec_enable_lo_pa,
-			SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
+			5, 0 , NULL, 0, msm8x16_wcd_codec_enable_lo_pa,
+			SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_POST_PMD),
 
 	SND_SOC_DAPM_SUPPLY("VDD_SPKDRV", SND_SOC_NOPM, 0, 0,
 			    msm89xx_wcd_codec_enable_vdd_spkr,
@@ -5624,7 +5608,7 @@ static struct regulator *wcd8x16_wcd_codec_find_regulator(
 			return msm8x16->supplies[i].consumer;
 	}
 
-	dev_err(msm8x16->dev, "Error: regulator not found:%s\n"
+	dev_dbg(msm8x16->dev, "Error: regulator not found:%s\n"
 				, name);
 	return NULL;
 }
@@ -6038,15 +6022,6 @@ static int msm8x16_wcd_codec_probe(struct snd_soc_codec *codec)
 
 	wcd_mbhc_init(&msm8x16_wcd_priv->mbhc, codec, &mbhc_cb, &intr_ids,
 		      wcd_mbhc_registers, true);
-	accdet_data.name = "h2w";
-	accdet_data.index = 0;
-	accdet_data.state = 0;
-
-	ret = switch_dev_register(&accdet_data);
-	if (ret) {
-		dev_err(codec->dev, "%s: Failed to register h2w\n", __func__);
-		return -ENOMEM;
-	}
 
 	msm8x16_wcd_priv->mclk_enabled = false;
 	msm8x16_wcd_priv->clock_active = false;

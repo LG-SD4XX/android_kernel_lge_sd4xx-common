@@ -2804,7 +2804,6 @@ static int apq8009_asoc_machine_probe(struct platform_device *pdev)
 	const char *mclk = "qcom,msm-mclk-freq";
 	const char *type = NULL;
 	int ret, id;
-	int tdm_mic_mute_enable = -EINVAL;
 
 	pdata = devm_kzalloc(&pdev->dev,
 			sizeof(struct apq8009_asoc_mach_data), GFP_KERNEL);
