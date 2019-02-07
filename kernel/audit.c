@@ -85,10 +85,10 @@ u32		audit_ever_enabled = !!AUDIT_OFF;
 EXPORT_SYMBOL_GPL(audit_enabled);
 
 /* Default state when kernel boots without any parameters. */
-static u32	audit_default = AUDIT_OFF;
+static int	audit_default = AUDIT_OFF;
 
 /* If auditing cannot proceed, audit_failure selects what happens. */
-static u32	audit_failure = AUDIT_FAIL_PRINTK;
+static int	audit_failure = AUDIT_FAIL_PRINTK;
 
 /*
  * If audit records are to be written to the netlink socket, audit_pid
@@ -96,19 +96,19 @@ static u32	audit_failure = AUDIT_FAIL_PRINTK;
  * the portid to use to send netlink messages to that process.
  */
 int		audit_pid;
-static __u32	audit_nlk_portid;
+static int	audit_nlk_portid;
 
 /* If audit_rate_limit is non-zero, limit the rate of sending audit records
  * to that number per second.  This prevents DoS attacks, but results in
  * audit records being dropped. */
-static u32	audit_rate_limit;
+static int	audit_rate_limit = 100;
 
 /* Number of outstanding audit_buffers allowed.
  * When set to zero, this means unlimited. */
-static u32	audit_backlog_limit = 64;
+static int	audit_backlog_limit = 128;
 #define AUDIT_BACKLOG_WAIT_TIME (60 * HZ)
-static u32	audit_backlog_wait_time = AUDIT_BACKLOG_WAIT_TIME;
-static u32	audit_backlog_wait_overflow = 0;
+static int	audit_backlog_wait_time = AUDIT_BACKLOG_WAIT_TIME;
+static int	audit_backlog_wait_overflow = 0;
 
 /* The identity of the user shutting down the audit system. */
 kuid_t		audit_sig_uid = INVALID_UID;
@@ -162,7 +162,7 @@ DEFINE_MUTEX(audit_cmd_mutex);
 /* AUDIT_BUFSIZ is the size of the temporary buffer used for formatting
  * audit records.  Since printk uses a 1024 byte buffer, this buffer
  * should be at least that large. */
-#define AUDIT_BUFSIZ 1024
+#define AUDIT_BUFSIZ 2048
 
 /* AUDIT_MAXFREE is the number of empty audit_buffers we keep on the
  * audit_freelist.  Doing so eliminates many kmalloc/kfree calls. */
