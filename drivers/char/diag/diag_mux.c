@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2016, 2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -27,8 +27,6 @@
 #include "diag_mux.h"
 #include "diag_usb.h"
 #include "diag_memorydevice.h"
-
-
 #ifdef CONFIG_LGE_DIAG_BYPASS
 #include "lg_diag_bypass.h"
 #endif
@@ -55,6 +53,7 @@ static struct diag_logger_ops md_log_ops = {
 
 int diag_mux_init()
 {
+
 	diag_mux = kzalloc(sizeof(struct diag_mux_state_t),
 			 GFP_KERNEL);
 	if (!diag_mux)
@@ -123,13 +122,7 @@ int diag_mux_queue_read(int proc)
 	if (!diag_mux)
 		return -EIO;
 
-/* [LGE_S][BSP_Modem] LGSSL to support testmode cmd */
-#ifdef CONFIG_LGE_DM_APP
-	if (diag_mux->mode == DIAG_MEMORY_DEVICE_MODE || diag_mux->mode == DIAG_MULTI_MODE)
-#else
 	if (diag_mux->mode == DIAG_MULTI_MODE)
-#endif
-/* [LGE_E][BSP_Modem] LGSSL to support testmode cmd */
 		logger = diag_mux->usb_ptr;
 	else
 		logger = diag_mux->logger;
@@ -165,18 +158,6 @@ int diag_mux_write(int proc, unsigned char *buf, int len, int ctx)
 	else
 		logger = diag_mux->usb_ptr;
 
-/* [LGE_S][BSP_Modem] LGSSL to support testmode cmd */
-#ifdef CONFIG_LGE_DM_APP
-	if (driver->logging_mode == DIAG_MEMORY_DEVICE_MODE)
-	{
-		if ((*((char *)buf) == 0xFA) || (*((char *)buf) == 0x29))
-		{
-//			pr_debug("diag: In %s, Testmode cmd uses the diag usb. cmd = 0x%2x\n", __func__, *((char *)buf));
-			logger = diag_mux->usb_ptr;
-		}
-	}
-#endif
-/* [LGE_S][BSP_Modem]  LGSSL to support testmode cmd */
 	if (logger && logger->log_ops && logger->log_ops->write)
 		return logger->log_ops->write(proc, buf, len, ctx);
 	return 0;
@@ -220,17 +201,11 @@ int diag_mux_switch_logging(int *req_mode, int *peripheral_mask)
 		new_mask = ~(*peripheral_mask) & diag_mux->mux_mask;
 		if (new_mask != DIAG_CON_NONE)
 			*req_mode = DIAG_MULTI_MODE;
-		if (new_mask == DIAG_CON_ALL)
-			*req_mode = DIAG_MEMORY_DEVICE_MODE;
 		break;
 	case DIAG_MEMORY_DEVICE_MODE:
 		new_mask = (*peripheral_mask) | diag_mux->mux_mask;
-/* [LGE_S][BSP_Modem] LGSSL to support testmode cmd */
-#ifndef CONFIG_LGE_DM_APP
 		if (new_mask != DIAG_CON_ALL)
 			*req_mode = DIAG_MULTI_MODE;
-#endif
-/* [LGE_E][BSP_Modem] LGSSL to support testmode cmd */
 		break;
 	default:
 		pr_err("diag: Invalid mode %d in %s\n", *req_mode, __func__);
@@ -240,11 +215,7 @@ int diag_mux_switch_logging(int *req_mode, int *peripheral_mask)
 	switch (diag_mux->mode) {
 	case DIAG_USB_MODE:
 		if (*req_mode == DIAG_MEMORY_DEVICE_MODE) {
-/* [LGE_S][BSP_Modem] LGSSL to support testmode cmd */
-#ifndef CONFIG_LGE_DM_APP
 			diag_mux->usb_ptr->log_ops->close();
-#endif
-/* [LGE_E][BSP_Modem] LGSSL to support testmode cmd */
 			diag_mux->logger = diag_mux->md_ptr;
 			diag_mux->md_ptr->log_ops->open();
 		} else if (*req_mode == DIAG_MULTI_MODE) {
@@ -254,11 +225,6 @@ int diag_mux_switch_logging(int *req_mode, int *peripheral_mask)
 		break;
 	case DIAG_MEMORY_DEVICE_MODE:
 		if (*req_mode == DIAG_USB_MODE) {
-/* [LGE_S][BSP_Modem] LGSSL to support testmode cmd */
-#ifdef CONFIG_LGE_DM_APP
-			diag_mux->usb_ptr->log_ops->close();
-#endif
-/* [LGE_E][BSP_Modem] LGSSL to support testmode cmd */
 			diag_mux->md_ptr->log_ops->close();
 			diag_mux->logger = diag_mux->usb_ptr;
 			diag_mux->usb_ptr->log_ops->open();

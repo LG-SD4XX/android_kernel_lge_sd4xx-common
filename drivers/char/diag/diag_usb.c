@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2016, 2018 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -14,7 +14,6 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/device.h>
-#include <linux/kernel.h>
 #include <linux/err.h>
 #include <linux/sched.h>
 #include <linux/ratelimit.h>
@@ -142,11 +141,8 @@ static void diag_usb_buf_tbl_remove(struct diag_usb_info *usb_info,
 			 * Remove reference from the table if it is the
 			 * only instance of the buffer
 			 */
-			if (atomic_read(&entry->ref_count) == 0) {
+			if (atomic_read(&entry->ref_count) == 0)
 				list_del(&entry->track);
-				kfree(entry);
-				entry = NULL;
-			}
 			break;
 		}
 	}
@@ -222,13 +218,6 @@ static void usb_connect_work_fn(struct work_struct *work)
  */
 static void usb_disconnect(struct diag_usb_info *ch)
 {
-	if (!ch)
-		return;
-
-	if (!atomic_read(&ch->connected) &&
-		driver->usb_connected && diag_mask_param())
-		diag_clear_masks(0);
-
 	if (ch && ch->ops && ch->ops->close)
 		ch->ops->close(ch->ctxt, DIAG_USB_MODE);
 }
@@ -291,20 +280,9 @@ static void usb_read_done_work_fn(struct work_struct *work)
 	 * USB is disconnected/Disabled before the previous read completed.
 	 * Discard the packet and don't do any further processing.
 	 */
-/* [LGE_S][BSP_Modem] LGSSL to support testmode cmd */
-#ifdef CONFIG_LGE_DM_APP
-	if (diag_mux->mode != DIAG_MEMORY_DEVICE_MODE)
-	{
-#endif /* CONFIG_LGE_DM_APP */
-/* [LGE_E][BSP_Modem] LGSSL to support testmode cmd */
 	if (!atomic_read(&ch->connected) || !ch->enabled ||
 	    !atomic_read(&ch->diag_state))
 		return;
-/* [LGE_S][BSP_Modem] LGSSL to support testmode cmd */
-#ifdef CONFIG_LGE_DM_APP
-	}
-#endif /* CONFIG_LGE_DM_APP */
-/* [LGE_E][BSP_Modem] LGSSL to support testmode cmd */
 
 	req = ch->read_ptr;
 	ch->read_cnt++;
@@ -347,7 +325,6 @@ static void diag_usb_write_done(struct diag_usb_info *ch,
 	buf = entry->buf;
 	len = entry->len;
 	kfree(entry);
-	entry = NULL;
 	diag_ws_on_copy_complete(DIAG_WS_MUX);
 
 	if (ch->ops && ch->ops->write_done)
