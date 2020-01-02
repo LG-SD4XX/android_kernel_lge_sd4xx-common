@@ -61,7 +61,8 @@
 	status = "okay";
 	qcom,actuator-type = "erm";
 	qcom,vmax-mv = <2784>;
-	qcom,brake-pattern = [00 00 00 00];
+	qcom,brake-pattern = [03 03 00 00];
+    qcom,lra-auto-res-mode = "qwd";
 };
 
 &pm8937_gpios {
