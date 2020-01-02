@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -458,7 +458,9 @@ static int camera_v4l2_subscribe_event(struct v4l2_fh *fh,
 	int rc = 0;
 	struct camera_v4l2_private *sp = fh_to_private(fh);
 
+	mutex_lock(&sp->lock);
 	rc = v4l2_event_subscribe(&sp->fh, sub, 5, NULL);
+	mutex_unlock(&sp->lock);
 
 	return rc;
 }
@@ -469,7 +471,9 @@ static int camera_v4l2_unsubscribe_event(struct v4l2_fh *fh,
 	int rc = 0;
 	struct camera_v4l2_private *sp = fh_to_private(fh);
 
+	mutex_lock(&sp->lock);
 	rc = v4l2_event_unsubscribe(&sp->fh, sub);
+	mutex_unlock(&sp->lock);
 
 	return rc;
 }
@@ -484,6 +488,9 @@ static long camera_v4l2_vidioc_private_ioctl(struct file *filep, void *fh,
 
 	if (WARN_ON(!k_ioctl || !pvdev))
 		return -EIO;
+
+	if (cmd != VIDIOC_MSM_CAMERA_PRIVATE_IOCTL_CMD)
+		return -EINVAL;
 
 	switch (k_ioctl->id) {
 	case MSM_CAMERA_PRIV_IOCTL_ID_RETURN_BUF: {
