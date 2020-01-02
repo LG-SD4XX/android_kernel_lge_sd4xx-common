@@ -72,10 +72,9 @@ config CXD224X_NFC_VEN
       Say yes if you want to use cxd224x NFC VEN(enable voltage) control.
       If unsure, say N here.
 
-config CXD224X_NFC_RST
-    tristate "CXD224X NFC RST"
-    depends on CXD224X_NFC
-    default y
-    ---help---
-      Say yes if you want to use cxd224x NFC RST(external XRST pin) control.
-### LGE_END ###
+source "drivers/nfc/pn544/Kconfig"
+source "drivers/nfc/pn548/Kconfig"
+source "drivers/nfc/microread/Kconfig"
+source "drivers/nfc/nfcmrvl/Kconfig"
+source "drivers/nfc/st21nfca/Kconfig"
+source "drivers/nfc/st21nfcb/Kconfig"
